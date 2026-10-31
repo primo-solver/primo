@@ -330,7 +330,7 @@ assignments, explanation graphs and original Boolean context are still omitted.
 
 ## Simplex factorial experiment on the frozen corpus
 
-The next experiment compares the existing simplex settings on the same 1,000
+This experiment compares the existing simplex settings on the same 1,000
 conjunctions. Its question is which pivot strategy performs well, how equality
 elimination changes that result, and whether the two elimination mechanisms
 interact. This is a prescribed ablation, not a search that tunes settings against
@@ -465,11 +465,95 @@ shared-helper hashes, native binary, input identities and numerical flags. Compa
 `281252` covers the complete selected SAT set afresh; audit `281277` depends on
 its successful completion. The original timing files are unchanged.
 
+All 48,000 timing rows and 31,248 SAT-model replays are complete. Final audit
+`281277` passed, including raw trace hashes, model joins, adapted assertions and
+phase ordering. The [qualified report](../coverage/lra-simplex-factorial-20261031.json)
+and [16,000 per-input/configuration summaries](../coverage/lra-simplex-per-input-20261031.csv)
+preserve the measurements, intervals and provenance.
+
 This experiment measures fresh numerical feasibility calls. It does not preserve
 the parents' warm bases or reason graphs, and cannot measure how smaller learned
 conflicts improve later SAT search. Sparse pricing/leaving sweeps, fallback
 threshold sweeps and SOI conflict-minimization comparisons remain subsequent
 experiments; this 16-configuration matrix does not include them.
+
+## Simplex factorial results on the 1,000 conjunctions
+
+**All 48,000 timing rows and 31,248 SAT model replays passed qualification.**
+Accepted timing, model and audit jobs were `281122`, `281252` and `281277`.
+All completed with exit status `0:0` on SLURM node-09 (Intel Xeon E5-2690 v4).
+The native binary remained the qualified Release `d4944eb` build throughout.
+All successful answers agree with the frozen independent truth map; each SAT
+repetition passed native `--check-model` and direct Dolmen checking.
+
+The prescribed 16 configurations completed all 48,000 process runs. The table scores the 999 independently labelled inputs; all 48 runs of the unresolved candidate timed out and remain separate. A stable solve means all three repetitions returned the known answer successfully. Every stable solve in this matrix also belongs to the baseline’s solved set, so that column is also the sample size of the paired check-time comparison. All those pairs contain one complete numerical check per process.
+
+PAR2 is the mean-repeat sum over the labelled set, including a 30-second penalty for each unsolved repetition. Check speedup is the geometric mean of baseline check time divided by variant check time on complete triplets; greater than one favors the variant. These are fresh conjunction replays, selected from production-default calls, rather than whole-parent SMT results.
+
+| Pivot rule | Gaussian | Fixed | Stable solves / 999 | PAR2 sum (s) | Paired check speedup |
+|---|---|---|---:|---:|---:|
+| Bland | Off | Off | 954 | 2091.835 | 0.277× |
+| Bland | Off | On | 970 | 1403.067 | 0.555× |
+| Bland | On | Off | 954 | 2092.172 | 0.249× |
+| Bland | On | On | 970 | 1403.664 | 0.536× |
+| Dantzig | Off | Off | 968 | 1499.555 | 0.476× |
+| Dantzig | Off | On | 991 | 835.674 | 0.963× |
+| Dantzig | On | Off | 968 | 1499.654 | 0.423× |
+| Dantzig | On | On | 991 | 835.958 | 0.938× |
+| Sparse | Off | Off | 996 | 511.665 | 1.03× |
+| Sparse | Off | On | 996 | 497.002 | 1.71× |
+| Sparse (default) | On | Off | 996 | 511.915 | 1× |
+| Sparse | On | On | 996 | 497.617 | 1.67× |
+| SOI | Off | Off | 915 | 4177.186 | 0.0135× |
+| SOI | Off | On | 913 | 3824.856 | 0.0762× |
+| SOI | On | Off | 915 | 4186.790 | 0.0111× |
+| SOI | On | On | 913 | 3824.770 | 0.0751× |
+
+Sparse was strongest across these four elimination combinations: each solved the same 996 labelled inputs in all three repetitions. No other configuration added a stable solve that sparse lacked. Dantzig with fixed-variable elimination reached 991; Bland with it reached 970. The implemented SOI profiles reached 913–915. SOI here includes its existing finite-prefix Bland fallback and default QuickXplain conflict minimization; this is a comparison of Primo’s implemented profiles.
+
+Fixed-variable elimination makes the numerical check faster, while its cost is partly paid before that clock starts. With Gaussian elimination enabled, adding fixed-variable elimination gives a **1.670× paired check-time speedup**, but the paired whole-process speedup is **0.999×**. Mean-repeat PAR2 falls from **511.915 s to 497.617 s**, a 2.79% reduction on this set. Gaussian off versus on has little effect on the sparse process score: 511.665 versus 511.915 s without fixed elimination, and 497.002 versus 497.617 s with it. The check-speedup 95% parent-bootstrap interval is **1.521–1.838×**;
+the process-speedup interval is **0.983–1.015×**. The mean per-input PAR2-change
+interval is **−0.0437 to +0.0126 seconds**, including zero. These observations
+support a faster check on this set, with mixed whole-process effects.
+
+On the 996 commonly completed sparse inputs, the sum of per-input median check pivots falls from **267,707 to 175,451** when fixed elimination is enabled, but the latter also performs **242,272 elimination pivots outside check(), while bounds are asserted**. Adding the two counted categories gives 417,723 pivots rather than 267,707. Row-update and term-operation statistics in this experiment are also check-local: they omit elimination work done while bounds are asserted. The {callsource}`callback statistics wiring <src/smt/solver_engines.cpp>` publishes elimination counters during bound assertion and measures check-counter deltas around `LraTableau::check()`. A shorter check therefore does not establish less total work.
+
+The effect varies by family and baseline difficulty. For sparse with Gaussian enabled, fixed elimination reduces the latendresse process score by **20.380 s** but increases miplib by **9.711 s**. The 36 completed baseline inputs with at least 1,024 pivots contribute an **18.527 s** process-score reduction; lower-pivot strata collectively add cost. This explains why the aggregate score improves while the typical paired process time is almost unchanged.
+
+Pivot count alone also misses a selection-rule tradeoff. Holding both Gaussian and fixed elimination enabled, consider the **944 matched
+pairs with positive values for all three metrics**. Sparse performs **1.613× as
+many check pivots as Dantzig**, while Dantzig performs **1.859× as many counted
+term operations** and takes **1.813× as long inside check()**. These are geometric
+means on the same subset; zero-work pairs are excluded. The experiment therefore retains pivot counts, work counters and elapsed time together.
+
+No defaults change in this study. The result concerns these deliberately selected
+fresh conjunctions and the implemented profiles, rather than full SMT search or
+an unbiased population of QF_LRA inputs.
+
+![Process PAR2 and paired numerical-check speedups for the sixteen configurations](../_static/lra-simplex-factorial-20261031.svg)
+
+The figure reports stable solves and mean-repeat process PAR2 at left, and paired
+check-time speedups with 95% counting-parent intervals at right. G denotes
+Gaussian elimination and F fixed-variable elimination. Each paired sample size is
+shown explicitly. [Download the standalone PDF](../_static/lra-simplex-factorial-20261031.pdf).
+
+The [portable qualified report](../coverage/lra-simplex-factorial-20261031.json)
+contains all contrasts, family/status/stratum summaries, binary and workflow
+hashes, ordered flags, limits and job accounting. The
+[per-input CSV](../coverage/lra-simplex-per-input-20261031.csv) has 16,000 rows,
+including the 16 unscored unknown-candidate rows. Completed process/check times
+and work counts are per-input medians of three fully completed runs; these
+fields remain blank when completion requirements are not met. The mean/median
+penalized PAR2 columns retain failed repetitions with their 30-second penalties.
+Individual repetitions and timeout prefixes remain in
+`timing/shard-*/rows.jsonl`; `qualified-summary/per-input.jsonl` contains compact
+per-input summaries.
+
+Raw inputs, profiles, model responses and validation output remain under
+`results/lra-simplex-factorial-1000-20261031` in the SLURM workspace. The
+{simplexplots}`figure generator <scripts/plot_lra_simplex_ablation.py>` uses
+Matplotlib from the documentation environment; the experiment and audit scripts
+otherwise use the Python standard library.
 
 ## Exported numerical conjunction
 

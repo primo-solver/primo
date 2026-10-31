@@ -62,6 +62,9 @@ sphinx:
       simplexanalysis:
         - "https://github.com/primo-solver/primo/blob/c9f37b00a74c74e570a22d7335cb46910494661f/%s"
         - "%s"
+      simplexplots:
+        - "https://github.com/primo-solver/primo/blob/c5cd9875413dbb226ce755a2aea65663ae6fa2fb/%s"
+        - "%s"
       simplexmodels:
         - "https://github.com/primo-solver/primo/blob/c9f37b00a74c74e570a22d7335cb46910494661f/%s"
         - "%s"

@@ -6,7 +6,7 @@
       "id": "2026-10-31-lra-simplex-factorial-1000",
       "date": "2026-10-31",
       "kind": "existing-simplex-settings-factorial",
-      "evidence_status": "timing-complete-model-retry-running-after-python39-harness-repair",
+      "evidence_status": "complete-48000-timing-rows-and-all-successful-sat-repetitions-qualified",
       "branch": "experiment/qf-lra-call-ablation",
       "native_context_commit": "d4944ebbe6cf202c0485e783655209ba204df71c",
       "native_binary_sha256": "710929c58c18970cf4fccf7eb479fb95bb1410e6b46559433e4af80b55a9eee8",
@@ -141,11 +141,7 @@
         "attempts": "281147 failed in Python3.9 zip(strict=True) joins after647 direct Dolmen passes; remaining tasks stopped and artifacts preserved as models-attempt-1. No successful model pass is reused.281156 dependent audit cancelled before execution. Repaired full retry281252 follows the11-test real-cluster compatibility job281251; audit281277 follows retry."
       },
       "scope": "Prescribed 4x2x2 ablation, not adaptive tuning or default promotion. Every SAT repetition separately model-validated. Frozen unknown candidate excluded from correctness-scored comparisons.",
-      "remaining": [
-        "Complete all31248 fresh SAT model rows",
-        "Run final raw artifact audit",
-        "Review and commit complete results"
-      ],
+      "remaining": [],
       "analysis_commit": "c9f37b00a74c74e570a22d7335cb46910494661f",
       "model_workflow_commit": "c9f37b00a74c74e570a22d7335cb46910494661f",
       "completed_timing_rows": 48000,
@@ -154,8 +150,216 @@
         "offline_metadata_tests": 11,
         "cluster_python_compatibility_job": "281251",
         "cluster_python_compatibility_outcome": "11 tests pass;0:0",
-        "native_changes": false
-      }
+        "native_changes": false,
+        "final_artifact_audit_job": "281277",
+        "final_artifact_audit": "COMPLETED0:0; all raw trace hashes, unique SAT joins and unchanged adapted assertions checked",
+        "docs_review": "Independent read-only final review ready; SFA-07 artifact-description repair checked; report, CSV, figures and empirical claims accepted against c5cd987.",
+        "commands": [
+          "python3 -W error::ResourceWarning -m unittest discover -s tests/python -p test_lra_simplex_ablation.py",
+          "make lint",
+          "make docs",
+          "python3 scripts/assemble_docs.py",
+          "python3 scripts/check_doc_links.py docs/_build/site",
+          "git diff --check"
+        ],
+        "docs_links": {
+          "pages": 265,
+          "local_links": 33795,
+          "git_links": 1112,
+          "failures": 0
+        },
+        "rendered_sections": "Results table, analysis/counter boundaries, SVG/PDF and artifact links inspected."
+      },
+      "completed_sat_model_rows": 31248,
+      "per_input_csv": "docs/coverage/lra-simplex-per-input-20261031.csv",
+      "results_report": "docs/coverage/lra-simplex-factorial-20261031.json",
+      "timing_rows": 48000,
+      "model_passes": 31248,
+      "outcomes_by_configuration": {
+        "bland-g0-f0": {
+          "outcomes": {
+            "sat": 1926,
+            "timeout": 135,
+            "unsat": 936
+          },
+          "solved_all_repeats": 954,
+          "solved_any_repeat": 954,
+          "intermittent_solve": 0,
+          "mean_repeat_par2_seconds": 2091.834943333334
+        },
+        "bland-g0-f1": {
+          "outcomes": {
+            "sat": 1956,
+            "timeout": 87,
+            "unsat": 954
+          },
+          "solved_all_repeats": 970,
+          "solved_any_repeat": 970,
+          "intermittent_solve": 0,
+          "mean_repeat_par2_seconds": 1403.0667859999987
+        },
+        "bland-g1-f0": {
+          "outcomes": {
+            "sat": 1926,
+            "timeout": 135,
+            "unsat": 936
+          },
+          "solved_all_repeats": 954,
+          "solved_any_repeat": 954,
+          "intermittent_solve": 0,
+          "mean_repeat_par2_seconds": 2092.1717773333344
+        },
+        "bland-g1-f1": {
+          "outcomes": {
+            "sat": 1956,
+            "timeout": 87,
+            "unsat": 954
+          },
+          "solved_all_repeats": 970,
+          "solved_any_repeat": 970,
+          "intermittent_solve": 0,
+          "mean_repeat_par2_seconds": 1403.6640279999995
+        },
+        "dantzig-g0-f0": {
+          "outcomes": {
+            "sat": 1953,
+            "timeout": 93,
+            "unsat": 951
+          },
+          "solved_all_repeats": 968,
+          "solved_any_repeat": 968,
+          "intermittent_solve": 0,
+          "mean_repeat_par2_seconds": 1499.5553156666672
+        },
+        "dantzig-g0-f1": {
+          "outcomes": {
+            "sat": 2013,
+            "timeout": 24,
+            "unsat": 960
+          },
+          "solved_all_repeats": 991,
+          "solved_any_repeat": 991,
+          "intermittent_solve": 0,
+          "mean_repeat_par2_seconds": 835.6744369999993
+        },
+        "dantzig-g1-f0": {
+          "outcomes": {
+            "sat": 1953,
+            "timeout": 93,
+            "unsat": 951
+          },
+          "solved_all_repeats": 968,
+          "solved_any_repeat": 968,
+          "intermittent_solve": 0,
+          "mean_repeat_par2_seconds": 1499.653717666664
+        },
+        "dantzig-g1-f1": {
+          "outcomes": {
+            "sat": 2013,
+            "timeout": 24,
+            "unsat": 960
+          },
+          "solved_all_repeats": 991,
+          "solved_any_repeat": 991,
+          "intermittent_solve": 0,
+          "mean_repeat_par2_seconds": 835.9583519999992
+        },
+        "soi-g0-f0": {
+          "outcomes": {
+            "sat": 1851,
+            "timeout": 251,
+            "unsat": 895
+          },
+          "solved_all_repeats": 915,
+          "solved_any_repeat": 916,
+          "intermittent_solve": 1,
+          "mean_repeat_par2_seconds": 4177.186296666665
+        },
+        "soi-g0-f1": {
+          "outcomes": {
+            "sat": 1869,
+            "timeout": 258,
+            "unsat": 870
+          },
+          "solved_all_repeats": 913,
+          "solved_any_repeat": 913,
+          "intermittent_solve": 0,
+          "mean_repeat_par2_seconds": 3824.8562199999988
+        },
+        "soi-g1-f0": {
+          "outcomes": {
+            "sat": 1851,
+            "timeout": 252,
+            "unsat": 894
+          },
+          "solved_all_repeats": 915,
+          "solved_any_repeat": 915,
+          "intermittent_solve": 0,
+          "mean_repeat_par2_seconds": 4186.789750999997
+        },
+        "soi-g1-f1": {
+          "outcomes": {
+            "sat": 1869,
+            "timeout": 258,
+            "unsat": 870
+          },
+          "solved_all_repeats": 913,
+          "solved_any_repeat": 913,
+          "intermittent_solve": 0,
+          "mean_repeat_par2_seconds": 3824.770101666666
+        },
+        "sparse-g0-f0": {
+          "outcomes": {
+            "sat": 2028,
+            "timeout": 9,
+            "unsat": 960
+          },
+          "solved_all_repeats": 996,
+          "solved_any_repeat": 996,
+          "intermittent_solve": 0,
+          "mean_repeat_par2_seconds": 511.6646740000004
+        },
+        "sparse-g0-f1": {
+          "outcomes": {
+            "sat": 2028,
+            "timeout": 9,
+            "unsat": 960
+          },
+          "solved_all_repeats": 996,
+          "solved_any_repeat": 996,
+          "intermittent_solve": 0,
+          "mean_repeat_par2_seconds": 497.0022070000005
+        },
+        "sparse-g1-f0": {
+          "outcomes": {
+            "sat": 2028,
+            "timeout": 9,
+            "unsat": 960
+          },
+          "solved_all_repeats": 996,
+          "solved_any_repeat": 996,
+          "intermittent_solve": 0,
+          "mean_repeat_par2_seconds": 511.9154973333337
+        },
+        "sparse-g1-f1": {
+          "outcomes": {
+            "sat": 2028,
+            "timeout": 9,
+            "unsat": 960
+          },
+          "solved_all_repeats": 996,
+          "solved_any_repeat": 996,
+          "intermittent_solve": 0,
+          "mean_repeat_par2_seconds": 497.6172626666672
+        }
+      },
+      "stage_order": {
+        "timing_started": "2026-10-31T05:56:28.586563+00:00",
+        "timing_finished": "2026-10-31T07:04:29.760327+00:00",
+        "models_started": "2026-10-31T07:10:49.041995+00:00",
+        "models_finished": "2026-10-31T07:52:12.502757+00:00"
+      },
+      "native_gate_scope": "Historical exact-native d4944eb gates reused; no fresh native implementation or default promotion."
     },
     {
       "id": "2026-10-30-lra-case-study-1000",
