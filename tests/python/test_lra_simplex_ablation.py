@@ -83,5 +83,166 @@ class SimplexAblationTests(unittest.TestCase):
         self.assertEqual(len(model_groups(rows)), 6)
 
 
+# These tests use synthetic measurements only; no solver process is launched.
+class SimplexSummaryTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        with patch.object(
+            sys,
+            "path",
+            [str(Path(__file__).resolve().parents[2] / "scripts"), *sys.path],
+        ):
+            import summarize_lra_simplex_ablation as summary
+        cls.summary = summary
+
+    def origin(self):
+        return dict(
+            expected="sat",
+            counting_parent="family/parent.smt2",
+            fresh_coverage="complete",
+            fresh_completed_checks=1,
+            fresh_completed_pivots=129,
+        )
+
+    def row(self, status="ok", calls=1):
+        return dict(
+            file="cubes/a.smt2",
+            configuration="a",
+            run=dict(
+                status=status,
+                answer="sat",
+                exit_code=0,
+                timeout="false" if status == "ok" else "true",
+                seconds="1",
+                stats={},
+            ),
+            analysis=dict(
+                coverage="complete" if status == "ok" else "prefix",
+                calls=calls,
+                total_pivots=12 if calls else 0,
+                total_check_ns=100 if calls else 0,
+                checkers=[],
+            ),
+        )
+
+    def test_timeout_prefix_is_not_complete_work_and_penalty_keeps_failure(self):
+        value = self.summary.compact(
+            [self.row(), self.row(), self.row("timeout")], self.origin(), 15
+        )
+        self.assertEqual(value["successful_repeats"], 2)
+        self.assertIsNone(value["pivots"])
+        self.assertIsNone(value["check_ns"])
+        self.assertIsNone(value["process_seconds"])
+        self.assertEqual(value["median_par2_seconds"], 1)
+        self.assertAlmostEqual(value["mean_par2_seconds"], 32 / 3)
+        self.assertEqual(value["outcomes"], {"sat": 2, "timeout": 1})
+        self.assertEqual(value["stratum"], "128-1023")
+
+    def test_no_checker_success_is_separate_from_missing_check_time(self):
+        value = self.summary.compact([self.row(calls=0)] * 3, self.origin(), 15)
+        self.assertEqual(value["pivots"], 0)
+        self.assertIsNone(value["check_ns"])
+        self.assertEqual(self.summary.summarize_group([value])["no_check_triplets"], 1)
+
+    def test_parent_cluster_bootstrap_respects_equal_ratio(self):
+        result = self.summary.clustered_ratio([("p", 2), ("p", 2), ("q", 2)], 19, 100)
+        self.assertEqual(result["pairs"], 3)
+        self.assertEqual(result["parents"], 2)
+        self.assertAlmostEqual(result["geomean"], 2)
+        self.assertTrue(all(abs(x - 2) < 1e-10 for x in result["ci95"]))
+
+    def test_unknown_answer_has_own_outcome(self):
+        row = self.row()
+        row["run"]["answer"] = "unknown"
+        self.assertEqual(self.summary.outcome(row["run"]), "unknown")
+
+    def test_audit_rejects_changed_configuration_and_missing_model_join(self):
+        import tempfile
+        from types import SimpleNamespace
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            args = SimpleNamespace(
+                results=root, shards=1, plan=root / "plan.json", verify_artifacts=False
+            )
+            plan = dict(
+                seed=1,
+                repeats=3,
+                solver_sha256="binary",
+                manifest_sha256="manifest",
+                expected_statuses_sha256="labels",
+                common_args=["--quiet"],
+                configurations=[dict(id="x", args=["--lra-pivoting-rule", "bland"])],
+            )
+            args.plan.write_text(json.dumps(plan))
+            native = dict(sha256="binary", version="git: test")
+            meta = dict(
+                complete=True,
+                shard=0,
+                shards=1,
+                rows=3,
+                solver=native,
+                plan_sha256=self.summary.digest(args.plan),
+                manifest_sha256="manifest",
+                expected_statuses_sha256="labels",
+                workflow_sha256={"test": "hash"},
+                started="2026-01-01T00:00:00+00:00",
+                finished="2026-01-01T00:00:01+00:00",
+            )
+            timing = root / "timing/shard-0"
+            models = root / "models/shard-0"
+            timing.mkdir(parents=True)
+            models.mkdir(parents=True)
+            (timing / "metadata.json").write_text(json.dumps(meta))
+            mm = dict(
+                meta,
+                passed=3,
+                started="2026-01-01T00:00:02+00:00",
+                dolmen={"sha256": "validator"},
+            )
+            (models / "metadata.json").write_text(json.dumps(mm))
+            rows = []
+            joins = []
+            for rep in range(3):
+                row = self.row()
+                row.update(
+                    key=f"a-r{rep}-x",
+                    repeat=rep,
+                    configuration="x",
+                    expected="sat",
+                    input_sha256="a",
+                    command=[
+                        "solver",
+                        "--quiet",
+                        "--lra-pivoting-rule",
+                        "bland",
+                        "--lra-call-profile",
+                        "trace",
+                        "/corpus/cubes/a.smt2",
+                    ],
+                )
+                rows.append(row)
+                joins.append(dict(key=row["key"], outcome="pass", validator="dolmen"))
+
+            def save():
+                (timing / "rows.jsonl").write_text(
+                    "".join(json.dumps(r) + "\n" for r in rows)
+                )
+                (models / "joins.json").write_text(json.dumps(joins))
+
+            save()
+            origins = {"cubes/a.smt2": dict(sha256="a", expected="sat")}
+            self.summary.load_audit(args, plan, origins)
+            rows[0]["command"][3] = "sparse"
+            save()
+            with self.assertRaisesRegex(ValueError, "arguments differ"):
+                self.summary.load_audit(args, plan, origins)
+            rows[0]["command"][3] = "bland"
+            joins.pop()
+            save()
+            with self.assertRaisesRegex(ValueError, "model joins"):
+                self.summary.load_audit(args, plan, origins)
+
+
 if __name__ == "__main__":
     unittest.main()
