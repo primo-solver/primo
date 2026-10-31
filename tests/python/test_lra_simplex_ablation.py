@@ -151,6 +151,15 @@ class SimplexSummaryTests(unittest.TestCase):
         self.assertAlmostEqual(result["geomean"], 2)
         self.assertTrue(all(abs(x - 2) < 1e-10 for x in result["ci95"]))
 
+    def test_parent_cluster_difference_retains_failed_process_penalties(self):
+        result = self.summary.clustered_difference(
+            [("p", -2), ("p", -2), ("q", -2)], 19, 100
+        )
+        self.assertEqual(result["inputs"], 3)
+        self.assertEqual(result["parents"], 2)
+        self.assertEqual(result["mean_per_input_seconds"], -2)
+        self.assertEqual(result["ci95"], [-2, -2])
+
     def test_unknown_answer_has_own_outcome(self):
         row = self.row()
         row["run"]["answer"] = "unknown"

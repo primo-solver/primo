@@ -73,6 +73,30 @@ def clustered_ratio(pairs, seed, samples=2000):
     }
 
 
+def clustered_difference(pairs, seed, samples=2000):
+    """Mean per-input score change; negative means the denominator is better."""
+    groups = defaultdict(list)
+    for parent, difference in pairs:
+        groups[parent].append(difference)
+    blocks = [(sum(v), len(v)) for _, v in sorted(groups.items())]
+    if not blocks:
+        return {"inputs": 0, "mean_per_input_seconds": None, "ci95": None}
+    rng = random.Random(seed)
+    estimates = []
+    for _ in range(samples):
+        chosen = rng.choices(blocks, k=len(blocks))
+        estimates.append(sum(s for s, _ in chosen) / sum(n for _, n in chosen))
+    estimates.sort()
+    return {
+        "inputs": len(pairs),
+        "parents": len(blocks),
+        "mean_per_input_seconds": sum(s for s, _ in blocks) / len(pairs),
+        "ci95": [estimates[int(samples * 0.025)], estimates[int(samples * 0.975) - 1]],
+        "bootstrap_samples": samples,
+        "seed": seed,
+    }
+
+
 def stratum(origin):
     if origin["fresh_coverage"] != "complete" or origin["fresh_completed_checks"] != 1:
         return "censored"
@@ -183,7 +207,19 @@ def summarize_group(values):
 
 def comparison(numerator, denominator, seed):
     shared = sorted(set(numerator) & set(denominator))
-    result = {}
+    result = {
+        "par2_change": clustered_difference(
+            [
+                (
+                    numerator[n]["parent"],
+                    denominator[n]["mean_par2_seconds"]
+                    - numerator[n]["mean_par2_seconds"],
+                )
+                for n in shared
+            ],
+            seed,
+        )
+    }
     for metric in ("process_seconds", "check_ns", "pivots", "row_updates", "term_ops"):
         pairs = [
             (numerator[n]["parent"], numerator[n][metric] / denominator[n][metric])
@@ -420,6 +456,8 @@ def main():
         "per_configuration": {},
         "baseline_comparisons": {},
         "factor_contrasts": {},
+        "pivot_contrasts": {},
+        "gaussian_fixed_interactions": {},
     }
     for config, values in byconfig.items():
         report["per_configuration"][config] = summarize_group(list(values.values()))
@@ -444,6 +482,51 @@ def main():
             report["factor_contrasts"][f"fixed-on:{rule}:g{gaussian}"] = comparison(
                 byconfig[a], byconfig[b], plan["seed"]
             )
+    for rule in ("bland", "dantzig", "soi"):
+        for gaussian in (0, 1):
+            for fixed in (0, 1):
+                a, b = f"sparse-g{gaussian}-f{fixed}", f"{rule}-g{gaussian}-f{fixed}"
+                report["pivot_contrasts"][f"{rule}-vs-sparse:g{gaussian}:f{fixed}"] = (
+                    comparison(byconfig[a], byconfig[b], plan["seed"])
+                )
+    for rule in ("bland", "dantzig", "sparse", "soi"):
+        corners = [
+            byconfig[f"{rule}-g{g}-f{f}"] for g, f in [(0, 0), (1, 0), (0, 1), (1, 1)]
+        ]
+        interactions = {}
+        for metric in (
+            "process_seconds",
+            "check_ns",
+            "pivots",
+            "row_updates",
+            "term_ops",
+        ):
+            pairs = []
+            for name in corners[0]:
+                v = [corner[name][metric] for corner in corners]
+                if all(x is not None and x > 0 for x in v):
+                    pairs.append(
+                        (corners[0][name]["parent"], (v[2] / v[3]) / (v[0] / v[1]))
+                    )
+            interactions[metric] = clustered_ratio(pairs, plan["seed"])
+        interactions["par2_difference_of_differences"] = clustered_difference(
+            [
+                (
+                    corners[0][name]["parent"],
+                    (
+                        corners[3][name]["mean_par2_seconds"]
+                        - corners[2][name]["mean_par2_seconds"]
+                    )
+                    - (
+                        corners[1][name]["mean_par2_seconds"]
+                        - corners[0][name]["mean_par2_seconds"]
+                    ),
+                )
+                for name in corners[0]
+            ],
+            plan["seed"],
+        )
+        report["gaussian_fixed_interactions"][rule] = interactions
     report["unknown_candidate"] = [
         v for v in compacted.values() if v["expected"] == "unknown"
     ]
