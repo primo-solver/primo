@@ -77,6 +77,7 @@ def identity(path):
 def metadata(args, plan):
     return {
         "schema": 1,
+        "python_version": platform.python_version(),
         "started": now(),
         "phase": args.phase,
         "complete": False,
@@ -202,6 +203,7 @@ def models(args, plan):
     out.mkdir(parents=True, exist_ok=False)
     meta = metadata(args, plan)
     meta["dolmen"] = identity(args.dolmen)
+    meta["timing_workflow_sha256"] = before["workflow_sha256"]
     for key in ("solver", "plan_sha256", "manifest_sha256", "expected_statuses_sha256"):
         if meta[key] != before[key]:
             raise ValueError(f"timing/model identity mismatch: {key}")
@@ -250,7 +252,7 @@ def models(args, plan):
             checks = list(csv.DictReader(stream))
         if len(checks) != len(rows):
             raise ValueError("missing model rows")
-        for index, (row, check) in enumerate(zip(rows, checks, strict=True)):
+        for index, (row, check) in enumerate(zip(rows, checks)):
             path = args.corpus / row["file"]
             if Path(check["file"]).resolve() != path.resolve():
                 raise ValueError("model/input join mismatch")

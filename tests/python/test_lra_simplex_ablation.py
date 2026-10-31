@@ -73,6 +73,113 @@ class SimplexAblationTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             check_run(dict(good, status="error", exit_code=-11), "sat")
 
+    def test_complete_model_join_works_with_python39_zip(self):
+        import csv
+        import tempfile
+        from types import SimpleNamespace
+
+        with patch.object(
+            sys,
+            "path",
+            [str(Path(__file__).resolve().parents[2] / "scripts"), *sys.path],
+        ):
+            import run_lra_simplex_ablation as runner
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            corpus = root / "corpus"
+            (corpus / "cubes").mkdir(parents=True)
+            source = corpus / "cubes/a.smt2"
+            source.write_text("(set-logic QF_LRA)\n(assert true)\n(check-sat)\n")
+            (corpus / "manifest.txt").write_text("cubes/a.smt2\n")
+            (corpus / "expected-statuses.json").write_text('{"cubes/a.smt2":"sat"}\n')
+            solver = root / "solver"
+            solver.write_text("solver identity")
+            dolmen = root / "dolmen"
+            dolmen.write_text("validator identity")
+            plan = dict(
+                seed=1,
+                timeout_seconds=15,
+                model_timeout_seconds=90,
+                common_args=["--quiet"],
+                configurations=[dict(id="x", args=["--lra-pivoting-rule", "bland"])],
+            )
+            planpath = root / "plan.json"
+            planpath.write_text(json.dumps(plan))
+            args = SimpleNamespace(
+                phase="models",
+                plan=planpath,
+                corpus=corpus,
+                solver=solver,
+                dolmen=dolmen,
+                out=root / "results",
+                shard=0,
+                shards=1,
+            )
+            timing = args.out / "timing/shard-0"
+            timing.mkdir(parents=True)
+            row = dict(
+                key="a-r0-x",
+                file="cubes/a.smt2",
+                repeat=0,
+                configuration="x",
+                input_sha256=runner.digest(source),
+                run=dict(status="ok", answer="sat", exit_code=0, timeout="false"),
+            )
+            (timing / "rows.jsonl").write_text(json.dumps(row) + "\n")
+
+            def fake_identity(path):
+                return dict(sha256=runner.digest(path), version="fixture")
+
+            with patch.object(runner, "identity", fake_identity):
+                before = runner.metadata(args, plan)
+                before["complete"] = True
+                (timing / "metadata.json").write_text(json.dumps(before))
+
+                def fake_validator(command, **kwargs):
+                    target = Path(command[command.index("--out") + 1])
+                    target.mkdir()
+                    (target / "00000-a.smt2.smt2").write_text(
+                        runner.model_problem_text(source.read_text())
+                    )
+                    with (target / "summary.csv").open("w") as stream:
+                        writer = csv.DictWriter(
+                            stream,
+                            fieldnames=[
+                                "file",
+                                "answer",
+                                "outcome",
+                                "validator",
+                                "solver_exit",
+                                "dolmen_exit",
+                            ],
+                        )
+                        writer.writeheader()
+                        writer.writerow(
+                            dict(
+                                file=str(source),
+                                answer="sat",
+                                outcome="pass",
+                                validator="dolmen",
+                                solver_exit=0,
+                                dolmen_exit=0,
+                            )
+                        )
+                    return SimpleNamespace(returncode=0)
+
+                # Python 3.9's zip rejects keyword arguments. Exercise the whole
+                # model-stage join without launching either external tool.
+                with (
+                    patch.object(
+                        runner, "zip", lambda *items: zip(*items), create=True
+                    ),
+                    patch.object(runner.subprocess, "run", fake_validator),
+                ):
+                    runner.models(args, plan)
+            meta = json.loads((args.out / "models/shard-0/metadata.json").read_text())
+            self.assertTrue(meta["complete"])
+            self.assertEqual(meta["passed"], 1)
+            self.assertEqual(meta["timing_workflow_sha256"], before["workflow_sha256"])
+
     def test_models_preserve_repetition_and_profile_identity(self):
         run = dict(status="ok", answer="sat", exit_code=0, timeout="false")
         rows = [
@@ -241,7 +348,10 @@ class SimplexSummaryTests(unittest.TestCase):
 
             save()
             origins = {"cubes/a.smt2": dict(sha256="a", expected="sat")}
-            self.summary.load_audit(args, plan, origins)
+            with patch.object(
+                self.summary, "zip", lambda *items: zip(*items), create=True
+            ):
+                self.summary.load_audit(args, plan, origins)
             rows[0]["command"][3] = "sparse"
             save()
             with self.assertRaisesRegex(ValueError, "arguments differ"):

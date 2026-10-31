@@ -286,7 +286,7 @@ def load_audit(args, plan, origins):
         scheduled = list(schedule(plan, origins, shard, args.shards))
         if len(rows) != len(scheduled) or len(rows) != meta["rows"]:
             raise ValueError("missing timing rows")
-        for row, (name, repeat, cfg) in zip(rows, scheduled, strict=True):
+        for row, (name, repeat, cfg) in zip(rows, scheduled):
             key = f"{Path(name).stem}-r{repeat}-{cfg['id']}"
             if (row["key"], row["file"], row["repeat"], row["configuration"]) != (
                 key,
@@ -324,10 +324,27 @@ def load_audit(args, plan, origins):
             "plan_sha256",
             "manifest_sha256",
             "expected_statuses_sha256",
-            "workflow_sha256",
         ):
             if model_meta[field] != meta[field]:
                 raise ValueError("model provenance changed")
+        if (
+            model_meta.get("timing_workflow_sha256", model_meta["workflow_sha256"])
+            != meta["workflow_sha256"]
+        ):
+            raise ValueError("model timing parent changed")
+        # The model-only Python 3.9 compatibility repair leaves timing immutable.
+        # All shared helpers must still be byte-identical; retain both drivers.
+        for name, checksum in meta["workflow_sha256"].items():
+            if (
+                name != "run_lra_simplex_ablation.py"
+                and model_meta["workflow_sha256"].get(name) != checksum
+            ):
+                raise ValueError("shared model helper changed")
+        if (
+            model_metas
+            and model_meta["workflow_sha256"] != model_metas[0]["workflow_sha256"]
+        ):
+            raise ValueError("model workflow changed between shards")
         model_metas.append(model_meta)
         joins = (
             json.loads((models / "joins.json").read_text())
@@ -368,7 +385,7 @@ def load_audit(args, plan, origins):
                     checks = list(csv.DictReader(stream))
                 if len(checks) != len(batch):
                     raise ValueError("model raw summary missing rows")
-                for i, (row, check) in enumerate(zip(batch, checks, strict=True)):
+                for i, (row, check) in enumerate(zip(batch, checks)):
                     path = args.corpus / row["file"]
                     adapted = target / f"{i:05d}-{path.name}.smt2"
                     if digest(adapted) != joined[row["key"]][
@@ -442,6 +459,8 @@ def main():
         "plan_sha256": digest(args.plan),
         "binary": metas[0]["solver"],
         "workflow_sha256": metas[0]["workflow_sha256"],
+        "model_workflow_sha256": model_metas[0]["workflow_sha256"],
+        "model_python_version": model_metas[0].get("python_version"),
         "validator": model_metas[0]["dolmen"],
         "timing_rows": sum(len(v) for v in indexed.values()),
         "hard_failures": {"wrong_answers": 0, "errors": 0, "unsupported": 0},

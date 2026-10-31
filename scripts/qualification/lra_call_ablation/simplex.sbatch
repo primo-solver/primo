@@ -10,6 +10,11 @@ set -euo pipefail
 cd "${PRIMO_WORKDIR:?}"
 artifacts="${PRIMO_SIMPLEX_ARTIFACTS:?}"
 export PYTHONPATH="$artifacts/scripts:$PWD/scripts"
+if [[ ${PRIMO_SIMPLEX_PHASE:?} == compat ]]; then
+ python3 -W error::ResourceWarning -m unittest discover \
+  -s "$artifacts/tests/python" -p test_lra_simplex_ablation.py
+ exit
+fi
 extra=()
 if [[ ${PRIMO_SIMPLEX_PHASE:?} == models ]]; then
  extra+=(--dolmen "$PWD/contrib/local/bin/dolmen")
