@@ -60,7 +60,10 @@ sphinx:
         - "https://github.com/primo-solver/primo/blob/8402c7dbcdadd23c3ccffd9516166cb683773d77/%s"
         - "%s"
       simplexanalysis:
-        - "https://github.com/primo-solver/primo/blob/375c50839b061f006d75f99a72cc28c94dac0703/%s"
+        - "https://github.com/primo-solver/primo/blob/c9f37b00a74c74e570a22d7335cb46910494661f/%s"
+        - "%s"
+      simplexmodels:
+        - "https://github.com/primo-solver/primo/blob/c9f37b00a74c74e570a22d7335cb46910494661f/%s"
         - "%s"
       simplexsource:
         - "https://github.com/primo-solver/primo/blob/502a24c46c02232605f20d8122d49181ea9ad38b/%s"

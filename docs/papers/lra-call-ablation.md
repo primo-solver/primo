@@ -452,6 +452,19 @@ unknown candidate requires separate classification before being included in
 correctness-scored results. Wrong answers, process errors or incomplete model
 coverage prevent a qualified performance conclusion.
 
+Timing job `281122` completed all 48,000 rows with the original `502a24c`
+workflow. The first model array (`281147`) failed in its Python join step:
+cluster Python 3.9 does not support `zip(strict=True)`. Its 647 recorded direct
+Dolmen passes remain diagnostic artifacts under `models-attempt-1`; they are not
+reused for qualification. The dependent audit `281156` was cancelled before
+execution. The {simplexmodels}`repaired model driver <scripts/run_lra_simplex_ablation.py>`
+and final audit retain explicit length checks, use Python 3.9-compatible joins,
+and record distinct timing/model driver hashes while requiring identical recorded
+shared-helper hashes, native binary, input identities and numerical flags. Compatibility job
+`281251` passed all 11 offline metadata regressions on the cluster. Model retry
+`281252` covers the complete selected SAT set afresh; audit `281277` depends on
+its successful completion. The original timing files are unchanged.
+
 This experiment measures fresh numerical feasibility calls. It does not preserve
 the parents' warm bases or reason graphs, and cannot measure how smaller learned
 conflicts improve later SAT search. Sparse pricing/leaving sweeps, fallback
