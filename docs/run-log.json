@@ -26,12 +26,13 @@
       "dolmen_size": "2G",
       "native_changes": false,
       "execution": {
-        "environment": "SLURM node-09, 64 shards, concurrency24, one physical CPU and8GiB per task, four-hour task limit",
+        "environment": "SLURM node-09, 64 shards, concurrency 24, one physical CPU and 8 GiB per timing/model task, four-hour task limit",
         "workspace": "~/primo-lra-call-capture-20261030",
         "artifacts": "results/lra-simplex-factorial-1000-20261031",
         "jobs": {
           "timing": "281122",
-          "models": "281147"
+          "models": "281147",
+          "summary": "281156"
         },
         "dependency": "models afterok:281122; all timing finishes before model work",
         "preflight": "Repository --check-only --no-sync against clean d4944eb source, before each submission; exact qualified binary reused",
@@ -46,15 +47,29 @@
           "--export=ALL,PRIMO_WORKDIR=${WORKSPACE},PRIMO_SIMPLEX_ARTIFACTS=${ARTIFACTS},PRIMO_SIMPLEX_CORPUS=${CORPUS},PRIMO_SIMPLEX_OUT=${OUT},PRIMO_SIMPLEX_PHASE=${PHASE}",
           "[models only: --dependency=afterok:281122]",
           "${ARTIFACTS}/scripts/qualification/lra_call_ablation/simplex.sbatch"
+        ],
+        "summary_dependency": "afterok:281147; final audit uses one CPU,16GiB,two-hour budget",
+        "summary_submission_arguments": [
+          "sbatch",
+          "--parsable",
+          "--partition=compute",
+          "--nodelist=node-09",
+          "--mem=16G",
+          "--time=02:00:00",
+          "--output=${WORKSPACE}/logs/simplex-summary-%j.log",
+          "--dependency=afterok:281147",
+          "--export=ALL,PRIMO_WORKDIR=${WORKSPACE},PRIMO_SIMPLEX_ARTIFACTS=${ANALYSIS_ARTIFACTS},PRIMO_SIMPLEX_CORPUS=${CORPUS},PRIMO_SIMPLEX_OUT=${OUT}",
+          "${ANALYSIS_ARTIFACTS}/scripts/qualification/lra_call_ablation/simplex_summary.sbatch"
         ]
       },
       "scope": "Prescribed 4x2x2 ablation, not adaptive tuning or default promotion. Every SAT repetition separately model-validated. Frozen unknown candidate excluded from correctness-scored comparisons.",
       "remaining": [
-        "Complete all48000 timing rows",
+        "Complete all 48000 timing rows",
         "Validate every successful SAT timing row independently",
         "Summarize paired process/check work, factorial contrasts, families, statuses and parent-cluster uncertainty",
         "Document/review/commit results"
-      ]
+      ],
+      "analysis_commit": "375c50839b061f006d75f99a72cc28c94dac0703"
     },
     {
       "id": "2026-10-30-lra-case-study-1000",

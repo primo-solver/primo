@@ -405,6 +405,41 @@ uncertainty estimates by counting parent, because conjunctions from one parent
 are correlated. Fixed-factor contrasts compare matched configurations rather than
 comparing only the best configuration in each group.
 
+The {simplexanalysis}`audit and analysis script <scripts/summarize_lra_simplex_ablation.py>`
+reports mean-repeat PAR2: sum each input's three penalized process durations and
+divide by three, then sum over the 999 labelled inputs. Thus every failed
+repetition contributes its full 30-second penalty. It also reports the sum of
+per-input median penalized durations, which can hide an isolated timeout and is
+not the primary score. Paired process ratios use median times only when both
+configurations solve all three repetitions. Paired check-time ratios additionally
+require exactly one complete numerical check in every process; successful
+zero-check runs are reported separately. Pairwise timing and work ratios require
+positive values on both sides; pairs with a zero numerator or denominator are
+excluded and their count is recorded for each pairwise contrast.
+
+For each pairwise ratio, values greater than one mean fewer seconds or less work
+in the configuration being compared with its reference. Geometric means weight each
+eligible conjunction equally. Empirical 95% intervals use 2,000 bootstrap
+resamples of counting parents with seed `20261031`, retaining all conjunctions
+within a sampled parent. PAR2-change intervals describe mean per-input changes over all 999 labelled
+inputs, rather than changes in the summed score; a negative change favors the
+compared configuration. These are descriptive
+intervals for this deliberately selected case study, not a claim that it is a
+random sample of all QF_LRA inputs. Matched pivot contrasts hold both elimination
+flags fixed. The Gaussian/fixed interaction compares Gaussian's gain with fixed
+elimination enabled versus disabled. Interaction ratios require eligible positive
+measurements at all four corners and report pair and parent counts; a
+ratio-of-ratios above one means the Gaussian gain is larger with fixed elimination
+enabled. The corresponding mean per-input PAR2 difference-of-differences is
+negative when that interaction reduces the score.
+
+The {simplexanalysis}`final audit batch <scripts/qualification/lra_call_ablation/simplex_summary.sbatch>`
+runs after the model array and checks all expected timing identities, every SAT
+model join, raw trace hashes, and unchanged adapted assertions before generating
+an immutable summary. It also verifies that every recorded model-phase start
+follows the last timing-shard finish. Its artifact directory retains per-input summaries as
+well as aggregate tables.
+
 Every successful SAT timing row, including each repetition, receives its own
 native `--check-model` plus independent Dolmen replay with the same numerical
 settings. The command adapter preserves assertions and adds model requests.
