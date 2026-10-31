@@ -1,0 +1,209 @@
+{
+  "schema": 1,
+  "experiment": "lra-simplex-factorial-1000-20261031",
+  "inputs": 1000,
+  "known_inputs": 999,
+  "unknown_inputs": 1,
+  "repeats": 3,
+  "seed": 20261031,
+  "timeout_seconds": 15,
+  "model_timeout_seconds": 90,
+  "common_args": [
+    "--quiet",
+    "--stats"
+  ],
+  "solver_sha256": "710929c58c18970cf4fccf7eb479fb95bb1410e6b46559433e4af80b55a9eee8",
+  "solver_source": "d4944ebbe6cf202c0485e783655209ba204df71c",
+  "manifest_sha256": "df3b5b731ea341f1d3f88520443b0078e92c8c1d09c413364005869f6f389267",
+  "expected_statuses_sha256": "24d5d14936c5ac6e39ed38317b4afaea1ff5390431a495b802526b5aff655866",
+  "baseline": "sparse-g1-f0",
+  "configurations": [
+    {
+      "id": "bland-g0-f0",
+      "pivot_rule": "bland",
+      "gaussian_elimination": false,
+      "fixed_elimination": false,
+      "args": [
+        "--lra-pivoting-rule",
+        "bland",
+        "--no-gaussian-elimination"
+      ]
+    },
+    {
+      "id": "bland-g0-f1",
+      "pivot_rule": "bland",
+      "gaussian_elimination": false,
+      "fixed_elimination": true,
+      "args": [
+        "--lra-pivoting-rule",
+        "bland",
+        "--no-gaussian-elimination",
+        "--lra-fixed-elimination"
+      ]
+    },
+    {
+      "id": "bland-g1-f0",
+      "pivot_rule": "bland",
+      "gaussian_elimination": true,
+      "fixed_elimination": false,
+      "args": [
+        "--lra-pivoting-rule",
+        "bland",
+        "--gaussian-elimination"
+      ]
+    },
+    {
+      "id": "bland-g1-f1",
+      "pivot_rule": "bland",
+      "gaussian_elimination": true,
+      "fixed_elimination": true,
+      "args": [
+        "--lra-pivoting-rule",
+        "bland",
+        "--gaussian-elimination",
+        "--lra-fixed-elimination"
+      ]
+    },
+    {
+      "id": "dantzig-g0-f0",
+      "pivot_rule": "dantzig",
+      "gaussian_elimination": false,
+      "fixed_elimination": false,
+      "args": [
+        "--lra-pivoting-rule",
+        "dantzig",
+        "--no-gaussian-elimination"
+      ]
+    },
+    {
+      "id": "dantzig-g0-f1",
+      "pivot_rule": "dantzig",
+      "gaussian_elimination": false,
+      "fixed_elimination": true,
+      "args": [
+        "--lra-pivoting-rule",
+        "dantzig",
+        "--no-gaussian-elimination",
+        "--lra-fixed-elimination"
+      ]
+    },
+    {
+      "id": "dantzig-g1-f0",
+      "pivot_rule": "dantzig",
+      "gaussian_elimination": true,
+      "fixed_elimination": false,
+      "args": [
+        "--lra-pivoting-rule",
+        "dantzig",
+        "--gaussian-elimination"
+      ]
+    },
+    {
+      "id": "dantzig-g1-f1",
+      "pivot_rule": "dantzig",
+      "gaussian_elimination": true,
+      "fixed_elimination": true,
+      "args": [
+        "--lra-pivoting-rule",
+        "dantzig",
+        "--gaussian-elimination",
+        "--lra-fixed-elimination"
+      ]
+    },
+    {
+      "id": "sparse-g0-f0",
+      "pivot_rule": "sparse",
+      "gaussian_elimination": false,
+      "fixed_elimination": false,
+      "args": [
+        "--lra-pivoting-rule",
+        "sparse",
+        "--no-gaussian-elimination"
+      ]
+    },
+    {
+      "id": "sparse-g0-f1",
+      "pivot_rule": "sparse",
+      "gaussian_elimination": false,
+      "fixed_elimination": true,
+      "args": [
+        "--lra-pivoting-rule",
+        "sparse",
+        "--no-gaussian-elimination",
+        "--lra-fixed-elimination"
+      ]
+    },
+    {
+      "id": "sparse-g1-f0",
+      "pivot_rule": "sparse",
+      "gaussian_elimination": true,
+      "fixed_elimination": false,
+      "args": [
+        "--lra-pivoting-rule",
+        "sparse",
+        "--gaussian-elimination"
+      ]
+    },
+    {
+      "id": "sparse-g1-f1",
+      "pivot_rule": "sparse",
+      "gaussian_elimination": true,
+      "fixed_elimination": true,
+      "args": [
+        "--lra-pivoting-rule",
+        "sparse",
+        "--gaussian-elimination",
+        "--lra-fixed-elimination"
+      ]
+    },
+    {
+      "id": "soi-g0-f0",
+      "pivot_rule": "soi",
+      "gaussian_elimination": false,
+      "fixed_elimination": false,
+      "args": [
+        "--lra-pivoting-rule",
+        "soi",
+        "--no-gaussian-elimination"
+      ]
+    },
+    {
+      "id": "soi-g0-f1",
+      "pivot_rule": "soi",
+      "gaussian_elimination": false,
+      "fixed_elimination": true,
+      "args": [
+        "--lra-pivoting-rule",
+        "soi",
+        "--no-gaussian-elimination",
+        "--lra-fixed-elimination"
+      ]
+    },
+    {
+      "id": "soi-g1-f0",
+      "pivot_rule": "soi",
+      "gaussian_elimination": true,
+      "fixed_elimination": false,
+      "args": [
+        "--lra-pivoting-rule",
+        "soi",
+        "--gaussian-elimination"
+      ]
+    },
+    {
+      "id": "soi-g1-f1",
+      "pivot_rule": "soi",
+      "gaussian_elimination": true,
+      "fixed_elimination": true,
+      "args": [
+        "--lra-pivoting-rule",
+        "soi",
+        "--gaussian-elimination",
+        "--lra-fixed-elimination"
+      ]
+    }
+  ],
+  "schedule": "SHA256 of JSON [seed, input, repeat, configuration], ascending within input/repetition; input hash order; whole inputs round-robin across 64 shards",
+  "correctness": "Every successful SAT timing row gets a separate exact-profile native check-model plus Dolmen replay after all timing jobs finish. Known answers checked against frozen labels. Unknown candidate separate from scored results.",
+  "scope": "Fresh numerical conjunction replay; no default promotion, tuning or warm basis replay."
+}
