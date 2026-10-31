@@ -83,12 +83,12 @@ def main():
     right.set_xscale("log")
     right.axvline(1, color="#777777", linestyle="--", linewidth=1)
     right.grid(axis="x", alpha=0.2)
-    right.set_title("Paired numerical-check speedup vs default")
+    right.set_title("Paired check speedup vs sparse G1 F0")
     right.set_xlabel(
         "Geometric mean speedup (higher is better)\n95% counting-parent bootstrap interval"
     )
     fig.suptitle(
-        "Frozen LRA conjunctions: 999 labelled inputs, three repetitions per configuration",
+        "Primo simplex: 999 labelled conjunctions, three repetitions per configuration",
         y=1.01,
     )
     fig.tight_layout()
