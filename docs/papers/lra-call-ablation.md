@@ -328,6 +328,101 @@ ablation winner, a solver-strength ordering or a default promotion. Warm basis,
 assignments, explanation graphs and original Boolean context are still omitted.
 
 
+## Simplex factorial experiment on the frozen corpus
+
+The next experiment compares the existing simplex settings on the same 1,000
+conjunctions. Its question is which pivot strategy performs well, how equality
+elimination changes that result, and whether the two elimination mechanisms
+interact. This is a prescribed ablation, not a search that tunes settings against
+its own test results. No default change is part of this experiment.
+
+The {simplexsource}`frozen plan <benchmarks/qf-lra-simplex-ablation/plan.json>`
+crosses these factors, yielding **16 configurations**:
+
+| Factor | Values | Production default in the measured binary |
+|---|---|---|
+| Pivot rule | Bland, Dantzig, sparse, sum of infeasibilities (SOI) | Sparse |
+| Gaussian equality elimination | Disabled, enabled | Enabled |
+| Fixed-variable elimination | Disabled, enabled | Disabled |
+
+Gaussian elimination applies Gauss–Jordan preprocessing to asserted linear
+equalities; fixed-variable elimination pivots a basic tableau variable out once
+its lower and upper bounds coincide. These act at different stages, so the
+factorial contrast tests whether doing both helps. Their owners are described in
+[preprocessing](../implementation/preprocessing.md) and
+[the LRA implementation](../implementation/lra.md).
+
+The native source and binary are the same qualified `d4944eb` build used to freeze
+the corpus. The CLI and defaults are defined by
+{callsource}`the solver options <src/smt/check_sat.hpp>` and
+{callsource}`their CLI wiring <src/main.cpp>`.
+Sparse uses its default leaving rule, pricing budget of 16 eligible candidates,
+and Bland fallback threshold of $4n+64$ pivots, where $n$ is the tableau variable
+count. The same fallback threshold applies to Dantzig and SOI. SOI uses its
+default QuickXplain minimization. Other options stay at the measured binary's
+production defaults, including same-slack propagation enabled and row propagation
+disabled. The plan spells out the ordered flags for each configuration.
+
+Each input receives **three repetitions of all 16 configurations**, for **48,000
+processes**, each with a 15-second wall limit plus the shared runner's two-second
+termination grace. A seeded SHA-256 ordering shuffles inputs and then shuffles
+configurations separately within each input/repetition. Complete input blocks
+are distributed over 64 shards; all 48 processes for an input execute sequentially
+in one allocation on one CPU. Tasks request a physical CPU, 8 GiB and four hours;
+up to 24 tasks share the same node. The full timing phase finishes before model
+validation starts. This limits scheduling differences within paired comparisons;
+it does not remove shared-machine timing noise.
+
+Submit the {simplexsource}`batch wrapper <scripts/qualification/lra_call_ablation/simplex.sbatch>`
+with `--partition=compute --nodelist=node-09 --array=0-63%24`. Export
+`PRIMO_WORKDIR` for the immutable native workspace, `PRIMO_SIMPLEX_ARTIFACTS`
+for the staged workflow snapshot (containing `scripts/` and the plan under
+`benchmarks/`), `PRIMO_SIMPLEX_CORPUS` for the frozen corpus root,
+`PRIMO_SIMPLEX_OUT` for a fresh results directory, and `PRIMO_SIMPLEX_PHASE`
+as `timing` or `models`. The model submission adds
+`--dependency=afterok:<timing-array-job-id>`. The run-log entry
+`2026-10-31-lra-simplex-factorial-1000` records portable command arguments,
+actual job IDs and artifact locations; private connection settings remain outside
+the repository.
+
+The {simplexsource}`experiment runner <scripts/run_lra_simplex_ablation.py>`
+retains exit status, process duration, all printed counters, the numerical profile,
+and input/binary/workflow hashes for every row. Compare process time and completed
+check time separately, together with pivots, row updates, term operations, fallback
+activations, elimination pivots and checker dimensions. Gaussian elimination can
+change the tableau before the first measured check. A successful run with no
+numerical checker is reported as such, rather than treated as a missing sample.
+Timeout traces preserve only completed observations; their missing work and check
+duration are not assigned zero or estimated from the observed prefix.
+
+Score the **999 labelled inputs** separately from the unresolved candidate.
+Report outcomes, process PAR2 (an unsolved input costs 30 seconds), paired timing
+ratios, per-family and SAT/UNSAT summaries, and the frozen baseline difficulty
+strata. Summarize the three process repetitions per input without discarding
+failures. For paired completed-check comparisons, state which pairs have complete
+observations on both sides, including how zero-check runs are handled. Group
+uncertainty estimates by counting parent, because conjunctions from one parent
+are correlated. Fixed-factor contrasts compare matched configurations rather than
+comparing only the best configuration in each group.
+
+Every successful SAT timing row, including each repetition, receives its own
+native `--check-model` plus independent Dolmen replay with the same numerical
+settings. The command adapter preserves assertions and adds model requests.
+The observer output path is omitted in model runs; model and validator times do
+not enter the original measurements. Replay budgets are 90 seconds for the solver
+and 30 seconds with 2 GiB for Dolmen. The runner checks exact adapted assertion
+text and joins passes to individual timing-row identities. Known answers are
+checked against the independently qualified frozen truth map. A newly solved
+unknown candidate requires separate classification before being included in
+correctness-scored results. Wrong answers, process errors or incomplete model
+coverage prevent a qualified performance conclusion.
+
+This experiment measures fresh numerical feasibility calls. It does not preserve
+the parents' warm bases or reason graphs, and cannot measure how smaller learned
+conflicts improve later SAT search. Sparse pricing/leaving sweeps, fallback
+threshold sweeps and SOI conflict-minimization comparisons remain subsequent
+experiments; this 16-configuration matrix does not include them.
+
 ## Exported numerical conjunction
 
 A requested export combines two pieces:

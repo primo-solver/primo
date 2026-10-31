@@ -59,6 +59,9 @@ sphinx:
       casestudytools:
         - "https://github.com/primo-solver/primo/blob/8402c7dbcdadd23c3ccffd9516166cb683773d77/%s"
         - "%s"
+      simplexsource:
+        - "https://github.com/primo-solver/primo/blob/502a24c46c02232605f20d8122d49181ea9ad38b/%s"
+        - "%s"
       casestudysource:
         - "https://github.com/primo-solver/primo/blob/659432e23587bdd356f8f9e7afb84a02495892e8/%s"
         - "%s"
