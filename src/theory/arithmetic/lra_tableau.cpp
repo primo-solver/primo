@@ -860,8 +860,9 @@ std::optional<LraTableau::SoiSelection> LraTableau::soi_select() const {
       // d_k already equals 0: only moving OUT of the interval changes it.
       // Keep the bound kind so a fixed variable's two zero events contribute
       // once, while its two nonzero crossings still contribute twice.
-      // See docs/arithmetic.md, "SOI endpoint correction". j's own entry
-      // never contributes because the walk stops at its bound.
+      // See docs/implementation/soi.md, "Crossings and selection". The
+      // historical arm stops at j's bound; the paper arms include j's
+      // outward violation slope beyond that bound.
       for (std::size_t g = index; g < group_end; ++g) {
         const LraVarId k = points[g].k;
         if (k == j) {
