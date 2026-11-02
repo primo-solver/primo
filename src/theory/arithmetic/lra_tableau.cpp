@@ -551,7 +551,29 @@ std::optional<LraTableau::SoiSelection> LraTableau::soi_select() const {
   LraVarId best_j = 0;
   SoiSelection best_selection{0, 0, kZero, kZero};
 
-  for (const auto& [j, t0j, j_slot] : f_row) {
+  std::vector<std::size_t> candidates;
+  const bool short_column = tuning_.soi_selection == SoiSelectionRule::ShortColumn;
+  if (short_column) {
+    candidates.resize(f_row.size());
+    for (std::size_t i = 0; i < candidates.size(); ++i) candidates[i] = i;
+  }
+  const auto shorter = [&](std::size_t lhs, std::size_t rhs) {
+    const auto left = f_row[lhs].var;
+    const auto right = f_row[rhs].var;
+    return occurs_in_[left].size() != occurs_in_[right].size()
+               ? occurs_in_[left].size() < occurs_in_[right].size()
+               : left < right;
+  };
+  std::size_t priced = 0;
+  for (std::size_t candidate = 0; candidate < f_row.size(); ++candidate) {
+    if (short_column && candidate == priced) {
+      const auto budget = std::max(std::size_t{1}, tuning_.soi_pricing_candidates);
+      priced = candidate + std::min(budget, candidates.size() - candidate);
+      std::partial_sort(candidates.begin() + static_cast<std::ptrdiff_t>(candidate),
+                        candidates.begin() + static_cast<std::ptrdiff_t>(priced), candidates.end(),
+                        shorter);
+    }
+    const auto& [j, t0j, j_slot] = f_row[short_column ? candidates[candidate] : candidate];
     if (t0j.is_zero()) {
       continue;
     }
@@ -705,6 +727,9 @@ std::optional<LraTableau::SoiSelection> LraTableau::soi_select() const {
       continue;
     }
 
+    if (short_column && best_delta_vio_for_j < kZero) {
+      return SoiSelection{j, best_k_for_j, best_delta_for_j, best_delta_vio_for_j};
+    }
     const int sign = best_delta_vio_for_j == kZero ? 0 : (best_delta_vio_for_j < kZero ? -1 : 1);
     const util::Rational abs_score = t0j.sign() < 0 ? -t0j : t0j;
     // Figure 3.4 line 10: multiply by sign BEFORE comparing. In
@@ -1792,6 +1817,7 @@ std::optional<std::vector<sat::Lit>> LraTableau::check() {
       tuning_.bland_fallback_factor * vars_.size() + tuning_.bland_fallback_offset;
   std::size_t pivot_count = 0;
   bool fallback_counted = false;
+  bool force_bland = false;
 
   if (rule_ == PivotingRule::Soi) {
     // SOICHECK (Fig 5): note the nonbasic-in-error fixup (SOICHECK line 1)
@@ -1803,6 +1829,7 @@ std::optional<std::vector<sat::Lit>> LraTableau::check() {
       const std::vector<LraVarId> initial(violated_vars_.begin(), violated_vars_.end());
       if (auto conflict = soi_row_conflict(initial)) return conflict;
     }
+    std::size_t stalled = 0;
     while (pivot_count <= bland_fallback_threshold) {
       const auto selection = soi_select();
       if (!selection.has_value()) {
@@ -1833,7 +1860,12 @@ std::optional<std::vector<sat::Lit>> LraTableau::check() {
         affected.push_back(selection->entering);
       }
       ++soi_work_.selected_steps;
-      if (selection->objective_delta == DeltaRational{}) ++soi_work_.zero_progress_steps;
+      if (selection->objective_delta == DeltaRational{}) {
+        ++soi_work_.zero_progress_steps;
+        ++stalled;
+      } else {
+        stalled = 0;
+      }
       if (selection->entering == selection->leaving) {
         // j reaches its own bound directly -- UPDATE without a pivot
         // (PRIMAL's own footnote: k==j collapses UPDATEANDPIVOT to a
@@ -1863,6 +1895,11 @@ std::optional<std::vector<sat::Lit>> LraTableau::check() {
       if (paper) {
         if (auto conflict = soi_row_conflict(affected)) return conflict;
       }
+      if (tuning_.soi_selection == SoiSelectionRule::ShortColumn &&
+          stalled >= tuning_.soi_stall_limit) {
+        force_bland = true;
+        break;
+      }
     }
     // Defensive fallback, belt-and-suspenders beyond the paper's own
     // tie-breaking-reduces-to-Bland termination argument (Section V-C):
@@ -1891,7 +1928,8 @@ std::optional<std::vector<sat::Lit>> LraTableau::check() {
       ++bland_fallback_count_;
       fallback_counted = true;
     }
-    const bool use_bland = rule_ == PivotingRule::Bland || pivot_count > bland_fallback_threshold;
+    const bool use_bland =
+        force_bland || rule_ == PivotingRule::Bland || pivot_count > bland_fallback_threshold;
 
     LraVarId violated = vars_.size();
     bool too_low = false;

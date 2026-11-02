@@ -823,6 +823,55 @@ void assert_soi_objective_identity(const LraTableau& tableau) {
   assert_tableau_invariants(tableau);
 }
 
+void soi_short_column_continues_after_a_nonprogressing_shortlist() {
+  LraTableau tableau(LraTableau::PivotingRule::Soi);
+  const auto x = tableau.add_variable();
+  const auto y = tableau.add_variable();
+  const auto b = tableau.add_variable();
+  const auto c = tableau.add_variable();
+  const auto d = tableau.add_variable();
+  const auto e = tableau.add_variable();
+  tableau.add_row(b, {{x, Rational(1)}, {y, Rational(1)}});
+  tableau.add_row(c, {{x, Rational(1)}});
+  tableau.add_row(d, {{y, Rational(1)}});
+  tableau.add_row(e, {{y, Rational(2)}});
+  assert(!tableau.assert_lower(b, rat(1), Lit{1}));
+  assert(!tableau.assert_upper(c, rat(0), Lit{2}));
+  auto tuning = tableau.tuning();
+  tuning.soi_selection = LraTableau::SoiSelectionRule::ShortColumn;
+  tuning.soi_pricing_candidates = 1;
+  tableau.set_tuning(tuning);
+  const auto selected = primo::theory::arithmetic::LraTableauTestAccess::selection(tableau);
+  assert(selected && selected->entering == y && selected->objective_delta < rat(0));
+  assert(tableau.soi_work().candidates == 2);
+  assert(!tableau.check());
+  assert_soi_objective_identity(tableau);
+}
+
+void soi_short_column_stall_limit_enters_ordinary_bland_repair() {
+  LraTableau tableau(LraTableau::PivotingRule::Soi);
+  const auto x = tableau.add_variable();
+  const auto y = tableau.add_variable();
+  const auto b = tableau.add_variable();
+  const auto c = tableau.add_variable();
+  const auto d = tableau.add_variable();
+  tableau.add_row(b, {{x, Rational(1)}, {y, Rational(2)}});
+  tableau.add_row(c, {{x, Rational(1)}});
+  tableau.add_row(d, {{y, Rational(2)}});
+  assert(!tableau.assert_lower(b, rat(1), Lit{1}));
+  assert(!tableau.assert_upper(c, rat(0), Lit{2}));
+  assert(!tableau.assert_upper(d, rat(0), Lit{3}));
+  auto tuning = tableau.tuning();
+  tuning.soi_selection = LraTableau::SoiSelectionRule::ShortColumn;
+  tuning.soi_stall_limit = 1;
+  tableau.set_tuning(tuning);
+  assert(tableau.check());
+  assert(tableau.soi_work().zero_progress_steps == 1);
+  assert(tableau.bland_fallback_count() == 1);
+  assert(tableau.soi_work().fallback_pivots > 0);
+  assert_soi_objective_identity(tableau);
+}
+
 void soi_paper_zero_progress_uses_smallest_entering_id() {
   LraTableau tableau(LraTableau::PivotingRule::Soi);
   const auto x = tableau.add_variable();
@@ -2851,6 +2900,8 @@ int main() {
   sparse_matches_bland_on_multi_pivot_scenarios();
   least_violated_leaving_matches_bland_on_multi_pivot_scenarios();
   least_violated_leaving_selects_differently_from_most_violated();
+  soi_short_column_continues_after_a_nonprogressing_shortlist();
+  soi_short_column_stall_limit_enters_ordinary_bland_repair();
   soi_paper_zero_progress_uses_smallest_entering_id();
   soi_paper_retains_all_events_at_entering_bound();
   soi_paper_checks_row_conflicts_before_global_selection();

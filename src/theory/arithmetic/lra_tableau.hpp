@@ -207,7 +207,7 @@ class LraTableau {
 
   // Historical is retained for immutable-baseline replay. Paper implements
   // Figure 3.4 selection with Figure 3.3 row-conflict checks.
-  enum class SoiSelectionRule { Historical, Paper };
+  enum class SoiSelectionRule { Historical, Paper, ShortColumn };
 
   struct Tuning {
     // How many *eligible* entering candidates PivotingRule::Sparse scores
@@ -225,6 +225,10 @@ class LraTableau {
     std::size_t model_mutation_candidates = 4;
     // SOI-only; inert under every other pivoting rule.
     SoiSelectionRule soi_selection = SoiSelectionRule::Historical;
+    // Primo engineering constants, not paper constants. The budget controls
+    // partial-sort chunks; selection stops at the first progressing candidate.
+    std::size_t soi_pricing_candidates = 16;
+    std::size_t soi_stall_limit = 16;
     SoiMinimization soi_minimization = SoiMinimization::QuickXplain;
     SoiMinimizationOrder soi_minimization_order = SoiMinimizationOrder::Id;
   };

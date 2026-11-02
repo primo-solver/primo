@@ -103,6 +103,7 @@ inline constexpr auto kLraPivotingRuleNames = std::to_array<EnumName<smt::LraPiv
 inline constexpr auto kLraSoiSelectionNames = std::to_array<EnumName<smt::LraSoiSelectionRule>>({
     {"historical", smt::LraSoiSelectionRule::Historical},
     {"paper", smt::LraSoiSelectionRule::Paper},
+    {"short-column", smt::LraSoiSelectionRule::ShortColumn},
 });
 
 inline constexpr auto kLraSoiMinimizationNames = std::to_array<EnumName<smt::LraSoiMinimization>>({

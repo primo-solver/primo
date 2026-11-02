@@ -448,6 +448,13 @@ int run_main(int argc, char** argv) {
                   "SOI selection: historical (default) or paper (Figure 3.4 scores, "
                   "coincident endpoint ties and Figure 3.3 row-conflict scans)");
 
+  app.add_option("--lra-soi-pricing-candidates", solver_options.lra_tuning.soi_pricing_candidates,
+                 "SOI short-column partial-sort chunk size (default 16)")
+      ->check(CLI::PositiveNumber);
+  app.add_option("--lra-soi-stall-limit", solver_options.lra_tuning.soi_stall_limit,
+                 "SOI short-column zero-progress steps before Bland (default 16)")
+      ->check(CLI::PositiveNumber);
+
   add_enum_option(app, "--lra-soi-minimize", solver_options.lra_tuning.soi_minimization,
                   primo::cli::kLraSoiMinimizationNames,
                   "How --lra-pivoting-rule soi shrinks a multi-row conflict before turning "
