@@ -1,4 +1,12 @@
-# Linear real arithmetic
+(linear-real-arithmetic)=
+
+# LRA theory operations
+
+This chapter is for readers of the DPLL(T) integration who want to understand
+consistency checking, conflict reasons, explained propagation and rational
+models. It assumes the [theory contract](theory-interface.md); read the
+[SOI implementation](soi.md) next for the opt-in global objective and its
+experimental reference selector.
 
 This theory follows the [shared assignment and explanation contract](theory-interface.md#theories-and-their-shared-contract).
 Its dedicated arithmetic checks and online callbacks currently provide that
@@ -792,6 +800,12 @@ encoding. Hash-consing core terms does not bound either quantity.
 
 (lra-soi)=
 ### Optional sum of infeasibilities
+
+The selector derivation below describes the historical SOI arm. It remains the
+opt-in default and reproducible baseline. The experimental
+`--lra-soi-selection=paper` arm corrects its entering score, uses complete forward
+crossings, and checks error rows earlier; the [dedicated SOI chapter](soi.md)
+explains those differences and the retained finite fallback.
 
 `--lra-pivoting-rule soi` selects **sum of infeasibilities (SOI)**. This mode
 uses all current bound violations to guide a repair step. The ordinary

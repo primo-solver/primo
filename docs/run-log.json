@@ -3,6 +3,92 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-11-02-soi-paper-reference-selector",
+      "date": "2026-11-02",
+      "kind": "behavior-milestone-correctness-qualification",
+      "commit": "e0e34ffab44eb5d5dabb939b361a002c0758f028",
+      "binary_sha256": "641b8d0632a46727d9642823531b867e791c8116ddc305d877c0d5cf4d022c98",
+      "evidence_status": "correctness-qualified-experimental-no-performance-acceptance",
+      "scope": "Experimental --lra-soi-selection=paper: exact Figure3.4 entering score including zero-progress ID tie; all coincident endpoint events; complete forward walk including own-bound violation slope; Figure3.3 initial and affected-row conflict scans. Historical selector remains opt-in SOI default; Sparse solver default unchanged. Full SOI trailing and finite Bland suffix retained.",
+      "design": "docs/implementation/soi.md complete-forward-walk section; primary thesis \u00a7\u00a73.1\u20133.3.4 and FMCAD Figures1/5. Additional uncapped-walk conformance obligation independently reviewed; inward zero own-bound events may select a no-op, covered by finite safeguard.",
+      "execution": {
+        "environment": "SLURM compute node-02; all solver batches remote",
+        "workspace": "~/primo-soi-selector-20261102",
+        "remote_artifacts": [
+          "results/stage2-fixed-checks",
+          "results/stage2-asan",
+          "fuzz-results/stage2",
+          "logs/docs-examples-323160.log",
+          "qualified/stage2/primo"
+        ],
+        "local_artifacts": "results/soi-improvements-20261102/stage2",
+        "jobs": {
+          "build": "323152",
+          "checks": "323153",
+          "asan": "323154",
+          "fuzz": "323155_0..3",
+          "doc_example_initial_unnormalized_help": "323159",
+          "doc_examples": "323160"
+        },
+        "resources": "Build/check/ASan4CPUs,8/12GiB,30/60min limits; fuzz4one-CPUshards,2GiB,1h; no speed timing evidence"
+      },
+      "commands": {
+        "prepare": "scripts/slurm_prepare_benchmark_workspace.py --build-via-slurm --reuse-dependencies --jobs4 --extra-target all --require-tool contrib/local/bin/z3; clean exact snapshot, compiler header manifest, private SSH settings outside tracked files",
+        "preflight": "Same helper --check-only --no-sync; exact git e0e34ff and CaDiCaL3.0.0 before submission",
+        "checks": "sbatch scripts/qualification/soi_improvements/checks.sbatch; make -j4 check BUILD_DIR=build-slurm-rel; independent selected-premise checker with Z3",
+        "asan": "sbatch scripts/qualification/soi_endpoints/asan.sbatch; make -j4 asan-test ASAN_BUILD_DIR=build-soi-asan",
+        "fuzz": "sbatch --array=0-3 --time=01:00:00 scripts/slurm_qfuf_fuzz_gate.sbatch; solver primo --lra-pivoting-rule=soi --lra-soi-selection=paper --quiet; QF_LRA,250cases/shard,seeds611120..611123,5s limits,reference z3; repository per-shard generator profiles; mutation task counts0",
+        "doc_examples": "SLURM: python3 scripts/check_doc_examples.py --solver ./build-slurm-rel/primo; help captured and invocation/trailing whitespace normalized by the checker convention"
+      },
+      "verification": {
+        "normal_groups": 45,
+        "normal_seconds": 13.09,
+        "python_tests": 269,
+        "asan_groups": 45,
+        "asan_seconds": 100.95,
+        "external_selected_premise_refutations": 24,
+        "fuzz": {
+          "cases": 1000,
+          "shard_summaries": 4,
+          "pass": 940,
+          "timeout": 60,
+          "wrong_answer": 0,
+          "crash": 0,
+          "parser_type_error": 0,
+          "unsupported": 0,
+          "reference_disagreement": 0,
+          "saved_timeout_inputs": 60,
+          "artifacts": "fuzz-results/stage2/fuzzsmt/shard-*/bugs; every saved row classified TIMEOUT"
+        },
+        "docs": "make docs; assembled267pages34333local-links1143uniqueGitlinks0failures; rendered top inspected; 12/12documentationexamples on SLURM",
+        "lint": "make lint passed locally",
+        "code_review": "Paper operations, exact score, slope signs, callback/update ordering and rollback reviewed; no blocking new-code issue found. Whole-tree stage1 clang-tidy ran all130translation units; advisory include-cleaner requires resumed tail."
+      },
+      "documentation_review": {
+        "reviewer": "/root/soi_documentation_review",
+        "verdict": "ready",
+        "scope": [
+          "docs/implementation/soi.md",
+          "docs/implementation/lra.md title/guide/historical scope",
+          "docs/reference/options.md appended selector section",
+          "docs/_config.yml selector source role",
+          "docs/examples/primo-help.txt"
+        ],
+        "dispositions": {
+          "SOISEL-01": "Qualified historical own-bound cap",
+          "SOISEL-02": "Separated implemented reference selector from planned cache/preference design",
+          "SOISEL-03": "Refreshed captured help and passed all12SLURM documentation checks"
+        },
+        "accepted_soi_sha256": "ffbf3984eb36eccf710dc9628993bc93b9edc79533b265a5bddde9bf8ba6023b",
+        "accepted_help_sha256": "748de10be9fcb05640a1f7745e803a6ca95c3047d7b04bc9273228934ac9fd17"
+      },
+      "limitations": [
+        "No speed result or default promotion.",
+        "Early row-conflict tests use scans; cached preference, short columns, linear maintenance and row-growing minimization are not in this source milestone.",
+        "Full corpus process PAR2, native/Dolmen model qualification and final mutation campaign remain required."
+      ]
+    },
+    {
       "id": "2026-11-02-soi-pilot-freeze",
       "date": "2026-11-02",
       "kind": "pre-execution-plan",

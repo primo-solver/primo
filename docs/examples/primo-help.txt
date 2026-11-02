@@ -331,6 +331,9 @@ QF_LRA theory options:
                               eligible candidate). 1 is the cheapest possible pricing. Never
                               cuts short the search for whether an eligible candidate exists,
                               so any value is sound
+          --lra-soi-selection TEXT:{historical,paper} [historical]
+                              SOI selection: historical (default) or paper (Figure 3.4 scores,
+                              coincident endpoint ties and Figure 3.3 row-conflict scans)
           --lra-soi-minimize TEXT:{quickxplain,deletion,none} [quickxplain]
                               How --lra-pivoting-rule soi shrinks a multi-row conflict before
                               turning it into a clause: quickxplain (Junker 2001), deletion

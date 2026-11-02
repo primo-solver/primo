@@ -116,3 +116,14 @@ one-based number (default 1). Capture requires profiling and an empty directory,
 A successfully published snapshot plus a flushed capture event with matching
 IDs, without a matching completion, is a provisional no-completion candidate.
 Only one snapshot is taken per process; its serialization precedes the timer.
+
+## Experimental SOI reference selector
+
+`--lra-soi-selection=historical|paper` applies only with
+`--lra-pivoting-rule=soi`. `historical` remains the default within opt-in SOI;
+Sparse remains the solver default. `paper` uses the thesis Figure 3.4 entering
+score, complete forward crossings including coincident endpoint events, and
+Figure 3.3 error-row conflict checks. Both retain the finite Bland fallback.
+See the [SOI chapter](../implementation/soi.md) for zero-event boundaries and
+{soiselectsource}`the option names <src/cli/option_names.hpp>` and
+{soiselectsource}`CLI wiring <src/main.cpp>` for the public spelling.
