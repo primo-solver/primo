@@ -1,0 +1,1109 @@
+{
+  "analysis_sha256": "b90a9baa812e5432edd7fd407975d5412e690d1ef6cef8afe3aaaf4b647d969d",
+  "comparisons": {
+    "paper-g1-f0-vs-paper-g1-f0": {
+      "par2_change": {
+        "bootstrap_samples": 2000,
+        "ci95": [
+          0.0,
+          0.0
+        ],
+        "inputs": 100,
+        "mean_per_input_seconds": 0.0,
+        "parents": 85,
+        "seed": 20261102
+      },
+      "process_speedup": {
+        "bootstrap_samples": 2000,
+        "ci95": [
+          1.0,
+          1.0
+        ],
+        "geomean": 1.0,
+        "pairs": 76,
+        "parents": 69,
+        "seed": 20261102
+      },
+      "stable_solve_gains": [],
+      "stable_solve_losses": []
+    },
+    "short-c16-s16-g1-f0-vs-paper-g1-f0": {
+      "par2_change": {
+        "bootstrap_samples": 2000,
+        "ci95": [
+          -5.100375461279462,
+          -1.8467511766666667
+        ],
+        "inputs": 100,
+        "mean_per_input_seconds": -3.3547080800000004,
+        "parents": 85,
+        "seed": 20261102
+      },
+      "process_speedup": {
+        "bootstrap_samples": 2000,
+        "ci95": [
+          2.2838197444983055,
+          3.5425789940904395
+        ],
+        "geomean": 2.8139741420841187,
+        "pairs": 76,
+        "parents": 69,
+        "seed": 20261102
+      },
+      "stable_solve_gains": [
+        "cubes/2e9a3ffe8e4979a9558e794dc523d6fe6297d49235dd4e405efeaa0b24961363.smt2",
+        "cubes/31735225e72496ff7734575f7fec5b2c39908202389ef0af2208b5bbc691ab40.smt2",
+        "cubes/4540e4215df7a561c2079d0cd1c49597e28cfb4f91587b043172bde7de6f47d4.smt2",
+        "cubes/4d2ca0f1faf86c0590a506200dd2700737c302172f72c72225021231389eb5e2.smt2",
+        "cubes/5f512083a091b7052c89594aba0721985a60b6c566523da99d3a4a404fc32193.smt2",
+        "cubes/68ac8dcab91935cf992fcc96ede38a7912a4b33b5da0581e9d4d018ca3aa1413.smt2",
+        "cubes/7573bed12e1301d197c9215bf0a63094f2f0d4296db5b168da0e35417b061e2b.smt2",
+        "cubes/801a1f66e87433e9dbbee3a8a285f38a4fa79eab34ecc949f04660bd04c99aba.smt2",
+        "cubes/8347aa8d652f82c5ffdfd1d4ccc14cf3e0014a42f1b5bb708e775cd9b99e999d.smt2",
+        "cubes/9e500a07fdbd2d159eee38adc11804fc8530b715df4ec1ac232a21ae319a0f46.smt2",
+        "cubes/d1e0eb2a0d6b476a388fc5d00da1364a1b16513daf92b826474e45ab028d6278.smt2",
+        "cubes/f946150c03f40c0320082f84e1b80d3df248def0d58e451a013b82e2a6ca74fe.smt2"
+      ],
+      "stable_solve_losses": []
+    },
+    "short-c16-s32-g1-f0-vs-paper-g1-f0": {
+      "par2_change": {
+        "bootstrap_samples": 2000,
+        "ci95": [
+          -5.095381912457913,
+          -1.8446468566666672
+        ],
+        "inputs": 100,
+        "mean_per_input_seconds": -3.3514019533333332,
+        "parents": 85,
+        "seed": 20261102
+      },
+      "process_speedup": {
+        "bootstrap_samples": 2000,
+        "ci95": [
+          2.216727803989426,
+          3.4260717967919643
+        ],
+        "geomean": 2.7324866573637716,
+        "pairs": 76,
+        "parents": 69,
+        "seed": 20261102
+      },
+      "stable_solve_gains": [
+        "cubes/2e9a3ffe8e4979a9558e794dc523d6fe6297d49235dd4e405efeaa0b24961363.smt2",
+        "cubes/31735225e72496ff7734575f7fec5b2c39908202389ef0af2208b5bbc691ab40.smt2",
+        "cubes/4540e4215df7a561c2079d0cd1c49597e28cfb4f91587b043172bde7de6f47d4.smt2",
+        "cubes/4d2ca0f1faf86c0590a506200dd2700737c302172f72c72225021231389eb5e2.smt2",
+        "cubes/5f512083a091b7052c89594aba0721985a60b6c566523da99d3a4a404fc32193.smt2",
+        "cubes/68ac8dcab91935cf992fcc96ede38a7912a4b33b5da0581e9d4d018ca3aa1413.smt2",
+        "cubes/7573bed12e1301d197c9215bf0a63094f2f0d4296db5b168da0e35417b061e2b.smt2",
+        "cubes/801a1f66e87433e9dbbee3a8a285f38a4fa79eab34ecc949f04660bd04c99aba.smt2",
+        "cubes/8347aa8d652f82c5ffdfd1d4ccc14cf3e0014a42f1b5bb708e775cd9b99e999d.smt2",
+        "cubes/9e500a07fdbd2d159eee38adc11804fc8530b715df4ec1ac232a21ae319a0f46.smt2",
+        "cubes/d1e0eb2a0d6b476a388fc5d00da1364a1b16513daf92b826474e45ab028d6278.smt2",
+        "cubes/f946150c03f40c0320082f84e1b80d3df248def0d58e451a013b82e2a6ca74fe.smt2"
+      ],
+      "stable_solve_losses": []
+    },
+    "short-c16-s8-g1-f0-vs-paper-g1-f0": {
+      "par2_change": {
+        "bootstrap_samples": 2000,
+        "ci95": [
+          -5.103888683501684,
+          -1.8494072333333336
+        ],
+        "inputs": 100,
+        "mean_per_input_seconds": -3.3571254266666664,
+        "parents": 85,
+        "seed": 20261102
+      },
+      "process_speedup": {
+        "bootstrap_samples": 2000,
+        "ci95": [
+          2.311144474713374,
+          3.600640993596528
+        ],
+        "geomean": 2.8531350988647937,
+        "pairs": 76,
+        "parents": 69,
+        "seed": 20261102
+      },
+      "stable_solve_gains": [
+        "cubes/2e9a3ffe8e4979a9558e794dc523d6fe6297d49235dd4e405efeaa0b24961363.smt2",
+        "cubes/31735225e72496ff7734575f7fec5b2c39908202389ef0af2208b5bbc691ab40.smt2",
+        "cubes/4540e4215df7a561c2079d0cd1c49597e28cfb4f91587b043172bde7de6f47d4.smt2",
+        "cubes/4d2ca0f1faf86c0590a506200dd2700737c302172f72c72225021231389eb5e2.smt2",
+        "cubes/5f512083a091b7052c89594aba0721985a60b6c566523da99d3a4a404fc32193.smt2",
+        "cubes/68ac8dcab91935cf992fcc96ede38a7912a4b33b5da0581e9d4d018ca3aa1413.smt2",
+        "cubes/7573bed12e1301d197c9215bf0a63094f2f0d4296db5b168da0e35417b061e2b.smt2",
+        "cubes/801a1f66e87433e9dbbee3a8a285f38a4fa79eab34ecc949f04660bd04c99aba.smt2",
+        "cubes/8347aa8d652f82c5ffdfd1d4ccc14cf3e0014a42f1b5bb708e775cd9b99e999d.smt2",
+        "cubes/9e500a07fdbd2d159eee38adc11804fc8530b715df4ec1ac232a21ae319a0f46.smt2",
+        "cubes/d1e0eb2a0d6b476a388fc5d00da1364a1b16513daf92b826474e45ab028d6278.smt2",
+        "cubes/f946150c03f40c0320082f84e1b80d3df248def0d58e451a013b82e2a6ca74fe.smt2"
+      ],
+      "stable_solve_losses": []
+    },
+    "short-c4-s16-g1-f0-vs-paper-g1-f0": {
+      "par2_change": {
+        "bootstrap_samples": 2000,
+        "ci95": [
+          -5.0886005319865335,
+          -1.840652607638889
+        ],
+        "inputs": 100,
+        "mean_per_input_seconds": -3.3487497666666686,
+        "parents": 85,
+        "seed": 20261102
+      },
+      "process_speedup": {
+        "bootstrap_samples": 2000,
+        "ci95": [
+          2.2781939504815103,
+          3.538175005749601
+        ],
+        "geomean": 2.810951645551089,
+        "pairs": 76,
+        "parents": 69,
+        "seed": 20261102
+      },
+      "stable_solve_gains": [
+        "cubes/2e9a3ffe8e4979a9558e794dc523d6fe6297d49235dd4e405efeaa0b24961363.smt2",
+        "cubes/31735225e72496ff7734575f7fec5b2c39908202389ef0af2208b5bbc691ab40.smt2",
+        "cubes/4540e4215df7a561c2079d0cd1c49597e28cfb4f91587b043172bde7de6f47d4.smt2",
+        "cubes/4d2ca0f1faf86c0590a506200dd2700737c302172f72c72225021231389eb5e2.smt2",
+        "cubes/5f512083a091b7052c89594aba0721985a60b6c566523da99d3a4a404fc32193.smt2",
+        "cubes/68ac8dcab91935cf992fcc96ede38a7912a4b33b5da0581e9d4d018ca3aa1413.smt2",
+        "cubes/7573bed12e1301d197c9215bf0a63094f2f0d4296db5b168da0e35417b061e2b.smt2",
+        "cubes/801a1f66e87433e9dbbee3a8a285f38a4fa79eab34ecc949f04660bd04c99aba.smt2",
+        "cubes/8347aa8d652f82c5ffdfd1d4ccc14cf3e0014a42f1b5bb708e775cd9b99e999d.smt2",
+        "cubes/9e500a07fdbd2d159eee38adc11804fc8530b715df4ec1ac232a21ae319a0f46.smt2",
+        "cubes/d1e0eb2a0d6b476a388fc5d00da1364a1b16513daf92b826474e45ab028d6278.smt2",
+        "cubes/f946150c03f40c0320082f84e1b80d3df248def0d58e451a013b82e2a6ca74fe.smt2"
+      ],
+      "stable_solve_losses": []
+    },
+    "short-c4-s32-g1-f0-vs-paper-g1-f0": {
+      "par2_change": {
+        "bootstrap_samples": 2000,
+        "ci95": [
+          -5.082758047138047,
+          -1.8353413125
+        ],
+        "inputs": 100,
+        "mean_per_input_seconds": -3.345742393333333,
+        "parents": 85,
+        "seed": 20261102
+      },
+      "process_speedup": {
+        "bootstrap_samples": 2000,
+        "ci95": [
+          2.209346484916098,
+          3.4247645745407986
+        ],
+        "geomean": 2.7281041712080563,
+        "pairs": 76,
+        "parents": 69,
+        "seed": 20261102
+      },
+      "stable_solve_gains": [
+        "cubes/2e9a3ffe8e4979a9558e794dc523d6fe6297d49235dd4e405efeaa0b24961363.smt2",
+        "cubes/31735225e72496ff7734575f7fec5b2c39908202389ef0af2208b5bbc691ab40.smt2",
+        "cubes/4540e4215df7a561c2079d0cd1c49597e28cfb4f91587b043172bde7de6f47d4.smt2",
+        "cubes/4d2ca0f1faf86c0590a506200dd2700737c302172f72c72225021231389eb5e2.smt2",
+        "cubes/5f512083a091b7052c89594aba0721985a60b6c566523da99d3a4a404fc32193.smt2",
+        "cubes/68ac8dcab91935cf992fcc96ede38a7912a4b33b5da0581e9d4d018ca3aa1413.smt2",
+        "cubes/7573bed12e1301d197c9215bf0a63094f2f0d4296db5b168da0e35417b061e2b.smt2",
+        "cubes/801a1f66e87433e9dbbee3a8a285f38a4fa79eab34ecc949f04660bd04c99aba.smt2",
+        "cubes/8347aa8d652f82c5ffdfd1d4ccc14cf3e0014a42f1b5bb708e775cd9b99e999d.smt2",
+        "cubes/9e500a07fdbd2d159eee38adc11804fc8530b715df4ec1ac232a21ae319a0f46.smt2",
+        "cubes/d1e0eb2a0d6b476a388fc5d00da1364a1b16513daf92b826474e45ab028d6278.smt2",
+        "cubes/f946150c03f40c0320082f84e1b80d3df248def0d58e451a013b82e2a6ca74fe.smt2"
+      ],
+      "stable_solve_losses": []
+    },
+    "short-c4-s8-g1-f0-vs-paper-g1-f0": {
+      "par2_change": {
+        "bootstrap_samples": 2000,
+        "ci95": [
+          -5.0927328552188555,
+          -1.8419835451388888
+        ],
+        "inputs": 100,
+        "mean_per_input_seconds": -3.351485026666666,
+        "parents": 85,
+        "seed": 20261102
+      },
+      "process_speedup": {
+        "bootstrap_samples": 2000,
+        "ci95": [
+          2.309661187612145,
+          3.600362118275147
+        ],
+        "geomean": 2.8514352360212785,
+        "pairs": 76,
+        "parents": 69,
+        "seed": 20261102
+      },
+      "stable_solve_gains": [
+        "cubes/2e9a3ffe8e4979a9558e794dc523d6fe6297d49235dd4e405efeaa0b24961363.smt2",
+        "cubes/31735225e72496ff7734575f7fec5b2c39908202389ef0af2208b5bbc691ab40.smt2",
+        "cubes/4540e4215df7a561c2079d0cd1c49597e28cfb4f91587b043172bde7de6f47d4.smt2",
+        "cubes/4d2ca0f1faf86c0590a506200dd2700737c302172f72c72225021231389eb5e2.smt2",
+        "cubes/5f512083a091b7052c89594aba0721985a60b6c566523da99d3a4a404fc32193.smt2",
+        "cubes/68ac8dcab91935cf992fcc96ede38a7912a4b33b5da0581e9d4d018ca3aa1413.smt2",
+        "cubes/7573bed12e1301d197c9215bf0a63094f2f0d4296db5b168da0e35417b061e2b.smt2",
+        "cubes/801a1f66e87433e9dbbee3a8a285f38a4fa79eab34ecc949f04660bd04c99aba.smt2",
+        "cubes/8347aa8d652f82c5ffdfd1d4ccc14cf3e0014a42f1b5bb708e775cd9b99e999d.smt2",
+        "cubes/9e500a07fdbd2d159eee38adc11804fc8530b715df4ec1ac232a21ae319a0f46.smt2",
+        "cubes/d1e0eb2a0d6b476a388fc5d00da1364a1b16513daf92b826474e45ab028d6278.smt2",
+        "cubes/f946150c03f40c0320082f84e1b80d3df248def0d58e451a013b82e2a6ca74fe.smt2"
+      ],
+      "stable_solve_losses": []
+    },
+    "short-c64-s16-g1-f0-vs-paper-g1-f0": {
+      "par2_change": {
+        "bootstrap_samples": 2000,
+        "ci95": [
+          -5.105978239057238,
+          -1.846739073333333
+        ],
+        "inputs": 100,
+        "mean_per_input_seconds": -3.358032883333334,
+        "parents": 85,
+        "seed": 20261102
+      },
+      "process_speedup": {
+        "bootstrap_samples": 2000,
+        "ci95": [
+          2.280416681411115,
+          3.5391852821980874
+        ],
+        "geomean": 2.8118657178878212,
+        "pairs": 76,
+        "parents": 69,
+        "seed": 20261102
+      },
+      "stable_solve_gains": [
+        "cubes/2e9a3ffe8e4979a9558e794dc523d6fe6297d49235dd4e405efeaa0b24961363.smt2",
+        "cubes/31735225e72496ff7734575f7fec5b2c39908202389ef0af2208b5bbc691ab40.smt2",
+        "cubes/4540e4215df7a561c2079d0cd1c49597e28cfb4f91587b043172bde7de6f47d4.smt2",
+        "cubes/4d2ca0f1faf86c0590a506200dd2700737c302172f72c72225021231389eb5e2.smt2",
+        "cubes/5f512083a091b7052c89594aba0721985a60b6c566523da99d3a4a404fc32193.smt2",
+        "cubes/68ac8dcab91935cf992fcc96ede38a7912a4b33b5da0581e9d4d018ca3aa1413.smt2",
+        "cubes/7573bed12e1301d197c9215bf0a63094f2f0d4296db5b168da0e35417b061e2b.smt2",
+        "cubes/801a1f66e87433e9dbbee3a8a285f38a4fa79eab34ecc949f04660bd04c99aba.smt2",
+        "cubes/8347aa8d652f82c5ffdfd1d4ccc14cf3e0014a42f1b5bb708e775cd9b99e999d.smt2",
+        "cubes/9e500a07fdbd2d159eee38adc11804fc8530b715df4ec1ac232a21ae319a0f46.smt2",
+        "cubes/d1e0eb2a0d6b476a388fc5d00da1364a1b16513daf92b826474e45ab028d6278.smt2",
+        "cubes/f946150c03f40c0320082f84e1b80d3df248def0d58e451a013b82e2a6ca74fe.smt2"
+      ],
+      "stable_solve_losses": []
+    },
+    "short-c64-s32-g1-f0-vs-paper-g1-f0": {
+      "par2_change": {
+        "bootstrap_samples": 2000,
+        "ci95": [
+          -5.100907265993267,
+          -1.8447384133333327
+        ],
+        "inputs": 100,
+        "mean_per_input_seconds": -3.3542101733333336,
+        "parents": 85,
+        "seed": 20261102
+      },
+      "process_speedup": {
+        "bootstrap_samples": 2000,
+        "ci95": [
+          2.2190855392891873,
+          3.427140479385805
+        ],
+        "geomean": 2.732943235879399,
+        "pairs": 76,
+        "parents": 69,
+        "seed": 20261102
+      },
+      "stable_solve_gains": [
+        "cubes/2e9a3ffe8e4979a9558e794dc523d6fe6297d49235dd4e405efeaa0b24961363.smt2",
+        "cubes/31735225e72496ff7734575f7fec5b2c39908202389ef0af2208b5bbc691ab40.smt2",
+        "cubes/4540e4215df7a561c2079d0cd1c49597e28cfb4f91587b043172bde7de6f47d4.smt2",
+        "cubes/4d2ca0f1faf86c0590a506200dd2700737c302172f72c72225021231389eb5e2.smt2",
+        "cubes/5f512083a091b7052c89594aba0721985a60b6c566523da99d3a4a404fc32193.smt2",
+        "cubes/68ac8dcab91935cf992fcc96ede38a7912a4b33b5da0581e9d4d018ca3aa1413.smt2",
+        "cubes/7573bed12e1301d197c9215bf0a63094f2f0d4296db5b168da0e35417b061e2b.smt2",
+        "cubes/801a1f66e87433e9dbbee3a8a285f38a4fa79eab34ecc949f04660bd04c99aba.smt2",
+        "cubes/8347aa8d652f82c5ffdfd1d4ccc14cf3e0014a42f1b5bb708e775cd9b99e999d.smt2",
+        "cubes/9e500a07fdbd2d159eee38adc11804fc8530b715df4ec1ac232a21ae319a0f46.smt2",
+        "cubes/d1e0eb2a0d6b476a388fc5d00da1364a1b16513daf92b826474e45ab028d6278.smt2",
+        "cubes/f946150c03f40c0320082f84e1b80d3df248def0d58e451a013b82e2a6ca74fe.smt2"
+      ],
+      "stable_solve_losses": []
+    },
+    "short-c64-s8-g1-f0-vs-paper-g1-f0": {
+      "par2_change": {
+        "bootstrap_samples": 2000,
+        "ci95": [
+          -5.1122332053872075,
+          -1.8497226466666665
+        ],
+        "inputs": 100,
+        "mean_per_input_seconds": -3.360435643333334,
+        "parents": 85,
+        "seed": 20261102
+      },
+      "process_speedup": {
+        "bootstrap_samples": 2000,
+        "ci95": [
+          2.310315597779902,
+          3.5988625590142207
+        ],
+        "geomean": 2.85132605577114,
+        "pairs": 76,
+        "parents": 69,
+        "seed": 20261102
+      },
+      "stable_solve_gains": [
+        "cubes/2e9a3ffe8e4979a9558e794dc523d6fe6297d49235dd4e405efeaa0b24961363.smt2",
+        "cubes/31735225e72496ff7734575f7fec5b2c39908202389ef0af2208b5bbc691ab40.smt2",
+        "cubes/4540e4215df7a561c2079d0cd1c49597e28cfb4f91587b043172bde7de6f47d4.smt2",
+        "cubes/4d2ca0f1faf86c0590a506200dd2700737c302172f72c72225021231389eb5e2.smt2",
+        "cubes/5f512083a091b7052c89594aba0721985a60b6c566523da99d3a4a404fc32193.smt2",
+        "cubes/68ac8dcab91935cf992fcc96ede38a7912a4b33b5da0581e9d4d018ca3aa1413.smt2",
+        "cubes/7573bed12e1301d197c9215bf0a63094f2f0d4296db5b168da0e35417b061e2b.smt2",
+        "cubes/801a1f66e87433e9dbbee3a8a285f38a4fa79eab34ecc949f04660bd04c99aba.smt2",
+        "cubes/8347aa8d652f82c5ffdfd1d4ccc14cf3e0014a42f1b5bb708e775cd9b99e999d.smt2",
+        "cubes/9e500a07fdbd2d159eee38adc11804fc8530b715df4ec1ac232a21ae319a0f46.smt2",
+        "cubes/d1e0eb2a0d6b476a388fc5d00da1364a1b16513daf92b826474e45ab028d6278.smt2",
+        "cubes/f946150c03f40c0320082f84e1b80d3df248def0d58e451a013b82e2a6ca74fe.smt2"
+      ],
+      "stable_solve_losses": []
+    }
+  },
+  "configurations": {
+    "paper-g1-f0": {
+      "families": {
+        "2017-Heizmann-UltimateInvariantSynthesis": {
+          "inputs": 13,
+          "process_par2": 67.06254666666668,
+          "stable_solves": 11
+        },
+        "2019-ezsmt": {
+          "inputs": 6,
+          "process_par2": 0.6924716666666666,
+          "stable_solves": 6
+        },
+        "DTP-Scheduling": {
+          "inputs": 6,
+          "process_par2": 33.29837233333333,
+          "stable_solves": 5
+        },
+        "LassoRanker": {
+          "inputs": 17,
+          "process_par2": 246.10438633333334,
+          "stable_solves": 10
+        },
+        "clock_synchro": {
+          "inputs": 11,
+          "process_par2": 87.80275766666666,
+          "stable_solves": 9
+        },
+        "latendresse": {
+          "inputs": 5,
+          "process_par2": 150,
+          "stable_solves": 0
+        },
+        "miplib": {
+          "inputs": 11,
+          "process_par2": 125.45348899999999,
+          "stable_solves": 7
+        },
+        "sal": {
+          "inputs": 4,
+          "process_par2": 0.17270233333333335,
+          "stable_solves": 4
+        },
+        "sc": {
+          "inputs": 6,
+          "process_par2": 6.047285333333333,
+          "stable_solves": 6
+        },
+        "tropical-matrix": {
+          "inputs": 10,
+          "process_par2": 113.60980633333334,
+          "stable_solves": 7
+        },
+        "tta_startup": {
+          "inputs": 6,
+          "process_par2": 1.3079180000000001,
+          "stable_solves": 6
+        },
+        "uart": {
+          "inputs": 5,
+          "process_par2": 5.906582333333334,
+          "stable_solves": 5
+        }
+      },
+      "inputs": 100,
+      "outcomes": {
+        "sat": 126,
+        "timeout": 72,
+        "unsat": 102
+      },
+      "process_par2": 837.458318,
+      "stable_solves": 76
+    },
+    "short-c16-s16-g1-f0": {
+      "families": {
+        "2017-Heizmann-UltimateInvariantSynthesis": {
+          "inputs": 13,
+          "process_par2": 6.8407680000000015,
+          "stable_solves": 13
+        },
+        "2019-ezsmt": {
+          "inputs": 6,
+          "process_par2": 0.20089200000000002,
+          "stable_solves": 6
+        },
+        "DTP-Scheduling": {
+          "inputs": 6,
+          "process_par2": 3.88344,
+          "stable_solves": 6
+        },
+        "LassoRanker": {
+          "inputs": 17,
+          "process_par2": 101.11034733333334,
+          "stable_solves": 16
+        },
+        "clock_synchro": {
+          "inputs": 11,
+          "process_par2": 69.07642700000001,
+          "stable_solves": 9
+        },
+        "latendresse": {
+          "inputs": 5,
+          "process_par2": 150,
+          "stable_solves": 0
+        },
+        "miplib": {
+          "inputs": 11,
+          "process_par2": 60.119473,
+          "stable_solves": 10
+        },
+        "sal": {
+          "inputs": 4,
+          "process_par2": 0.09162466666666667,
+          "stable_solves": 4
+        },
+        "sc": {
+          "inputs": 6,
+          "process_par2": 0.564708,
+          "stable_solves": 6
+        },
+        "tropical-matrix": {
+          "inputs": 10,
+          "process_par2": 109.05485533333334,
+          "stable_solves": 7
+        },
+        "tta_startup": {
+          "inputs": 6,
+          "process_par2": 0.6567133333333334,
+          "stable_solves": 6
+        },
+        "uart": {
+          "inputs": 5,
+          "process_par2": 0.38826133333333335,
+          "stable_solves": 5
+        }
+      },
+      "inputs": 100,
+      "outcomes": {
+        "sat": 150,
+        "timeout": 36,
+        "unsat": 114
+      },
+      "process_par2": 501.9875100000001,
+      "stable_solves": 88
+    },
+    "short-c16-s32-g1-f0": {
+      "families": {
+        "2017-Heizmann-UltimateInvariantSynthesis": {
+          "inputs": 13,
+          "process_par2": 6.895036999999999,
+          "stable_solves": 13
+        },
+        "2019-ezsmt": {
+          "inputs": 6,
+          "process_par2": 0.20555733333333334,
+          "stable_solves": 6
+        },
+        "DTP-Scheduling": {
+          "inputs": 6,
+          "process_par2": 3.944261,
+          "stable_solves": 6
+        },
+        "LassoRanker": {
+          "inputs": 17,
+          "process_par2": 101.26334299999999,
+          "stable_solves": 16
+        },
+        "clock_synchro": {
+          "inputs": 11,
+          "process_par2": 69.16862733333333,
+          "stable_solves": 9
+        },
+        "latendresse": {
+          "inputs": 5,
+          "process_par2": 150,
+          "stable_solves": 0
+        },
+        "miplib": {
+          "inputs": 11,
+          "process_par2": 60.036197,
+          "stable_solves": 10
+        },
+        "sal": {
+          "inputs": 4,
+          "process_par2": 0.09397900000000001,
+          "stable_solves": 4
+        },
+        "sc": {
+          "inputs": 6,
+          "process_par2": 0.5893503333333333,
+          "stable_solves": 6
+        },
+        "tropical-matrix": {
+          "inputs": 10,
+          "process_par2": 109.048293,
+          "stable_solves": 7
+        },
+        "tta_startup": {
+          "inputs": 6,
+          "process_par2": 0.6626206666666667,
+          "stable_solves": 6
+        },
+        "uart": {
+          "inputs": 5,
+          "process_par2": 0.410857,
+          "stable_solves": 5
+        }
+      },
+      "inputs": 100,
+      "outcomes": {
+        "sat": 150,
+        "timeout": 36,
+        "unsat": 114
+      },
+      "process_par2": 502.31812266666674,
+      "stable_solves": 88
+    },
+    "short-c16-s8-g1-f0": {
+      "families": {
+        "2017-Heizmann-UltimateInvariantSynthesis": {
+          "inputs": 13,
+          "process_par2": 6.822903999999999,
+          "stable_solves": 13
+        },
+        "2019-ezsmt": {
+          "inputs": 6,
+          "process_par2": 0.19794766666666666,
+          "stable_solves": 6
+        },
+        "DTP-Scheduling": {
+          "inputs": 6,
+          "process_par2": 3.874611333333333,
+          "stable_solves": 6
+        },
+        "LassoRanker": {
+          "inputs": 17,
+          "process_par2": 101.09328566666667,
+          "stable_solves": 16
+        },
+        "clock_synchro": {
+          "inputs": 11,
+          "process_par2": 69.090609,
+          "stable_solves": 9
+        },
+        "latendresse": {
+          "inputs": 5,
+          "process_par2": 150,
+          "stable_solves": 0
+        },
+        "miplib": {
+          "inputs": 11,
+          "process_par2": 60.03630333333333,
+          "stable_solves": 10
+        },
+        "sal": {
+          "inputs": 4,
+          "process_par2": 0.09127999999999999,
+          "stable_solves": 4
+        },
+        "sc": {
+          "inputs": 6,
+          "process_par2": 0.5531173333333333,
+          "stable_solves": 6
+        },
+        "tropical-matrix": {
+          "inputs": 10,
+          "process_par2": 108.95281366666667,
+          "stable_solves": 7
+        },
+        "tta_startup": {
+          "inputs": 6,
+          "process_par2": 0.6559626666666667,
+          "stable_solves": 6
+        },
+        "uart": {
+          "inputs": 5,
+          "process_par2": 0.3769406666666667,
+          "stable_solves": 5
+        }
+      },
+      "inputs": 100,
+      "outcomes": {
+        "sat": 150,
+        "timeout": 36,
+        "unsat": 114
+      },
+      "process_par2": 501.74577533333337,
+      "stable_solves": 88
+    },
+    "short-c4-s16-g1-f0": {
+      "families": {
+        "2017-Heizmann-UltimateInvariantSynthesis": {
+          "inputs": 13,
+          "process_par2": 6.876431666666667,
+          "stable_solves": 13
+        },
+        "2019-ezsmt": {
+          "inputs": 6,
+          "process_par2": 0.2007833333333333,
+          "stable_solves": 6
+        },
+        "DTP-Scheduling": {
+          "inputs": 6,
+          "process_par2": 3.9240549999999996,
+          "stable_solves": 6
+        },
+        "LassoRanker": {
+          "inputs": 17,
+          "process_par2": 101.643052,
+          "stable_solves": 16
+        },
+        "clock_synchro": {
+          "inputs": 11,
+          "process_par2": 69.104893,
+          "stable_solves": 9
+        },
+        "latendresse": {
+          "inputs": 5,
+          "process_par2": 150,
+          "stable_solves": 0
+        },
+        "miplib": {
+          "inputs": 11,
+          "process_par2": 60.107466333333335,
+          "stable_solves": 10
+        },
+        "sal": {
+          "inputs": 4,
+          "process_par2": 0.09233233333333334,
+          "stable_solves": 4
+        },
+        "sc": {
+          "inputs": 6,
+          "process_par2": 0.5635526666666666,
+          "stable_solves": 6
+        },
+        "tropical-matrix": {
+          "inputs": 10,
+          "process_par2": 109.02628166666668,
+          "stable_solves": 7
+        },
+        "tta_startup": {
+          "inputs": 6,
+          "process_par2": 0.6565206666666666,
+          "stable_solves": 6
+        },
+        "uart": {
+          "inputs": 5,
+          "process_par2": 0.38797266666666663,
+          "stable_solves": 5
+        }
+      },
+      "inputs": 100,
+      "outcomes": {
+        "sat": 150,
+        "timeout": 36,
+        "unsat": 114
+      },
+      "process_par2": 502.58334133333346,
+      "stable_solves": 88
+    },
+    "short-c4-s32-g1-f0": {
+      "families": {
+        "2017-Heizmann-UltimateInvariantSynthesis": {
+          "inputs": 13,
+          "process_par2": 6.884311,
+          "stable_solves": 13
+        },
+        "2019-ezsmt": {
+          "inputs": 6,
+          "process_par2": 0.20574499999999998,
+          "stable_solves": 6
+        },
+        "DTP-Scheduling": {
+          "inputs": 6,
+          "process_par2": 3.9178593333333334,
+          "stable_solves": 6
+        },
+        "LassoRanker": {
+          "inputs": 17,
+          "process_par2": 101.83176433333334,
+          "stable_solves": 16
+        },
+        "clock_synchro": {
+          "inputs": 11,
+          "process_par2": 69.17906766666667,
+          "stable_solves": 9
+        },
+        "latendresse": {
+          "inputs": 5,
+          "process_par2": 150,
+          "stable_solves": 0
+        },
+        "miplib": {
+          "inputs": 11,
+          "process_par2": 60.07970333333333,
+          "stable_solves": 10
+        },
+        "sal": {
+          "inputs": 4,
+          "process_par2": 0.09540599999999999,
+          "stable_solves": 4
+        },
+        "sc": {
+          "inputs": 6,
+          "process_par2": 0.5892673333333334,
+          "stable_solves": 6
+        },
+        "tropical-matrix": {
+          "inputs": 10,
+          "process_par2": 109.02861633333333,
+          "stable_solves": 7
+        },
+        "tta_startup": {
+          "inputs": 6,
+          "process_par2": 0.6623313333333334,
+          "stable_solves": 6
+        },
+        "uart": {
+          "inputs": 5,
+          "process_par2": 0.410007,
+          "stable_solves": 5
+        }
+      },
+      "inputs": 100,
+      "outcomes": {
+        "sat": 150,
+        "timeout": 36,
+        "unsat": 114
+      },
+      "process_par2": 502.8840786666667,
+      "stable_solves": 88
+    },
+    "short-c4-s8-g1-f0": {
+      "families": {
+        "2017-Heizmann-UltimateInvariantSynthesis": {
+          "inputs": 13,
+          "process_par2": 6.84173,
+          "stable_solves": 13
+        },
+        "2019-ezsmt": {
+          "inputs": 6,
+          "process_par2": 0.1976713333333333,
+          "stable_solves": 6
+        },
+        "DTP-Scheduling": {
+          "inputs": 6,
+          "process_par2": 3.8992463333333336,
+          "stable_solves": 6
+        },
+        "LassoRanker": {
+          "inputs": 17,
+          "process_par2": 101.61630533333333,
+          "stable_solves": 16
+        },
+        "clock_synchro": {
+          "inputs": 11,
+          "process_par2": 69.09714766666667,
+          "stable_solves": 9
+        },
+        "latendresse": {
+          "inputs": 5,
+          "process_par2": 150,
+          "stable_solves": 0
+        },
+        "miplib": {
+          "inputs": 11,
+          "process_par2": 60.047647,
+          "stable_solves": 10
+        },
+        "sal": {
+          "inputs": 4,
+          "process_par2": 0.090935,
+          "stable_solves": 4
+        },
+        "sc": {
+          "inputs": 6,
+          "process_par2": 0.5545066666666667,
+          "stable_solves": 6
+        },
+        "tropical-matrix": {
+          "inputs": 10,
+          "process_par2": 108.93413133333334,
+          "stable_solves": 7
+        },
+        "tta_startup": {
+          "inputs": 6,
+          "process_par2": 0.6536393333333333,
+          "stable_solves": 6
+        },
+        "uart": {
+          "inputs": 5,
+          "process_par2": 0.3768553333333333,
+          "stable_solves": 5
+        }
+      },
+      "inputs": 100,
+      "outcomes": {
+        "sat": 150,
+        "timeout": 36,
+        "unsat": 114
+      },
+      "process_par2": 502.3098153333333,
+      "stable_solves": 88
+    },
+    "short-c64-s16-g1-f0": {
+      "families": {
+        "2017-Heizmann-UltimateInvariantSynthesis": {
+          "inputs": 13,
+          "process_par2": 6.850397999999999,
+          "stable_solves": 13
+        },
+        "2019-ezsmt": {
+          "inputs": 6,
+          "process_par2": 0.20192733333333332,
+          "stable_solves": 6
+        },
+        "DTP-Scheduling": {
+          "inputs": 6,
+          "process_par2": 3.9302303333333333,
+          "stable_solves": 6
+        },
+        "LassoRanker": {
+          "inputs": 17,
+          "process_par2": 100.75765200000001,
+          "stable_solves": 16
+        },
+        "clock_synchro": {
+          "inputs": 11,
+          "process_par2": 69.08872533333334,
+          "stable_solves": 9
+        },
+        "latendresse": {
+          "inputs": 5,
+          "process_par2": 150,
+          "stable_solves": 0
+        },
+        "miplib": {
+          "inputs": 11,
+          "process_par2": 60.045794,
+          "stable_solves": 10
+        },
+        "sal": {
+          "inputs": 4,
+          "process_par2": 0.09177466666666667,
+          "stable_solves": 4
+        },
+        "sc": {
+          "inputs": 6,
+          "process_par2": 0.5639576666666666,
+          "stable_solves": 6
+        },
+        "tropical-matrix": {
+          "inputs": 10,
+          "process_par2": 109.07819266666667,
+          "stable_solves": 7
+        },
+        "tta_startup": {
+          "inputs": 6,
+          "process_par2": 0.657752,
+          "stable_solves": 6
+        },
+        "uart": {
+          "inputs": 5,
+          "process_par2": 0.38862566666666665,
+          "stable_solves": 5
+        }
+      },
+      "inputs": 100,
+      "outcomes": {
+        "sat": 150,
+        "timeout": 36,
+        "unsat": 114
+      },
+      "process_par2": 501.6550296666665,
+      "stable_solves": 88
+    },
+    "short-c64-s32-g1-f0": {
+      "families": {
+        "2017-Heizmann-UltimateInvariantSynthesis": {
+          "inputs": 13,
+          "process_par2": 6.917447666666668,
+          "stable_solves": 13
+        },
+        "2019-ezsmt": {
+          "inputs": 6,
+          "process_par2": 0.20672166666666666,
+          "stable_solves": 6
+        },
+        "DTP-Scheduling": {
+          "inputs": 6,
+          "process_par2": 3.8895213333333336,
+          "stable_solves": 6
+        },
+        "LassoRanker": {
+          "inputs": 17,
+          "process_par2": 100.942729,
+          "stable_solves": 16
+        },
+        "clock_synchro": {
+          "inputs": 11,
+          "process_par2": 69.201802,
+          "stable_solves": 9
+        },
+        "latendresse": {
+          "inputs": 5,
+          "process_par2": 150,
+          "stable_solves": 0
+        },
+        "miplib": {
+          "inputs": 11,
+          "process_par2": 60.109143,
+          "stable_solves": 10
+        },
+        "sal": {
+          "inputs": 4,
+          "process_par2": 0.093756,
+          "stable_solves": 4
+        },
+        "sc": {
+          "inputs": 6,
+          "process_par2": 0.5840353333333332,
+          "stable_solves": 6
+        },
+        "tropical-matrix": {
+          "inputs": 10,
+          "process_par2": 109.01991833333332,
+          "stable_solves": 7
+        },
+        "tta_startup": {
+          "inputs": 6,
+          "process_par2": 0.6623886666666667,
+          "stable_solves": 6
+        },
+        "uart": {
+          "inputs": 5,
+          "process_par2": 0.4098376666666667,
+          "stable_solves": 5
+        }
+      },
+      "inputs": 100,
+      "outcomes": {
+        "sat": 150,
+        "timeout": 36,
+        "unsat": 114
+      },
+      "process_par2": 502.03730066666657,
+      "stable_solves": 88
+    },
+    "short-c64-s8-g1-f0": {
+      "families": {
+        "2017-Heizmann-UltimateInvariantSynthesis": {
+          "inputs": 13,
+          "process_par2": 6.849309000000001,
+          "stable_solves": 13
+        },
+        "2019-ezsmt": {
+          "inputs": 6,
+          "process_par2": 0.19740166666666664,
+          "stable_solves": 6
+        },
+        "DTP-Scheduling": {
+          "inputs": 6,
+          "process_par2": 3.9185723333333335,
+          "stable_solves": 6
+        },
+        "LassoRanker": {
+          "inputs": 17,
+          "process_par2": 100.78694233333333,
+          "stable_solves": 16
+        },
+        "clock_synchro": {
+          "inputs": 11,
+          "process_par2": 69.07323333333332,
+          "stable_solves": 9
+        },
+        "latendresse": {
+          "inputs": 5,
+          "process_par2": 150,
+          "stable_solves": 0
+        },
+        "miplib": {
+          "inputs": 11,
+          "process_par2": 60.058142000000004,
+          "stable_solves": 10
+        },
+        "sal": {
+          "inputs": 4,
+          "process_par2": 0.090288,
+          "stable_solves": 4
+        },
+        "sc": {
+          "inputs": 6,
+          "process_par2": 0.5510786666666666,
+          "stable_solves": 6
+        },
+        "tropical-matrix": {
+          "inputs": 10,
+          "process_par2": 108.85727166666666,
+          "stable_solves": 7
+        },
+        "tta_startup": {
+          "inputs": 6,
+          "process_par2": 0.6540173333333333,
+          "stable_solves": 6
+        },
+        "uart": {
+          "inputs": 5,
+          "process_par2": 0.3784973333333333,
+          "stable_solves": 5
+        }
+      },
+      "inputs": 100,
+      "outcomes": {
+        "sat": 150,
+        "timeout": 36,
+        "unsat": 114
+      },
+      "process_par2": 501.41475366666646,
+      "stable_solves": 88
+    }
+  },
+  "runs": [
+    "~/primo-soi-short-20261102/results/soi-pilot-20261102"
+  ],
+  "raw_summary_sha256": "dc08d41cd99670e018892c062986753887aeb77641b81aa65e7b1d7179763db6",
+  "artifact": "SLURM ~/primo-soi-short-20261102/results/soi-pilot-20261102/summary.json"
+}

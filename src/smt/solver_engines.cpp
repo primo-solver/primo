@@ -339,6 +339,8 @@ theory::arithmetic::LraTableau::PivotingRule lra_pivoting_rule_from_options(LraP
 theory::arithmetic::LraTableau::SoiMinimization lra_soi_minimization_from_options(
     LraSoiMinimization strategy) {
   switch (strategy) {
+    case LraSoiMinimization::RowGrowing:
+      return theory::arithmetic::LraTableau::SoiMinimization::RowGrowing;
     case LraSoiMinimization::Deletion:
       return theory::arithmetic::LraTableau::SoiMinimization::Deletion;
     case LraSoiMinimization::None:
@@ -7469,6 +7471,10 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
       statistics_.increment(util::StatKey::LraSoiObjectiveOccurrenceChanges,
                             tableau_.soi_work().objective_occurrence_changes -
                                 soi_before.objective_occurrence_changes);
+      statistics_.increment(util::StatKey::LraSoiGrowingRows,
+                            tableau_.soi_work().growing_rows - soi_before.growing_rows);
+      statistics_.increment(util::StatKey::LraSoiCrossingsExamined,
+                            tableau_.soi_work().crossings_examined - soi_before.crossings_examined);
       reported_soi_work_ = tableau_.soi_work();
     }
 
@@ -9077,6 +9083,10 @@ class ComponentLraExecution final {
       statistics_.increment(util::StatKey::LraSoiObjectiveOccurrenceChanges,
                             tableau_.soi_work().objective_occurrence_changes -
                                 soi_before.objective_occurrence_changes);
+      statistics_.increment(util::StatKey::LraSoiGrowingRows,
+                            tableau_.soi_work().growing_rows - soi_before.growing_rows);
+      statistics_.increment(util::StatKey::LraSoiCrossingsExamined,
+                            tableau_.soi_work().crossings_examined - soi_before.crossings_examined);
       reported_soi_work_ = tableau_.soi_work();
     }
 

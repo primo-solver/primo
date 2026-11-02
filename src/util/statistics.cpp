@@ -197,6 +197,7 @@ constexpr std::array<std::string_view, static_cast<std::size_t>(StatKey::Count)>
     ":lra.soi-zero-progress-steps"sv,
     ":lra.soi-candidates"sv,
     ":lra.soi-crossings"sv,
+    ":lra.soi-crossings-examined"sv,
     ":lra.soi-objective-updates"sv,
     ":lra.soi-prefix-pivots"sv,
     ":lra.soi-fallback-pivots"sv,
@@ -207,6 +208,7 @@ constexpr std::array<std::string_view, static_cast<std::size_t>(StatKey::Count)>
     ":lra.soi-conflict-preferences"sv,
     ":lra.soi-objective-terms"sv,
     ":lra.soi-objective-occurrence-changes"sv,
+    ":lra.soi-growing-rows"sv,
     ":lra.soi-selection-ns"sv,
     ":lra.soi-objective-ns"sv,
 

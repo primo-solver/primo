@@ -817,6 +817,7 @@ std::optional<LraTableau::SoiSelection> LraTableau::soi_select() const {
       current_delta = this_delta;
       std::size_t group_end = index;
       while (group_end < points.size() && points[group_end].delta == this_delta) {
+        ++soi_work_.crossings_examined;
         const LraVarId k = points[group_end].k;
         const bool conflict =
             tuning_.soi_selection != SoiSelectionRule::Historical &&
@@ -1078,6 +1079,97 @@ std::vector<LraVarId> LraTableau::quickxplain(const std::vector<LraVarId>& backg
 std::vector<LraVarId> LraTableau::minimize_soi_conflict(
     const std::vector<LraVarId>& error_vars) const {
   return quickxplain({}, error_vars);
+}
+
+// King 2014 Figure 3.6 and accompanying prose. C on pseudocode line 15
+// is interpreted as S1; a singleton seed is also the initial ilast. The
+// certificate predicate is non-monotone, so this promises sufficiency only.
+std::vector<LraVarId> LraTableau::row_growing_soi_conflict(
+    const std::vector<LraVarId>& background, const std::vector<LraVarId>& candidates) const {
+  if (background.empty() && candidates.empty()) {
+    throw std::logic_error("empty input to SOI row-growing certificate reduction");
+  }
+  std::vector<LraVarId> all = background;
+  all.insert(all.end(), candidates.begin(), candidates.end());
+  const auto full = restricted_soi_row(all);
+  auto x = background;
+  std::unordered_set<LraVarId> included(x.begin(), x.end());
+  LraVarId last = 0;
+  if (x.empty()) {
+    last = *std::min_element(candidates.begin(), candidates.end());
+    x.push_back(last);
+    included.insert(last);
+  }
+  auto growing = restricted_soi_row(x);
+  const auto flexible = [&](LraVarId var, const util::Rational& coefficient) {
+    if (coefficient.is_zero()) return false;
+    const auto& state = vars_[var];
+    return coefficient.sign() > 0 ? (!state.lower || state.assignment > state.lower->value)
+                                  : (!state.upper || state.assignment < state.upper->value);
+  };
+  while (true) {
+    ++soi_work_.predicate_calls;
+    LraVarId column = vars_.size();
+    int sign = 0;
+    for (const auto& [var, coefficient] : growing) {
+      if (!flexible(var, coefficient) || var >= column) continue;
+      const auto target = full.find(var);
+      const int full_sign = target == full.end() ? 0 : target->second.sign();
+      if (coefficient.sign() == full_sign) {
+        throw std::logic_error("SOI row-growing union is not a blocked certificate");
+      }
+      column = var;
+      sign = coefficient.sign();
+    }
+    if (column == vars_.size()) break;
+    LraVarId chosen = vars_.size();
+    for (const auto var : candidates) {
+      if (included.contains(var)) continue;
+      const auto& row = rows_[var];
+      const auto entry =
+          std::lower_bound(row.begin(), row.end(), column,
+                           [](const RowEntry& term, LraVarId id) { return term.var < id; });
+      if (entry != row.end() && entry->var == column &&
+          soi_directions_[var] * entry->coeff.sign() == -sign && var < chosen)
+        chosen = var;
+    }
+    if (chosen == vars_.size())
+      throw std::logic_error("SOI row-growing cancellation witness missing");
+    last = chosen;
+    x.push_back(chosen);
+    included.insert(chosen);
+    const util::Rational direction(soi_directions_[chosen]);
+    for (const auto& entry : rows_[chosen]) {
+      growing[entry.var] += entry.coeff * direction;
+      ++soi_work_.arithmetic_terms;
+    }
+    ++soi_work_.growing_rows;
+  }
+  if (x.size() == background.size()) return x;
+  std::vector<LraVarId> retained = background;
+  retained.push_back(last);
+  std::vector<LraVarId> remaining;
+  for (const auto var : x) {
+    if (var != last && std::find(background.begin(), background.end(), var) == background.end()) {
+      remaining.push_back(var);
+    }
+  }
+  std::sort(remaining.begin(), remaining.end());
+  const auto half = static_cast<std::ptrdiff_t>(remaining.size() / 2);
+  const std::vector<LraVarId> first(remaining.begin(), remaining.begin() + half);
+  const std::vector<LraVarId> second(remaining.begin() + half, remaining.end());
+  if (!second.empty()) {
+    auto fixed = retained;
+    fixed.insert(fixed.end(), first.begin(), first.end());
+    const auto reduced = row_growing_soi_conflict(fixed, second);
+    for (const auto var : reduced) {
+      if (std::find(first.begin(), first.end(), var) == first.end() &&
+          std::find(retained.begin(), retained.end(), var) == retained.end())
+        retained.push_back(var);
+    }
+  }
+  if (!first.empty()) retained = row_growing_soi_conflict(retained, first);
+  return retained;
 }
 
 std::vector<LraVarId> LraTableau::ordered_for_deletion(
@@ -2045,9 +2137,13 @@ std::optional<std::vector<sat::Lit>> LraTableau::check() {
         std::vector<LraVarId> minimized = error_vars;
         if (tuning_.soi_minimization != SoiMinimization::None) {
           ++soi_minimize_call_count_;
-          minimized = tuning_.soi_minimization == SoiMinimization::Deletion
-                          ? delete_soi_conflict(error_vars)
-                          : minimize_soi_conflict(error_vars);
+          if (tuning_.soi_minimization == SoiMinimization::RowGrowing) {
+            minimized = row_growing_soi_conflict({}, error_vars);
+          } else {
+            minimized = tuning_.soi_minimization == SoiMinimization::Deletion
+                            ? delete_soi_conflict(error_vars)
+                            : minimize_soi_conflict(error_vars);
+          }
           if (minimized.size() < error_vars.size()) {
             ++soi_minimize_shrunk_count_;
           }

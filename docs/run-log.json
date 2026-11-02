@@ -3,6 +3,150 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-11-02-soi-pilot-results-and-parameter-freeze",
+      "date": "2026-11-02",
+      "kind": "predeclared-parameter-pilot",
+      "evidence_status": "pilot-only-not-full-corpus-acceptance",
+      "source": "0ecd29e",
+      "binary_sha256": "7cd789dd987a9938481688e2169a289738e0e49eeaca82b0028b501d6cb8ed6b",
+      "plan": "benchmarks/qf-lra-simplex-ablation/soi-pilot-run.json",
+      "selection": "benchmarks/qf-lra-simplex-ablation/soi-improvements-pilot.json",
+      "frozen_parameters": "benchmarks/qf-lra-simplex-ablation/soi-parameters.json",
+      "report": "docs/coverage/soi-pilot-20261102.json",
+      "jobs": {
+        "measurements": "323177_0..19",
+        "summary": "323198"
+      },
+      "environment": "SLURM node-09;20shards,one physical CPU/8GiB each;15s process limit;g1/f0;3repeats;phase clocks disabled. Correctness jobs on node-02.",
+      "artifacts": "~/primo-soi-short-20261102/results/soi-pilot-20261102; raw outputs,per-row durable JSONL,metadata and full summary retained remotely; local summary results/soi-improvements-20261102/pilot-summary.json",
+      "commands": [
+        "scripts/run_soi_improvements.py timing --plan <frozen-plan> --corpus <frozen1000corpus> --solver qualified/stage3/primo --out <pilot> --shards20 --shard0..19",
+        "scripts/summarize_soi_improvements.py --run <pilot> --historical docs/coverage/lra-simplex-per-input-20261031.csv --baseline paper-g1-f0 --out <pilot>/summary.json",
+        "scripts/freeze_soi_parameters.py --frozen benchmarks/qf-lra-simplex-ablation/soi-improvements-pilot.json --summary <pilot>/summary.json --pilot-plan benchmarks/qf-lra-simplex-ablation/soi-pilot-run.json --out benchmarks/qf-lra-simplex-ablation/soi-parameters.json"
+      ],
+      "summary": {
+        "inputs": 100,
+        "configurations": 10,
+        "repeats": 3,
+        "processes": 3000,
+        "paper_stable_solves": 76,
+        "paper_par2": 837.458318,
+        "selected": "short-c64-s8-g1-f0",
+        "selected_stable_solves": 88,
+        "selected_par2": 501.41475366666646,
+        "lost_stable_solves": 0,
+        "wrong_answer": 0,
+        "crash": 0,
+        "unsupported": 0,
+        "disagreement": 0
+      },
+      "limitations": [
+        "Pilot is stratified, not an unbiased corpus speed estimate.",
+        "Grid differences are small; selection follows the predeclared minimum rule, not a claim of a significant difference among budgets.",
+        "No successful-SAT Dolmen replay of pilot timings is claimed; full candidate correctness qualification remains separate.",
+        "No default promotion;64/8frozen before full evaluation."
+      ]
+    },
+    {
+      "id": "2026-11-02-soi-stage-4-qualification",
+      "date": "2026-11-02",
+      "kind": "behavior-milestone-correctness-qualification",
+      "commit": "0a8cbf5ee17da2a3ddd8ef75047838e9a623ef46",
+      "binary_sha256": "aa54a058586b23d061c3329d9af4b30998a36cc566d144f5f9a1e87d4d7ba418",
+      "evidence_status": "correctness-qualified-experimental",
+      "scope": "Cached RHS activity and candidate conflict preference; adjacent test extension df9239b does not change solver sources or binary",
+      "execution": {
+        "environment": "SLURM compute node-02",
+        "workspace": "~/primo-soi-cache-20261102",
+        "jobs": {
+          "build": "323170",
+          "checks": "323171",
+          "asan": "323172",
+          "fuzz": "323173_0..3"
+        },
+        "artifacts": [
+          "results/stage4-fixed-checks",
+          "results/stage4-asan",
+          "fuzz-results/stage4"
+        ],
+        "resources": "Checks/build/ASan4CPUs,8/12GiB; fuzz4shards of250cases,1CPU/2GiB,1h,5s per solver"
+      },
+      "commands": {
+        "prepare": "scripts/slurm_prepare_benchmark_workspace.py --build-via-slurm --reuse-dependencies --extra-target all --jobs4; exact clean snapshot/header manifest; matching --check-only --no-sync preflight before submission",
+        "checks": "scripts/qualification/soi_improvements/checks.sbatch: make -j4 check BUILD_DIR=build-slurm-rel plus independent selected-premise Z3 refutations",
+        "asan": "scripts/qualification/soi_endpoints/asan.sbatch: make -j4 asan-test ASAN_BUILD_DIR=build-soi-asan",
+        "fuzz": "scripts/slurm_qfuf_fuzz_gate.sbatch --array0-3; QF_LRA,250cases/shard,5s,reference z3,seeds611320..611323; native --lra-pivoting-rule=soi --lra-soi-selection=short-column --lra-soi-cached-conflicts --quiet; mutation tasks0"
+      },
+      "verification": {
+        "normal_groups": 45,
+        "normal_seconds": 13.09,
+        "asan_groups": 45,
+        "asan_seconds": 100.4,
+        "external_reason_refutations": 45,
+        "generated_cases": 1000,
+        "pass": 980,
+        "timeout": 20,
+        "wrong_answer": 0,
+        "crash": 0,
+        "parser_type_error": 0,
+        "unsupported": 0,
+        "reference_disagreement": 0,
+        "saved_inputs": "All saved bugs/ files classified TIMEOUT; no untriaged hard failures",
+        "docs": "Independent read-only review accepted source accuracy/exposition; make docs passed. All12source3documentation examples passed on SLURM.",
+        "code_review": "Ownership/occurrence/status updates, exact score/preference and rollback reviewed; no blocking new-code issue found. No default promotion."
+      }
+    },
+    {
+      "id": "2026-11-02-soi-stage-3-qualification",
+      "date": "2026-11-02",
+      "kind": "behavior-milestone-correctness-qualification",
+      "commit": "0ecd29eaaa8010a81bc78cc5f2a559b4e74866f1",
+      "binary_sha256": "7cd789dd987a9938481688e2169a289738e0e49eeaca82b0028b501d6cb8ed6b",
+      "evidence_status": "correctness-qualified-experimental",
+      "scope": "Short-column pricing/stall guard",
+      "execution": {
+        "environment": "SLURM compute node-02",
+        "workspace": "~/primo-soi-short-20261102",
+        "jobs": {
+          "build": "323161",
+          "checks": "323162",
+          "asan": "323163",
+          "fuzz": "323164_0..3",
+          "doc_examples": "323169"
+        },
+        "artifacts": [
+          "results/stage3-fixed-checks",
+          "results/stage3-asan",
+          "fuzz-results/stage3"
+        ],
+        "resources": "Checks/build/ASan4CPUs,8/12GiB; fuzz4shards of250cases,1CPU/2GiB,1h,5s per solver"
+      },
+      "commands": {
+        "prepare": "scripts/slurm_prepare_benchmark_workspace.py --build-via-slurm --reuse-dependencies --extra-target all --jobs4; exact clean snapshot/header manifest; matching --check-only --no-sync preflight before submission",
+        "checks": "scripts/qualification/soi_improvements/checks.sbatch: make -j4 check BUILD_DIR=build-slurm-rel plus independent selected-premise Z3 refutations",
+        "asan": "scripts/qualification/soi_endpoints/asan.sbatch: make -j4 asan-test ASAN_BUILD_DIR=build-soi-asan",
+        "fuzz": "scripts/slurm_qfuf_fuzz_gate.sbatch --array0-3; QF_LRA,250cases/shard,5s,reference z3,seeds611220..611223; native --lra-pivoting-rule=soi --lra-soi-selection=short-column --quiet; mutation tasks0"
+      },
+      "verification": {
+        "normal_groups": 45,
+        "normal_seconds": 12.99,
+        "asan_groups": 45,
+        "asan_seconds": 100.85,
+        "external_reason_refutations": 24,
+        "generated_cases": 1000,
+        "pass": 983,
+        "timeout": 17,
+        "wrong_answer": 0,
+        "crash": 0,
+        "parser_type_error": 0,
+        "unsupported": 0,
+        "reference_disagreement": 0,
+        "saved_inputs": "All saved bugs/ files classified TIMEOUT; no untriaged hard failures",
+        "docs": "Independent read-only review accepted source accuracy/exposition; make docs passed. All12source3documentation examples passed on SLURM.",
+        "code_review": "Ownership/occurrence/status updates, exact score/preference and rollback reviewed; no blocking new-code issue found. No default promotion."
+      }
+    },
+    {
       "id": "2026-11-02-soi-paper-reference-selector",
       "date": "2026-11-02",
       "kind": "behavior-milestone-correctness-qualification",

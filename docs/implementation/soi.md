@@ -44,7 +44,8 @@ $(d'_i-d_i)\operatorname{row}(i)$ to its coefficients. The historical update
 concatenates and sorts terms and rebuilds objective occurrences. It costs
 $O((|f|+|\operatorname{row}(i)|)\log(|f|+|\operatorname{row}(i)|))$ comparison
 work plus exact arithmetic. Linear merging and preserving unchanged occurrence
-slots are planned improvements, not properties of this baseline.
+slots are available through the separate experimental maintenance flag; they
+are not properties of the historical baseline.
 
 ## Crossings and selection
 
@@ -122,6 +123,45 @@ The stall limit can change the repair path. Pure tableau regressions exercise
 continuing beyond an unproductive chunk and entering the Bland suffix at a
 one-step stall limit. No tuning result or performance acceptance is claimed yet.
 
+## Experimental objective and crossing maintenance
+
+`--lra-soi-linear-maintenance` enables three changes owned by
+{soimaintsource}`set_soi_direction and soi_select <src/theory/arithmetic/lra_tableau.cpp>`.
+It is off by default and is measured separately from short columns and caching.
+
+First, the objective update merges its already sorted row with the signed
+source row in one linear pass over their terms. Surviving terms keep their
+occurrence back-slots. Only a newly supported variable adds an occurrence;
+only exact cancellation removes one. Reverse-slot repair for a removal still
+needs a binary search in the moved occurrence's row. The merge itself visits
+$|f|+|\operatorname{row}(i)|$ terms; this is not a claim of constant-time
+GMP arithmetic or occurrence repair. Every direction change still saves a full
+old objective row, so its linear copy cost and trail memory remain.
+
+Second, each crossing retains the original row coefficient. Slope integration
+and the selected pivot target reuse that value instead of searching the same
+row again. Coefficient discovery during initial event generation still searches
+the row; that remaining cost is not eliminated by this profile.
+
+Third, the forward derivative of the convex violation function is nondecreasing.
+Once it is nonnegative after a complete crossing group, no farther point can
+improve either objective value or the distance tie-break. The ordinary walk
+can stop there. A cached conflict has higher priority than the objective, so
+this profile first classifies conflict events and avoids pruning before an
+unvisited one. Once the nearest conflict group is examined, later distances
+cannot win. All coincident events in a retained group are considered before
+stopping.
+
+Focused tests compare exact selected triples with the full walk, check the
+objective identity and occurrence-driven updates through rollback, and require
+fewer objective occurrence changes on a cancellation/support-change example.
+`:lra.soi-objective-terms` counts terms offered to objective maintenance;
+`:lra.soi-objective-occurrence-changes` counts links/unlinks inside objective
+direction maintenance (`set_soi_direction`). It excludes incidence changes made
+by generic pivoting and rollback index rebuilds, as well as full old-row trail
+copies. These are work counters, not timing estimates. Full trailing remains in
+both maintenance settings.
+
 ## Conflict explanations
 
 For a nonempty subset $S\subseteq E$, let $f_S=\sum_{i\in S}d_i b_i$ and
@@ -190,7 +230,7 @@ checklist; no other solver implementation is an implementation source.
 | Source operation | Primo owner, invariant and obligation | Status at this milestone |
 | --- | --- | --- |
 | Thesis §3.2: equations, bound status, violation | `VarState`, `Row`, `update`; ordinary equations and nonbasic feasibility survive updates | Implemented; separate objective coefficient test added |
-| §3.3.1 / FMCAD §V-A: integrate sorted crossings | `soi_select`; integrate before slope updates; exact rational/delta arithmetic; $O(p\log p)$ sorting for $p$ events | Historical baseline retained; paper arm retains ties and the complete forward walk; coefficient reuse still planned |
+| §3.3.1 / FMCAD §V-A: integrate sorted crossings | `soi_select`; integrate before slope updates; exact rational/delta arithmetic; $O(p\log p)$ sorting for $p$ events | Historical baseline retained; paper arm retains ties and the complete forward walk; coefficient reuse and convex stopping are separate experimental maintenance features |
 | Figure 3.4: entering and leaving score | `SoiSelection`; zero-score entering tie is by ID | Experimental `paper` arm implemented; historical arm retained |
 | Figure 3.3: error-row conflicts before and after updates | `check`, `build_conflict`; sufficient selected bounds must independently refute | Experimental paper-arm early scans and focused external refutation gate implemented |
 | §3.3.2 / §V-C: termination | `check`; finite prefix then Bland | Defensive fallback retained, with prefix/fallback pivot counters |

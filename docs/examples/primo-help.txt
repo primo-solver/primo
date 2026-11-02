@@ -341,6 +341,9 @@ QF_LRA theory options:
           --lra-soi-cached-conflicts
                               Experimental cached row activity and conflict preference for SOI
                               paper selectors
+          --lra-soi-linear-maintenance
+                              Experimental linear objective merge, crossing reuse and convex
+                              pruning
           --lra-soi-minimize TEXT:{quickxplain,deletion,none} [quickxplain]
                               How --lra-pivoting-rule soi shrinks a multi-row conflict before
                               turning it into a clause: quickxplain (Junker 2001), deletion

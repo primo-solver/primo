@@ -1,0 +1,22 @@
+{
+  "budget": 64,
+  "eligible": [
+    "short-c64-s8-g1-f0",
+    "short-c64-s16-g1-f0",
+    "short-c16-s8-g1-f0",
+    "short-c16-s16-g1-f0",
+    "short-c64-s32-g1-f0",
+    "short-c4-s8-g1-f0",
+    "short-c16-s32-g1-f0",
+    "short-c4-s16-g1-f0",
+    "short-c4-s32-g1-f0"
+  ],
+  "frozen_selection_sha256": "bf4316c28d20c0be430e154ff4e3ecdd1b409415d4145407dac8dea51fb1907c",
+  "pilot_plan_sha256": "b35248c71730218d15f5ca3aed69c5ad77d96a2135f726d1bb3d950859020208",
+  "pilot_summary_sha256": "dc08d41cd99670e018892c062986753887aeb77641b81aa65e7b1d7179763db6",
+  "process_par2": 501.41475366666646,
+  "rule": "No lost stable solves against paper selection; minimum summed mean-repeat process PAR2; ties by budget then stall. No full-corpus evidence used.",
+  "selected": "short-c64-s8-g1-f0",
+  "stall_limit": 8,
+  "status": "frozen-for-full-evaluation"
+}

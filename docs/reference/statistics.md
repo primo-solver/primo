@@ -1167,3 +1167,12 @@ row conflict). Initial construction and assertion work is included when a
 subsequent engine check drains these cumulative counters. They survive rollback;
 the cache itself is rebuilt after rollback. See
 {soicachesource}`work state and maintenance <src/theory/arithmetic/lra_tableau.hpp>`.
+
+
+`:lra.soi-objective-terms` counts terms offered to objective direction updates;
+`:lra.soi-objective-occurrence-changes` counts objective occurrence links and
+unlinks inside `set_soi_direction`. Generic-pivot occurrence changes and
+rollback index rebuilds are excluded. Surviving supports retain their slots with
+linear maintenance enabled. Full old-row trail copies remain outside these
+term/link counters. See
+{soimaintsource}`objective maintenance <src/theory/arithmetic/lra_tableau.cpp>`.

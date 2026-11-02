@@ -12,7 +12,11 @@ from pathlib import Path
 
 from benchmark_model_replay import digest, write_json
 from run_lra_simplex_ablation import check_run, decisive, read_rows, schedule
-from summarize_lra_simplex_ablation import clustered_difference, clustered_ratio
+from summarize_lra_simplex_ablation import (
+    clustered_difference,
+    clustered_ratio,
+    outcome,
+)
 
 
 def load_run(root):
@@ -98,9 +102,7 @@ def summarize(roots, historical, baselines):
             "seconds": statistics.median(float(r["run"]["seconds"]) for r in rows)
             if stable
             else None,
-            "outcomes": dict(
-                Counter(decisive(r["run"]) or r["run"]["status"] for r in rows)
-            ),
+            "outcomes": dict(Counter(outcome(r["run"]) for r in rows)),
             "work": {
                 key: statistics.median(
                     float(r["run"]["stats"].get(key, 0)) for r in rows
@@ -111,6 +113,7 @@ def summarize(roots, historical, baselines):
             },
         }
     report = {
+        "analysis_sha256": digest(Path(__file__)),
         "runs": [str(p) for p in roots],
         "configurations": {},
         "comparisons": {},

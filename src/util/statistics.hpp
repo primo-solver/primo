@@ -197,6 +197,7 @@ enum class StatKey : std::size_t {
   LraSoiZeroProgressSteps,
   LraSoiCandidates,
   LraSoiCrossings,
+  LraSoiCrossingsExamined,
   LraSoiObjectiveUpdates,
   LraSoiPrefixPivots,
   LraSoiFallbackPivots,
@@ -207,6 +208,7 @@ enum class StatKey : std::size_t {
   LraSoiConflictPreferences,
   LraSoiObjectiveTerms,
   LraSoiObjectiveOccurrenceChanges,
+  LraSoiGrowingRows,
   LraSoiSelectionNs,
   LraSoiObjectiveNs,
 

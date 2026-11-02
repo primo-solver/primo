@@ -162,7 +162,7 @@ enum class LraPivotingRule {
 // ::SoiMinimizationOrder, translated at the wiring point the same way
 // LraPivotingRule is -- keeps this header free of theory-layer includes.
 enum class LraSoiSelectionRule { Historical, Paper, ShortColumn };
-enum class LraSoiMinimization { QuickXplain, Deletion, None };
+enum class LraSoiMinimization { QuickXplain, RowGrowing, Deletion, None };
 enum class LraSoiMinimizationOrder { Id, RowSupport, Violation };
 
 struct LraTuning {

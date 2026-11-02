@@ -445,8 +445,8 @@ int run_main(int argc, char** argv) {
       ->check(CLI::Range(0, 1000000));
   add_enum_option(app, "--lra-soi-selection", solver_options.lra_tuning.soi_selection,
                   primo::cli::kLraSoiSelectionNames,
-                  "SOI selection: historical (default) or paper (Figure 3.4 scores, "
-                  "coincident endpoint ties and Figure 3.3 row-conflict scans)");
+                  "SOI selection: historical (default), paper, or short-column; "
+                  "paper rules retain coincident endpoints and scan row conflicts");
 
   app.add_option("--lra-soi-pricing-candidates", solver_options.lra_tuning.soi_pricing_candidates,
                  "SOI short-column partial-sort chunk size (default 16)")
@@ -465,7 +465,8 @@ int run_main(int argc, char** argv) {
                   primo::cli::kLraSoiMinimizationNames,
                   "How --lra-pivoting-rule soi shrinks a multi-row conflict before turning "
                   "it into a clause: quickxplain (Junker 2001), deletion "
-                  "(iterative, and steerable by --lra-soi-minimize-order), or none "
+                  "(iterative, and steerable by --lra-soi-minimize-order), row-growing "
+                  "(thesis Figure 3.6), or none "
                   "(ablation baseline). Inert under every other pivoting rule. Measured, "
                   "the error set averages 2.83 variables and never exceeded 9, so this "
                   "changes which minimal conflict is learned rather than how fast it is "

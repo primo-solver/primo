@@ -192,6 +192,7 @@ class LraTableau {
   // docs/papers/soi-implementation-audit.md).
   enum class SoiMinimization {
     QuickXplain,  // historical recursive certificate reduction
+    RowGrowing,   // King 2014 Figure 3.6, with documented boundary resolutions
     Deletion,     // iterative, steerable by SoiMinimizationOrder
     None,         // ablation baseline and a portfolio arm
   };
@@ -722,12 +723,14 @@ class LraTableau {
     std::uint64_t zero_progress_steps = 0;
     std::uint64_t candidates = 0;
     std::uint64_t crossings = 0;
+    std::uint64_t crossings_examined = 0;
     std::uint64_t objective_updates = 0;
     std::uint64_t prefix_pivots = 0;
     std::uint64_t fallback_pivots = 0;
     std::uint64_t predicate_calls = 0;
     std::uint64_t arithmetic_terms = 0;
     std::uint64_t selected_rows = 0;
+    std::uint64_t growing_rows = 0;
     std::uint64_t objective_terms = 0;
     std::uint64_t objective_occurrence_changes = 0;
     std::uint64_t activity_updates = 0;
@@ -915,9 +918,9 @@ class LraTableau {
   void set_soi_direction(LraVarId var, int new_direction, const Row& var_row);
 
   // One SOISELECT call (Fig 5, Section V-A): picks the entering variable,
-  // leaving row, and step size that most reduces the sum-of-infeasibilities
-  // objective, via the breakpoint-sorted DeltaVio(j,delta) walk. Returns
-  // nullopt if no candidate makes progress (Flex(f) is empty) -- the
+  // leaving row and step using each column's best (DeltaV,distance,leaving)
+  // tuple and the configured entering-price rule. Zero-progress selections
+  // remain valid. Returns nullopt only when Flex(f) is empty -- the
   // caller must then check whether E is also empty (satisfiable) or not
   // (stuck -- build_soi_conflict()).
   struct SoiSelection {
@@ -970,6 +973,10 @@ class LraTableau {
   // still produce a sound conflict -- not necessarily globally minimal,
   // with no claim of inclusion-minimality for this non-monotone predicate.
   std::vector<LraVarId> minimize_soi_conflict(const std::vector<LraVarId>& error_vars) const;
+  // Figure 3.6: unlike quickxplain(), returns the full retained set,
+  // including background. Requires a nonempty certified union.
+  std::vector<LraVarId> row_growing_soi_conflict(const std::vector<LraVarId>& background,
+                                                 const std::vector<LraVarId>& candidates) const;
 
   // Deletion-based minimization: visit `error_vars` in soi_minimization_order_
   // and drop each element whose removal leaves the remainder still a

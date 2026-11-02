@@ -144,3 +144,10 @@ candidate conflict preference for paper/short-column selection. It is off by
 default. The historical selector keeps its selection behavior when this flag
 is supplied. See [cached conflict preference](../implementation/soi.md#experimental-cached-conflict-preference)
 and {soicachesource}`the CLI <src/main.cpp>`.
+
+
+`--lra-soi-linear-maintenance` is off by default. It enables sorted objective
+merging with support-only occurrence changes, crossing-coefficient reuse and
+convex stopping, while retaining full trailing. See
+[objective and crossing maintenance](../implementation/soi.md#experimental-objective-and-crossing-maintenance)
+and {soimaintsource}`the implementation <src/theory/arithmetic/lra_tableau.cpp>`.

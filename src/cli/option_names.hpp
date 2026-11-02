@@ -108,6 +108,7 @@ inline constexpr auto kLraSoiSelectionNames = std::to_array<EnumName<smt::LraSoi
 
 inline constexpr auto kLraSoiMinimizationNames = std::to_array<EnumName<smt::LraSoiMinimization>>({
     {"quickxplain", smt::LraSoiMinimization::QuickXplain},
+    {"row-growing", smt::LraSoiMinimization::RowGrowing},
     {"deletion", smt::LraSoiMinimization::Deletion},
     {"none", smt::LraSoiMinimization::None},
 });

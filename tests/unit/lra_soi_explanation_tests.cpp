@@ -161,6 +161,8 @@ int main(int argc, char** argv) {
       const std::string prefix = paper ? (cache ? "cached-" : "paper-") : "historical-";
       cases(directory, LraTableau::SoiMinimization::QuickXplain, prefix + "recursive", paper,
             cache);
+      cases(directory, LraTableau::SoiMinimization::RowGrowing, prefix + "row-growing", paper,
+            cache);
       cases(directory, LraTableau::SoiMinimization::Deletion, prefix + "deletion", paper, cache);
       cases(directory, LraTableau::SoiMinimization::None, prefix + "none", paper, cache);
     }

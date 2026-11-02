@@ -22,6 +22,10 @@ using primo::util::Rational;
 namespace primo::theory::arithmetic {
 struct LraTableauTestAccess {
   static auto selection(const LraTableau& tableau) { return tableau.soi_select(); }
+  static auto growing(const LraTableau& t, const std::vector<LraVarId>& fixed,
+                      const std::vector<LraVarId>& candidates) {
+    return t.row_growing_soi_conflict(fixed, candidates);
+  }
   static void verify_activity(const LraTableau& t) {
     assert(t.activity_enabled());
     for (LraVarId k = 0; k < t.variable_count(); ++k) {
@@ -863,6 +867,46 @@ void assert_soi_objective_identity(const LraTableau& tableau) {
   assert_tableau_invariants(tableau);
 }
 
+void soi_row_growing_handles_seed_background_and_sign_cancellation() {
+  using Access = primo::theory::arithmetic::LraTableauTestAccess;
+  {
+    LraTableau t(LraTableau::PivotingRule::Soi);
+    const auto x = t.add_variable();
+    const auto b = t.add_variable();
+    const auto c = t.add_variable();
+    const auto d = t.add_variable();
+    t.add_row(b, {{x, Rational(-1)}});
+    t.add_row(c, {{x, Rational(2)}});
+    t.add_row(d, {{x, Rational(-2)}});
+    assert(!t.assert_lower(x, rat(0), Lit{1}));
+    assert(!t.assert_lower(b, rat(1), Lit{2}));
+    assert(!t.assert_lower(c, rat(1), Lit{3}));
+    assert(!t.assert_lower(d, rat(1), Lit{4}));
+    assert(Access::growing(t, {}, {b}) == std::vector<LraVarId>{b});
+    assert(Access::growing(t, {b}, {c, d}) == std::vector<LraVarId>{b});
+    assert(Access::growing(t, {}, {b, c, d}) == std::vector<LraVarId>{b});
+  }
+  {
+    LraTableau t(LraTableau::PivotingRule::Soi);
+    const auto x = t.add_variable();
+    const auto y = t.add_variable();
+    const auto b = t.add_variable();
+    const auto c = t.add_variable();
+    t.add_row(b, {{x, Rational(1)}, {y, Rational(-1)}});
+    t.add_row(c, {{x, Rational(-1)}, {y, Rational(1)}});
+    assert(!t.assert_lower(b, rat(1), Lit{1}));
+    assert(!t.assert_lower(c, DeltaRational{Rational(0), Rational(1)}, Lit{2}));
+    const auto retained = Access::growing(t, {}, {b, c});
+    assert(retained.size() == 2);
+    assert(t.soi_work().growing_rows > 0 && t.soi_work().predicate_calls > 0);
+    auto tuning = t.tuning();
+    tuning.soi_minimization = LraTableau::SoiMinimization::RowGrowing;
+    t.set_tuning(tuning);
+    const auto conflict = t.check();
+    assert(conflict && has_reason(*conflict, Lit{1}) && has_reason(*conflict, Lit{2}));
+  }
+}
+
 void soi_linear_objective_merge_preserves_support_and_rollback() {
   std::uint64_t old_occurrences = 0;
   std::uint64_t merged_occurrences = 0;
@@ -919,10 +963,13 @@ void soi_convex_pruning_preserves_exact_selection() {
     tuning.soi_selection = LraTableau::SoiSelectionRule::Paper;
     t.set_tuning(tuning);
     const auto full = primo::theory::arithmetic::LraTableauTestAccess::selection(t);
+    const auto full_visits = t.soi_work().crossings_examined;
     tuning.soi_linear_maintenance = true;
     t.set_tuning(tuning);
     const auto pruned = primo::theory::arithmetic::LraTableauTestAccess::selection(t);
     assert(full && pruned);
+    assert(t.soi_work().crossings_examined - full_visits < full_visits);
+    assert(!pruned->leaving_coefficient.is_zero());
     assert(full->entering == pruned->entering && full->leaving == pruned->leaving);
     assert(full->delta == pruned->delta && full->objective_delta == pruned->objective_delta);
     assert(!t.check());
@@ -957,6 +1004,8 @@ void soi_cached_activity_matches_recomputation_across_operations() {
     assert(!t.assert_lower(x, rat(-1), Lit{4}));
     verify();
     assert(!t.assert_lower(b, rat(6), Lit{5}));
+    verify();
+    assert(!t.assert_upper(b, rat(6), Lit{8}));
     verify();
     assert(t.check());
     verify();
@@ -2990,7 +3039,8 @@ void soi_minimization_arms_return_asserted_reasons() {
   // an arm that invented or dropped a literal would be unsound regardless of
   // how short its clause is.
   const std::vector<std::pair<LraTableau::SoiMinimization, LraTableau::SoiMinimizationOrder>> arms =
-      {{LraTableau::SoiMinimization::QuickXplain, LraTableau::SoiMinimizationOrder::Id},
+      {{LraTableau::SoiMinimization::RowGrowing, LraTableau::SoiMinimizationOrder::Id},
+       {LraTableau::SoiMinimization::QuickXplain, LraTableau::SoiMinimizationOrder::Id},
        {LraTableau::SoiMinimization::Deletion, LraTableau::SoiMinimizationOrder::Id},
        {LraTableau::SoiMinimization::Deletion, LraTableau::SoiMinimizationOrder::RowSupport},
        {LraTableau::SoiMinimization::Deletion, LraTableau::SoiMinimizationOrder::Violation},
@@ -3055,6 +3105,7 @@ int main() {
   sparse_matches_bland_on_multi_pivot_scenarios();
   least_violated_leaving_matches_bland_on_multi_pivot_scenarios();
   least_violated_leaving_selects_differently_from_most_violated();
+  soi_row_growing_handles_seed_background_and_sign_cancellation();
   soi_linear_objective_merge_preserves_support_and_rollback();
   soi_convex_pruning_preserves_exact_selection();
   soi_cached_activity_matches_recomputation_across_operations();
