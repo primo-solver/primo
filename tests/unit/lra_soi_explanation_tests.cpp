@@ -68,10 +68,11 @@ struct Fixture {
 };
 
 void cases(const std::filesystem::path& directory, LraTableau::SoiMinimization arm,
-           const std::string& suffix, bool paper) {
-  const auto configure = [arm, paper](Fixture& fixture) {
+           const std::string& suffix, bool paper, bool cache = false) {
+  const auto configure = [arm, paper, cache](Fixture& fixture) {
     auto tuning = fixture.tableau.tuning();
     tuning.soi_minimization = arm;
+    tuning.soi_cached_conflicts = cache;
     tuning.soi_selection =
         paper ? LraTableau::SoiSelectionRule::Paper : LraTableau::SoiSelectionRule::Historical;
     fixture.tableau.set_tuning(tuning);
@@ -98,6 +99,17 @@ void cases(const std::filesystem::path& directory, LraTableau::SoiMinimization a
     f.bound(b, false, 1, 1);
     f.bound(c, false, 0, 2, true);
     f.export_conflict(directory, "multi-row-cancellation-" + suffix);
+  }
+  {
+    Fixture f;
+    configure(f);
+    const auto x = f.variable();
+    const auto b = f.variable();
+    f.row(b, {{x, Rational(2)}});
+    f.bound(x, true, 1, 1);
+    f.bound(b, false, 6, 2);
+    f.export_conflict(directory, "past-entering-bound-" + suffix);
+    if (paper && cache) assert(f.tableau.soi_work().conflict_preferences == 1);
   }
   {
     // P({b}) holds, P({b,c}) fails, P({b,c,d}) holds. The minimizer's
@@ -143,9 +155,13 @@ int main(int argc, char** argv) {
   const std::filesystem::path directory(argv[1]);
   std::filesystem::create_directories(directory);
   for (const bool paper : {false, true}) {
-    const std::string prefix = paper ? "paper-" : "historical-";
-    cases(directory, LraTableau::SoiMinimization::QuickXplain, prefix + "recursive", paper);
-    cases(directory, LraTableau::SoiMinimization::Deletion, prefix + "deletion", paper);
-    cases(directory, LraTableau::SoiMinimization::None, prefix + "none", paper);
+    for (const bool cache : {false, true}) {
+      if (!paper && cache) continue;
+      const std::string prefix = paper ? (cache ? "cached-" : "paper-") : "historical-";
+      cases(directory, LraTableau::SoiMinimization::QuickXplain, prefix + "recursive", paper,
+            cache);
+      cases(directory, LraTableau::SoiMinimization::Deletion, prefix + "deletion", paper, cache);
+      cases(directory, LraTableau::SoiMinimization::None, prefix + "none", paper, cache);
+    }
   }
 }
