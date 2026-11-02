@@ -80,15 +80,38 @@
         "source_identity": "git diff d4944eb HEAD -- src is empty at ba6fd9f; both preflights verify binary commit and CaDiCaL3.0.0",
         "scripts": "Python compilation, Python3.9 syntax parse, Ruff, sbatch validation and bash -n; final analysis validates metadata,hashes,all18 native labels,15 complete instrumented labels and selected counters",
         "lint": "make lint passed",
-        "docs": "pending build and independent review",
-        "native_gates": "No native changes. Existing focused tableau and QF_LRA tests rerun on SLURM; no fresh make check/ASAN/fuzz/model/full clang-tidy or include-cleaner campaign. Prior exact-binary corpus qualification remains historical context."
+        "docs": "make docs passed with warnings treated as errors; python3 scripts/assemble_docs.py succeeded; python3 scripts/check_doc_links.py docs/_build/site checked266 pages,34060local links,1129uniqueGitlinks with0failures. ExternalURLavailability deferred. Initial incremental html-only link scan lacked archive/original; assembled-site scan is final.",
+        "native_gates": "No native changes. Existing focused tableau and QF_LRA tests rerun on SLURM; no fresh make check/ASAN/fuzz/model/full clang-tidy or include-cleaner campaign. Prior exact-binary corpus qualification remains historical context.",
+        "rendering": "Inspected assembled-page browser screenshot audit-top.png and Chrome print rendering audit-print.pdf page8 (cost table/formattedtext). Direct initial-fragment screenshots were blank in this headless environment, so they are not acceptance evidence. Source reviewer separately inspected generatedHTMLanchors and source links."
       },
       "limitations": [
         "Deliberately selected diagnostics,not corpus-wide timing estimates; CallgrindIr counts are not time samples and inclusive counts overlap.",
         "No new solver correctness defect demonstrated; nine conformance/performance/verification findings remain proposed follow-up work.",
         "No per-step trace; no attribution of long prefix to cycling or of selector cost to individual loops.",
         "No independent theory-lemma reconstruction gate; current tests partly check reason membership rather than certificate sufficiency."
-      ]
+      ],
+      "documentation_review": {
+        "reviewer": "/root/soi_audit_docs_review",
+        "mode": "independent read-only; fresh context",
+        "baseline": "ba6fd9f",
+        "evidence_commit": "09d1794888a4dabb417f6a6c1a15a3f5dfd7ae2f",
+        "verdict": "ready",
+        "finding_dispositions": {
+          "DOC-SOI-01": "resolved: largest cost limited to five complete SOI/g1/f0 profiles",
+          "DOC-SOI-02": "resolved: permitted pricing separated from CVC4-reported heuristics",
+          "DOC-SOI-03": "resolved: five malformed roles repaired and pinned targets inspected",
+          "DOC-SOI-04": "resolved: algorithm chapter qualifies retained events/ties and links tied-endpoint gap"
+        },
+        "accepted_file_sha256": {
+          "docs/_config.yml": "4593af9a026fee96f01f3cb39208cf3f9ba992d19876cdbf1113ba1d47c4210c",
+          "docs/_toc.yml": "22a01b6ede7bab1948f570dc671b13a2af1357e47a11a84b50a2d0d177e6d172",
+          "docs/implementation/lra.md": "e0886ca2a82c8be0f9e1c839bb861d3b188c2a3518a9513d0435a49b72d968cf",
+          "docs/papers/lra-call-ablation.md": "97d7b01f06bb1c911e21441a17232996ab488689c5150bbedc3ad4463291dc12",
+          "docs/papers/soi-implementation-audit.md": "af9bef4a15bbc49c054d432c2445c61241a36a45fd223b2182efb16674c20cd5"
+        },
+        "scope": "Five-file documentation unit, primary-paper excerpts, owning tableau and model/preparation callers, cited tests, plan/workflows/report and completed run-log/accounting metadata. Confirmed132rawartifacthashes and bothpaperhashes.",
+        "unchecked": "Not independent solver/certificate certification, not a whole-manual audit, and not publicGitHubavailability verification."
+      }
     },
     {
       "id": "2026-10-31-lra-simplex-factorial-1000",

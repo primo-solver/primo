@@ -795,6 +795,9 @@ King, Barrett and Dutertre's
 [Simplex with Sum of Infeasibilities for SMT](https://theory.stanford.edu/~barrett/pubs/KBD13.pdf),
 FMCAD 2013, §V, and [King's thesis](https://cs.nyu.edu/media/publications/king_tim.pdf),
 §§3.2–3.3. The implementation choices and departures are described below.
+The [SOI audit](../papers/soi-implementation-audit.md) compares these choices
+with the primary sources, records diagnostic instruction profiles and lists
+the remaining conformance and verification gaps.
 
 #### The violation objective and its row
 
@@ -844,8 +847,12 @@ Bound assertion and assignment updates call this operation. A pivot removes
 the leaving variable's contribution before rewriting the basis, and ordinary
 row substitution rewrites the objective too. Once the pivot and assignment
 update finish, the row must again equal the signed sum of the violated rows.
-The selector uses its coefficients, rather than treating the auxiliary
-variable's stored assignment as $V$.
+The selector uses its coefficients. Direction changes do not recompute the
+auxiliary variable's stored assignment, so that assignment need not equal
+the current objective expression or $V$. This artificial row is an exception
+to the assignment/equation invariant for the problem's basic variables;
+model construction reads term-mapped and prepared atom variables, which
+exclude it.
 
 #### Selecting a step at a bound crossing
 
@@ -866,6 +873,10 @@ $$
 The selector collects lower- and upper-bound crossings in the chosen direction,
 plus the entering variable's own bound if present. It sorts them by distance
 along that direction and discards points beyond the entering variable's bound.
+The current truncation stops at that variable's event in the sorted list;
+it can also discard other events at exactly the same bound. This is the
+{ref}`tied-endpoint gap SOI-6 <soi-audit-findings>`
+recorded in the audit.
 Basic variables may become violated along the walk; the chosen step is judged
 by the sum of violations, while nonbasic variables remain within bounds.
 
@@ -877,12 +888,12 @@ $$
 $$
 
 Crossing a basic bound changes that row's contribution to the slope by
-$(d_i^{\mathrm{after}}-d_i^{\mathrm{before}})a_{ij}$. Coincident breakpoints are
+$(d_i^{\mathrm{after}}-d_i^{\mathrm{before}})a_{ij}$. Retained coincident breakpoints are
 processed together before continuing. Primo scores candidates with this walk
 without temporarily changing the live tableau.
 
-For a fixed entering variable, Primo chooses the breakpoint with the smallest
-computed $\Delta V$, then the smallest $|h|$, then the smallest leaving-variable ID.
+Among retained breakpoints for a fixed entering variable, Primo first minimizes
+computed $\Delta V$, then $|h|$, then the leaving-variable ID.
 Across entering variables, it prefers a strict decrease over a zero change,
 then the largest $|c_j|$, then the smallest entering ID. It does **not** compare
 the size of the decrease across different entering variables.
@@ -1023,6 +1034,9 @@ conflict derivation. It makes several concrete choices:
   a row-combination conflict when its objective has no flexible variable;
   ordinary row-conflict checking also remains available after fallback.
 - SOI also maintains its objective during bound assertion and SAT rollback.
+  It continues objective maintenance and full assignment/pivot trailing
+  after switching to Bland selection within the same check. The fallback
+  therefore retains SOI's bookkeeping costs.
   Its extra trail state is described in
   [Incrementality and rollback](#incrementality-and-rollback).
 

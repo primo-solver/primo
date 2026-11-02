@@ -477,6 +477,7 @@ conflicts improve later SAT search. Sparse pricing/leaving sweeps, fallback
 threshold sweeps and SOI conflict-minimization comparisons remain subsequent
 experiments; this 16-configuration matrix does not include them.
 
+(lra-simplex-factorial-results)=
 ## Simplex factorial results on the 1,000 conjunctions
 
 **All 48,000 timing rows and 31,248 SAT model replays passed qualification.**
@@ -510,6 +511,12 @@ PAR2 is the mean-repeat sum over the labelled set, including a 30-second penalty
 | SOI | On | On | 913 | 3824.770 | 0.0751× |
 
 Sparse was strongest across these four elimination combinations: each solved the same 996 labelled inputs in all three repetitions. No other configuration added a stable solve that sparse lacked. Dantzig with fixed-variable elimination reached 991; Bland with it reached 970. The implemented SOI profiles reached 913–915. SOI here includes its existing finite-prefix Bland fallback and default QuickXplain conflict minimization; this is a comparison of Primo’s implemented profiles.
+
+The subsequent [SOI implementation audit](soi-implementation-audit.md)
+compares the selector with the FMCAD paper and King's thesis. Diagnostic
+instruction profiles identify candidate selection as the largest check cost
+on five selected slow cases; the audit also records departures from the
+paper's engineering heuristics and gaps in independent conflict checking.
 
 Fixed-variable elimination makes the numerical check faster, while its cost is partly paid before that clock starts. With Gaussian elimination enabled, adding fixed-variable elimination gives a **1.670× paired check-time speedup**, but the paired whole-process speedup is **0.999×**. Mean-repeat PAR2 falls from **511.915 s to 497.617 s**, a 2.79% reduction on this set. Gaussian off versus on has little effect on the sparse process score: 511.665 versus 511.915 s without fixed elimination, and 497.002 versus 497.617 s with it. The check-speedup 95% parent-bootstrap interval is **1.521–1.838×**;
 the process-speedup interval is **0.983–1.015×**. The mean per-input PAR2-change
