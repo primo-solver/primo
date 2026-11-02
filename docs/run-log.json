@@ -3,6 +3,473 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-11-02-soi-full-mechanisms-results",
+      "date": "2026-11-02",
+      "kind": "frozen-full-corpus-mechanism-evaluation-with-independent-model-validation",
+      "evidence_status": "evaluated-experimental-not-promoted",
+      "sources": {
+        "candidate": {
+          "sha256": "41b3cb83e8b1cd7b5962301cbc188b9298bd8e5c88ac2f7e62328fec33cfe30b",
+          "source": "9a1efcf936e8b0657b51f534746f3e7a87d250a2"
+        },
+        "original": {
+          "sha256": "710929c58c18970cf4fccf7eb479fb95bb1410e6b46559433e4af80b55a9eee8",
+          "source": "d4944ebbe6cf202c0485e783655209ba204df71c"
+        }
+      },
+      "implementation_milestones": [
+        "5dd5ea1",
+        "e0e34ff",
+        "0ecd29e",
+        "0a8cbf5 (adjacent fixtures df9239b)",
+        "11575c5",
+        "9a1efcf"
+      ],
+      "workflow": "5930ce4",
+      "analysis_source": "5d1ba91",
+      "plan": "benchmarks/qf-lra-simplex-ablation/soi-full-plan.json",
+      "plan_sha256": "595f2b936e9bb3f17c91965b1fbe6282de6e55bf8c7acbf946cc50fbdcb54a7e",
+      "reports": [
+        "docs/coverage/soi-results-20261102.json",
+        "docs/coverage/soi-qualification-20261102.json",
+        "docs/coverage/soi-mutations-20261102.json"
+      ],
+      "experiment_chapter": "docs/papers/soi-experiments.md",
+      "artifacts": {
+        "workspace": "primo-soi-final-20261102",
+        "speed": "results/soi-full-paired-20261102",
+        "models": "results/soi-full-paired-20261102/model-selections/{candidate,original}/models",
+        "profiles": "results/soi-full-diagnostic-20261102",
+        "process_summary": "results/soi-full-summary.json",
+        "model_profile_summary": "results/soi-full-qualification.json",
+        "local_collected": "results/soi-improvements-20261102",
+        "published_counter_audit": "results/soi-full-qualification-published.json"
+      },
+      "jobs": {
+        "timing": "323313_0..999",
+        "native_dolmen_models": "323314_0..999",
+        "profiles": "323315_0..999",
+        "process_summary": "324124",
+        "model_diagnostic_join": "324125",
+        "whole_tree_static": "323316",
+        "nine_rejection_triage": "334724",
+        "published_counter_audit": "334938"
+      },
+      "states": "All listed jobs COMPLETED; all 1000 shards present in each measurement/model/profile stage.",
+      "resources": {
+        "timing": "one physical CPU (two SMT siblings in affinity),8GiB,4h per-input job;128 concurrent input jobs; all profiles/repetitions for an input paired on that same CPU",
+        "actual_timing_machines": [
+          {
+            "affinity_logical_cpus": 2,
+            "cpu_model": "Intel(R) Xeon(R) CPU E5-2690 v4 @ 2.60GHz",
+            "host": "node-03.ciircluster",
+            "shards": 216
+          },
+          {
+            "affinity_logical_cpus": 2,
+            "cpu_model": "Intel(R) Xeon(R) CPU E5-2690 v4 @ 2.60GHz",
+            "host": "node-04.ciircluster",
+            "shards": 223
+          },
+          {
+            "affinity_logical_cpus": 2,
+            "cpu_model": "Intel(R) Xeon(R) CPU E5-2690 v4 @ 2.60GHz",
+            "host": "node-05.ciircluster",
+            "shards": 185
+          },
+          {
+            "affinity_logical_cpus": 2,
+            "cpu_model": "Intel(R) Xeon(R) CPU E5-2690 v4 @ 2.60GHz",
+            "host": "node-06.ciircluster",
+            "shards": 272
+          },
+          {
+            "affinity_logical_cpus": 2,
+            "cpu_model": "Intel(R) Xeon(R) CPU E5-2690 v4 @ 2.60GHz",
+            "host": "node-07.ciircluster",
+            "shards": 101
+          },
+          {
+            "affinity_logical_cpus": 2,
+            "cpu_model": "Intel(R) Xeon(R) CPU E5-2690 v4 @ 2.60GHz",
+            "host": "node-08.ciircluster",
+            "shards": 3
+          }
+        ],
+        "process_limit_seconds": 15,
+        "cancellation_grace_seconds": 2,
+        "model_solver_limit_seconds": 90,
+        "dolmen_limit_seconds": 30,
+        "profile": "one repetition, phase clocks on, separate stage after speed; profile and model stages may overlap on different allocated cores",
+        "process_summary": "one CPU,32GiB,1h",
+        "model_profile_summary": "one CPU,16GiB,30min"
+      },
+      "commands": {
+        "timing": "PRIMO_SOI_PHASE=timing sbatch --array=0-999%128 scripts/qualification/soi_improvements/measure.sbatch; PRIMO_SOI_PLAN=<committed-plan>,SHARDS=1000,CORPUS=<frozen1000>,SOLVER=<archived-final>,BINARY_MAP=<private paths matching frozen hashes>,OUT=<speed>; common and profile arguments exactly in frozen plan",
+        "models": "Same driver PHASE=models; dependency afterok:323313; array0-999%128; PRIMO_DOLMEN=<qualified-tool>; each successful SAT timing row uses its original binary/profile, native --check-model and direct Dolmen required",
+        "profiles": "Same driver PHASE=profile; dependency afterok:323313; array0-999%64; separate plan with repeats=1 and diagnostic experiment ID; same inputs/configs/binaries/15s; separate output root",
+        "analysis": "python3 scripts/summarize_soi_improvements.py --run <speed> --historical docs/coverage/lra-simplex-per-input-20261031.csv --baseline original-soi-g1-f0 --baseline original-soi-g1-f1 --baseline original-sparse-g1-f0 --baseline original-sparse-g1-f1 --baseline final-g1-f0 --baseline final-g1-f1 --out <process-summary>",
+        "model_profile_join": "python3 scripts/summarize_soi_qualification.py --timing <speed> --profiles <profile-root> --out <qualification-summary>",
+        "model_expansion": "validate_model.py --expect-sat --require-dolmen-pass --dolmen-arg=--strict=false --dolmen-size 2G --timeout 90 --dolmen-timeout 30; exact profile arguments +--check-model, original assertions preserved"
+      },
+      "verification": {
+        "inputs": 1000,
+        "profiles": 28,
+        "repetitions": 3,
+        "timing_rows": 84000,
+        "profile_rows": 28000,
+        "known_labels": {
+          "sat": 679,
+          "unsat": 320,
+          "unknown": 1
+        },
+        "unknown_label": "The one unknown-labelled input times out in every profile/repetition; no unverified new answer.",
+        "solver_errors": 0,
+        "unsupported": 0,
+        "known_label_wrong_answers": 0,
+        "cross_profile_disagreements": 0,
+        "successful_sat_timing_rows": 54400,
+        "native_and_dolmen_passes": 54400,
+        "invalid_models": 0,
+        "missing_model_rows": 0,
+        "model_counts_by_profile": {
+          "cache-g1-f0": 1907,
+          "cache-g1-f1": 1995,
+          "deletion-g1-f0": 1918,
+          "deletion-g1-f1": 1995,
+          "final-g1-f0": 1917,
+          "final-g1-f1": 1996,
+          "historical-g1-f0": 1851,
+          "historical-g1-f1": 1869,
+          "linear-g1-f0": 1918,
+          "linear-g1-f1": 1996,
+          "no-cache-g1-f0": 1923,
+          "no-cache-g1-f1": 1998,
+          "no-linear-g1-f0": 1908,
+          "no-linear-g1-f1": 1995,
+          "no-short-g1-f0": 1863,
+          "no-short-g1-f1": 1932,
+          "none-g1-f0": 1917,
+          "none-g1-f1": 1995,
+          "original-soi-g1-f0": 1851,
+          "original-soi-g1-f1": 1869,
+          "original-sparse-g1-f0": 2030,
+          "original-sparse-g1-f1": 2028,
+          "paper-g1-f0": 1857,
+          "paper-g1-f1": 1905,
+          "short-g1-f0": 1914,
+          "short-g1-f1": 1995,
+          "sparse-g1-f0": 2030,
+          "sparse-g1-f1": 2028
+        },
+        "matched_diagnostic_inputs": 879,
+        "normal": "45/45 CTest groups and271 Python tests at native9a1efcf",
+        "asan": "45/45 groups at native9a1efcf",
+        "independent_conflict_fixtures": 60,
+        "generated_campaign": {
+          "job": "323208_0..5",
+          "cases": 3000,
+          "PASS": 2959,
+          "TIMEOUT": 41,
+          "hard_failures": 0
+        },
+        "all24candidate_profiles": {
+          "job": "323209_0..95",
+          "cases_per_profile": 1000,
+          "cases": 24000,
+          "PASS": 23372,
+          "TIMEOUT": 628,
+          "hard_failures": 0
+        },
+        "retained_mutations_final": {
+          "PASS": 52,
+          "INVALID_GENERATED_NONLINEAR": 428
+        },
+        "retained_mutation_triage": "334724 resolves all9 initial reference-timeout/native-rejection pairs as explicitly reference-rejected nonlinear inputs.",
+        "published_counter_audit": "Model counts and every diagnostic sum identical to initial qualification report; explicit absent-field counts added.",
+        "final_local_checks": {
+          "lint": "make lint passed, including whole-source clang-format and Ruff",
+          "docs": "make docs passed",
+          "site_links": "269 pages;34912 local links;1161 unique Git links;0failures;418 other external URLs deferred",
+          "workflow_tests": "5 tests passed across test_run_soi_improvements, test_summarize_soi_qualification and test_classify_soi_mutations; fake solvers only, no local solver experiments",
+          "final_renderer": "results/soi-improvements-20261102/soi-results-table-cdp.png; rendered table legible, final result and no-promotion wording verified"
+        }
+      },
+      "results": {
+        "production": {
+          "original_soi_stable": 915,
+          "final_stable": 948,
+          "original_soi_process_par2": 4216.876057333333,
+          "final_process_par2": 2447.7309836666677,
+          "comparison": {
+            "par2_change": {
+              "bootstrap_samples": 2000,
+              "ci95": [
+                -2.16106583415113,
+                -1.4022092307140304
+              ],
+              "inputs": 1000,
+              "mean_per_input_seconds": -1.7691450736666665,
+              "parents": 460,
+              "seed": 20261102
+            },
+            "process_speedup": {
+              "bootstrap_samples": 2000,
+              "ci95": [
+                3.0615417771002935,
+                3.872551636352399
+              ],
+              "geomean": 3.4262423642719875,
+              "pairs": 913,
+              "parents": 419,
+              "seed": 20261102
+            },
+            "stable_solve_gains": [
+              "cubes/02c60d80078f6ad28f354dc2b31a50402a91c4d088d0a02c154633d68999f60c.smt2",
+              "cubes/15a775440f09e5843f6f3fd341d114004f720941355a387b0ef5010dc82acd85.smt2",
+              "cubes/275e0b40f8cb27bae53790f7178adf1da31c77f2ac5dffc18e3e8d9ffb71a66f.smt2",
+              "cubes/2b107a3c6841a5d94bc8ae6c6da83fdd7ef98c4119f6b876227f12e6e0602391.smt2",
+              "cubes/2e9a3ffe8e4979a9558e794dc523d6fe6297d49235dd4e405efeaa0b24961363.smt2",
+              "cubes/31735225e72496ff7734575f7fec5b2c39908202389ef0af2208b5bbc691ab40.smt2",
+              "cubes/332b993042b17d276d1fe1631503aa8a6029d14ce6085580e3bfe68491fbbfeb.smt2",
+              "cubes/3fb1d992783443fa08bd59b0598ffbb731498c53e42405451450048c88096fd1.smt2",
+              "cubes/4540e4215df7a561c2079d0cd1c49597e28cfb4f91587b043172bde7de6f47d4.smt2",
+              "cubes/515b1420c7630de524ec3da0e61edae313df5bf3e604f00910cf97f4ddd85210.smt2",
+              "cubes/5f512083a091b7052c89594aba0721985a60b6c566523da99d3a4a404fc32193.smt2",
+              "cubes/68ac8dcab91935cf992fcc96ede38a7912a4b33b5da0581e9d4d018ca3aa1413.smt2",
+              "cubes/7141f57b650fbead71418b9307341785965a1e6b70adec125061f7541ba2080b.smt2",
+              "cubes/71a89e2af733852625585825171f55b676f4cd4c8e4d069c14d54301682b0dcd.smt2",
+              "cubes/7573bed12e1301d197c9215bf0a63094f2f0d4296db5b168da0e35417b061e2b.smt2",
+              "cubes/7b11c509cf81ebfbe49da3c8f8483cd2f0b01282c6e6e33a7b8c979038a6e95a.smt2",
+              "cubes/801a1f66e87433e9dbbee3a8a285f38a4fa79eab34ecc949f04660bd04c99aba.smt2",
+              "cubes/8347aa8d652f82c5ffdfd1d4ccc14cf3e0014a42f1b5bb708e775cd9b99e999d.smt2",
+              "cubes/83feba297e86cfb54443735ea90d5f6d199b9c1f6945a24cb23023987d623d0a.smt2",
+              "cubes/86fbbe951cf463a37c91f6de876ab7382771227cc7ede952ea4935eb6ba26ee1.smt2",
+              "cubes/945f64354ea74da6f0fef206f202dfe9302f62531f73156ca438256aba49b236.smt2",
+              "cubes/9bee1870ee7c8f02ed4a65fb73c91b17b84bea553c17f42ae1e3ce0df2ad027a.smt2",
+              "cubes/9e500a07fdbd2d159eee38adc11804fc8530b715df4ec1ac232a21ae319a0f46.smt2",
+              "cubes/acb76c74c887817357732df8ebd74b85625d2054247629a79947180ac765a31c.smt2",
+              "cubes/bd476719ea1da6dfad42ec5029399a2c55232c5c2f1e6c9cbfda6b166a01a663.smt2",
+              "cubes/c0bc422f6e80e74ce723f36021f48f46376bd17e97b9a9ac285f4cc2a57594d4.smt2",
+              "cubes/c1869ccb382050386b92d8f184cf681efa4ccf876c9302929d6e4d30fc215ef6.smt2",
+              "cubes/d09de35e25691e0f8424f80d3957ea0d5dd32d17b0608a1b3cba9880c0809c5d.smt2",
+              "cubes/d1e0eb2a0d6b476a388fc5d00da1364a1b16513daf92b826474e45ab028d6278.smt2",
+              "cubes/dd4242a96b8ab3e517af63eb0ba3f4fd6ab6580560453ae32f9b974555b6f6cc.smt2",
+              "cubes/e1ff7a21868c84276f82eef7bdd5fa0c2bd5576cb3af2423bbe0641cf8fd3dd3.smt2",
+              "cubes/e79ee0b248442be1de9b2771f13b9257cce7bcac04c5af478af3f619c95dfcb7.smt2",
+              "cubes/f946150c03f40c0320082f84e1b80d3df248def0d58e451a013b82e2a6ca74fe.smt2",
+              "cubes/fa718a03e97b909188f63f2803428b9f89ec4f7f1dc3b2d5b786ce31f42a79b7.smt2",
+              "cubes/fcc17c0acc9ad1a6f3b96ce63cc04c3990061113fcf110c080af2d8358144b46.smt2"
+            ],
+            "stable_solve_losses": [
+              "cubes/f2517a86e811c462e24805a3172edf37b34d6c3dde71578c4ba307bad5d89852.smt2",
+              "cubes/fdb4e04e83e390b2edfd2cd5bf9dbe257a35c8a59fba261b6bcdd75a938012fc.smt2"
+            ]
+          }
+        },
+        "fixed_on": {
+          "original_soi_stable": 913,
+          "final_stable": 978,
+          "original_soi_process_par2": 3858.3077280000034,
+          "final_process_par2": 1390.5150573333328,
+          "comparison": {
+            "par2_change": {
+              "bootstrap_samples": 2000,
+              "ci95": [
+                -3.4347506068461295,
+                -1.650911711809318
+              ],
+              "inputs": 1000,
+              "mean_per_input_seconds": -2.467792670666667,
+              "parents": 460,
+              "seed": 20261102
+            },
+            "process_speedup": {
+              "bootstrap_samples": 2000,
+              "ci95": [
+                1.839128137832269,
+                2.2537775273724088
+              ],
+              "geomean": 2.0293144375811334,
+              "pairs": 911,
+              "parents": 431,
+              "seed": 20261102
+            },
+            "stable_solve_gains": [
+              "cubes/081709ba7b12507dcc62afd5c827cc5519471684fa907f8d4eadf603f8be79ba.smt2",
+              "cubes/0dc31ce4afa489e75e2d896a6802e7dfe6a364896a97ada23f92713f6659db47.smt2",
+              "cubes/11b4e9a8b8f6025095d4e2356ac6b57ee5689cc76ffa7efa7b235cea2a4a0ac0.smt2",
+              "cubes/15a775440f09e5843f6f3fd341d114004f720941355a387b0ef5010dc82acd85.smt2",
+              "cubes/166dd9b45c018a304a5b7578d7d8315eea09be14c567d42f3a63fb9ec8f0164c.smt2",
+              "cubes/18452e6690216e1d2968adcf520b0c464fd1bb5fed513dcdb2c7348a3dfe2885.smt2",
+              "cubes/185331cdde9ff9b57a7d3b4e4fe39193ffc7eb6a6aa35830725988dcc7f0d335.smt2",
+              "cubes/1c7846e46c523df96a52add9bd8668c3ab1f5524b75f5a81a8edd56acd5744be.smt2",
+              "cubes/22d00b27fed561a06420fa19b77653230c71a30c4deb181abd069f31f4562589.smt2",
+              "cubes/275e0b40f8cb27bae53790f7178adf1da31c77f2ac5dffc18e3e8d9ffb71a66f.smt2",
+              "cubes/30d2fb539c8c166f18549c38520f11d5d721ed2703aba68d894faf2deac1416d.smt2",
+              "cubes/31415eda41515f93ef5a8724a7d4deb881e0cb00b8421890eab6c14909fdb9d8.smt2",
+              "cubes/32bb2a5d56fa3e10395bc1cb1660ebf01688c90d2e451c88c25725677e3fd588.smt2",
+              "cubes/34939868d147960425f2cef4355615e1d88026d9577a0c729ff481b124504128.smt2",
+              "cubes/378461352c0a5219a9eeeda0d74405d6bb2e43318a3c7d7df663913b752f3395.smt2",
+              "cubes/38f0af66f6bc29ad53ae58ff832aa4de0ff5468bc2b7df45f090924ec38d93d5.smt2",
+              "cubes/3b8b26b4d28a3527c0ab60834117f448445cc3758696820970541376e40f5a6f.smt2",
+              "cubes/3c5ae1317cbca811b8b466599d50143b94d958863a2036d6ac81ba71336c5829.smt2",
+              "cubes/481c58671167bb5174afbc7945a5140d86f4dfa4643c88fbe920ca660dc2f503.smt2",
+              "cubes/51553c46f5cdc3f2bea7874b82621a61c2deae5e3989a4b50528536842f34ed8.smt2",
+              "cubes/52af07e727430198840b0791c135722c0fad3f25c125fe0254d4b9c10a97376d.smt2",
+              "cubes/594c3463f279f30f51bad5f4c6b7f7213b5052db6950409bfd3fc2450c4c25a0.smt2",
+              "cubes/5c05f8606b6485de3d538cff469dfff1fa4dea2afa0bed68543332aed46fb1ca.smt2",
+              "cubes/5d04e872c295fb34161e04ae72230c63372e0126aee2d0a3ebbef539089846aa.smt2",
+              "cubes/5f512083a091b7052c89594aba0721985a60b6c566523da99d3a4a404fc32193.smt2",
+              "cubes/62b099585ff96f5723aa94088d4240ab8d4c872f3bb16557554120bcfcb4dfb3.smt2",
+              "cubes/6467cdf447c69e59442711949548ddebdbf5c587901f5b7636f9796b7bdc846a.smt2",
+              "cubes/64f8fa665c49adff537d588063fbcb8d66d4e811f82ae169b7bb61f889e6d87d.smt2",
+              "cubes/67201a616d9a2dc7a5d39d13056cfce276b9e710620e83e132cd6b07ffc2c122.smt2",
+              "cubes/70b5e05ab7ea61c5ba3744399f1b23e2b2804bad3c710edb466f330cd86ec8d9.smt2",
+              "cubes/70ca7635cfc675c1bf2cc36a4cfa69d8e0eb1c5cdea0277c9457b8c2b9aa4b13.smt2",
+              "cubes/79014ab070945164c9bcc45e3b936b860a90206179ea9edf1414ba41da758a9a.smt2",
+              "cubes/7d0b71994aede088b5759955aa95450eff132c0a5d310d9351cb6d9e77c8ba68.smt2",
+              "cubes/8347aa8d652f82c5ffdfd1d4ccc14cf3e0014a42f1b5bb708e775cd9b99e999d.smt2",
+              "cubes/86fbbe951cf463a37c91f6de876ab7382771227cc7ede952ea4935eb6ba26ee1.smt2",
+              "cubes/95f0db6530aa2596937caf9bcff4c03d07f0821ae10aace4fb813ef7ed202cfd.smt2",
+              "cubes/97154ffb1f3d1a00f76eb796661a1b01012b0f39fa72c8fa9416c7db44814180.smt2",
+              "cubes/9758356d620e6422e0def0c289c7c89ba37aefffa559147761447e8222808c69.smt2",
+              "cubes/9ac413bfad64926c8b10676062396b9627a5dc9bc8bc4f936cbef04f6adba120.smt2",
+              "cubes/9c6254f1bc4a778937100e925dac0059ee30e164600082fdc7d7a31dc41a2489.smt2",
+              "cubes/9de82d6fcefaeefdb90e96fae95197b016ee649cbb72f631489281909c17b47d.smt2",
+              "cubes/9e500a07fdbd2d159eee38adc11804fc8530b715df4ec1ac232a21ae319a0f46.smt2",
+              "cubes/a2eb5938f685ee2f7b1431b13b694c8635410ca6cf32f6a2d822ad9b6740fd68.smt2",
+              "cubes/aea6ad31221f75d50aec290082cefc04bc933f8dff78e8403a4d47b8e435ffd7.smt2",
+              "cubes/af5ecc248f245a8bd714a2cc4044f5042b4216dfe7b12dc7febd3420784a3b60.smt2",
+              "cubes/b46d5be5b61e8207cf376f261fb544ce404a8c805f063775b0c92983fe3ed392.smt2",
+              "cubes/b561c91227a63aaf9aadc617544f2ab17c1686699a664d4c8c539f05f0962f73.smt2",
+              "cubes/bb817a1f96ea97b51dcfd67a7b669a5b895012db850a569acc169b699b22f143.smt2",
+              "cubes/c66be8ceba595778847d83423da8c949c5245c6217727df39df2110c30395487.smt2",
+              "cubes/c6f79fa866c703e1219c559ae50c47f87f2e804937de11fa4f7d43d556f27c5c.smt2",
+              "cubes/cb9f2ad1de64138c3a3ed7e1e1c25c7192eb45877b714624867f93bb58f1bb87.smt2",
+              "cubes/d09de35e25691e0f8424f80d3957ea0d5dd32d17b0608a1b3cba9880c0809c5d.smt2",
+              "cubes/d1e0eb2a0d6b476a388fc5d00da1364a1b16513daf92b826474e45ab028d6278.smt2",
+              "cubes/d25a4b0a646ced73fe49529205116f5b5a9fd11c6bc2794398c3a5b7750a1f30.smt2",
+              "cubes/d6a2a20dc173b4bf803b25449927e6c971801dd530e9c37dd143fc432b15ae5f.smt2",
+              "cubes/d9a1366a8244600b52e89481e7be2363117fc80210a1c8570eaca3c6aeb08004.smt2",
+              "cubes/da8e9b995df2a02a0f6d7d14492f07d2087c3c546e94eea44a75abba75507753.smt2",
+              "cubes/dd4242a96b8ab3e517af63eb0ba3f4fd6ab6580560453ae32f9b974555b6f6cc.smt2",
+              "cubes/e777bb9b49de7710a8449efe8fffa9f2993c4eff7902f77d3ee6f86600fcfc17.smt2",
+              "cubes/e79ee0b248442be1de9b2771f13b9257cce7bcac04c5af478af3f619c95dfcb7.smt2",
+              "cubes/e90fbbef1570606a3cfed150e27973af6d1bd9325d975e00ddcc2208df0916fb.smt2",
+              "cubes/f364dbf7c892e229db8ca6edbe56b20c0a181aaae912cd5ae65f2df13e659ad4.smt2",
+              "cubes/f4629bc94becea02a8fd84f404b4fc0c60408b13ba3c2c3ea8b82d80f8a66e46.smt2",
+              "cubes/f69baef3ccbedc4df58b003e3680cf7543ccd6533c32d72dde4c3b36d31f9ad8.smt2",
+              "cubes/f82d0323a821211802efd54484d0b849699131f8ba94c39e27cdac274155436a.smt2",
+              "cubes/fa718a03e97b909188f63f2803428b9f89ec4f7f1dc3b2d5b786ce31f42a79b7.smt2",
+              "cubes/fcc17c0acc9ad1a6f3b96ce63cc04c3990061113fcf110c080af2d8358144b46.smt2"
+            ],
+            "stable_solve_losses": [
+              "cubes/ee2ee1f93bcfb44b80ab1123b5e1e19ed177ca5cc766fb64b3e88367994eb343.smt2",
+              "cubes/fdb4e04e83e390b2edfd2cd5bf9dbe257a35c8a59fba261b6bcdd75a938012fc.smt2"
+            ]
+          }
+        },
+        "decision": "Retain all new arms as experimental. No default changes: Sparse globally, historical within SOI. Final improves production PAR2 by42.0% with interval excluding zero but loses2 historically stable inputs. It also loses2 with fixed elimination on. No post-hoc winner selection from leave-one-out arms.",
+        "mechanisms": "Short pricing/stall and linear maintenance materially help. Removing cache improves full-process PAR2 with no losses against final. Row-growing reduces published certificate rows1170->52 and raw literals1684->212 on matched879 complete fixed-off profiles, with no established process advantage against recursive/deletion/none. Sparse remains substantially faster and retains996 stable solves."
+      },
+      "limitations": [
+        "Frozen cold conjunctions, not warm theory-state or whole-SMT competitive evaluation.",
+        "Parent-bootstrap intervals use mean seconds/input over460 parent groups; headline PAR2 sums1000 input costs.",
+        "Diagnostic counters are published work; interrupted checks and terminal assertion conflicts may leave unreported work; no zero-work claim for absent fields.",
+        "Full SOI trailing remains; activity substitution refresh uses an extra row scan.",
+        "No universal correctness or explanation minimality guarantee."
+      ],
+      "static_review": {
+        "job": "323316",
+        "status": "COMPLETED",
+        "cpp_translation_units": 130,
+        "reported_tidy_warnings": 17,
+        "tidy_disposition": "External CLI11 leak; Goal::Data shared_ptr aggregation analyzer report; deliberate enum reflection casts. Same existing warning classes, no new SOI warning.",
+        "include_advisories": 402,
+        "unused_advisories": 20,
+        "include_disposition": "All20 unused advisories are paired cpp/hpp self includes, retained by repository rule. Other advisories request direct provider headers. No actual spurious owned include identified.",
+        "artifacts": "results/soi-improvements-20261102/stage6-static/{tidy,include-cleaner}.log",
+        "include_log_sha256": "33c251e897aeaea0e32ad01b997291de0b36f06e814c7c40a61b275e99393d35"
+      },
+      "collection": "A direct SSH/VPN route stopped responding after most timing shards completed. Reconnected through the user-supplied external jump host; native jobs/measurements completed independently. Connection settings remain outside tracked files.",
+      "current_tree": "Native source after9a1efcf differs only by an entering-bound comment correction; subsequent changes are documentation/workflow/analysis. Qualified binary9a1efcf remains immutable.",
+      "analysis_qualification_source": "5baa2f4",
+      "documentation_review": {
+        "reviewer": "/root/soi_documentation_review",
+        "verdict": "ready; no required findings remain",
+        "scope": "Full experiment results, compact process/model/mutation reports, final ledger, loss identities and decision; published-counter re-analysis and family paragraph rechecked.",
+        "resolved_findings": [
+          "SOIFINAL01-04 guide exposition/source navigation",
+          "SOIMUT01 nine reference-timeout/native-rejection cases explicitly reference-rejected after hash-identical replay"
+        ],
+        "accepted_snapshot_sha256": {
+          "docs/papers/soi-experiments.md": "22bf16a49476b3de253c3eb4abcabad116bf4db6ffe5db6059230ec79d33d389",
+          "docs/coverage/soi-results-20261102.json": "1bb063d2f1e27bbffa9b170467923dfa79f7b54cc72d8d5e66c5e0d0c443fc6d",
+          "docs/coverage/soi-qualification-20261102.json": "2bb042f9e0249b4e565e3ecdd5f26de3bb19c504aad47eda92af1eb6c7a044ad",
+          "docs/coverage/soi-mutations-20261102.json": "5a2f5e310ecf9d92b23a9b7bfb086c10e053e2f6203e34d4c8cc49755ec530ae",
+          "docs/run-log.json": "0a348655bff690759e49e078c8357ef4e8678993d84d725e3abff57445421e93"
+        },
+        "rendering": "Guide math and final results table rendered and visually inspected; screenshot artifacts under results/soi-improvements-20261102."
+      }
+    },
+    {
+      "id": "2026-11-02-soi-real-seed-mutations",
+      "date": "2026-11-02",
+      "kind": "retained-seed-mutation-correctness-gate",
+      "source": "9a1efcf",
+      "binary_sha256": "41b3cb83e8b1cd7b5962301cbc188b9298bd8e5c88ac2f7e62328fec33cfe30b",
+      "reference_sha256": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+      "generator": "YinYang/typefuzz 0.3.0",
+      "seed": 611821,
+      "seed_inputs": 24,
+      "mutants_per_seed": 20,
+      "retained_inputs": 480,
+      "timeout_seconds": 5,
+      "generator_wall_seconds": 900,
+      "slurm_job": "324263",
+      "slurm_state": "COMPLETED",
+      "resources": "1 CPU, 2 GiB; 40-minute allocation; 16 minutes 18 seconds elapsed",
+      "counts": {
+        "PASS": 52,
+        "INVALID_GENERATED_NONLINEAR": 428
+      },
+      "pass_answers": {
+        "unsat": 36,
+        "sat": 16
+      },
+      "wrong_answer": 0,
+      "crash": 0,
+      "valid_input_parser_type_error": 0,
+      "unsupported_valid_input": 0,
+      "untriaged_reference_error": 0,
+      "native_timeouts": 0,
+      "reference_timeouts": 9,
+      "artifact": "primo-soi-final-20261102/fuzz-results/final-mutation-verified",
+      "report": "docs/coverage/soi-mutations-20261102.json",
+      "raw_sha256": "11c662dd136750d52127af7ca885e6f5c22d3faff2592dc17d85161c25066325",
+      "commands": [
+        "scripts/qualification/soi_improvements/verified_mutations.sbatch; qualified private equivalent copied identical24seeds from task1 selection; private connection/workspace settings outside tracked files",
+        "scripts/classify_soi_mutations.py --mutants <retained-scratch> --plan benchmarks/qf-lra-simplex-ablation/soi-full-plan.json --solver build-slurm-rel/primo --reference contrib/local/bin/z3 --timeout 5 --out <classification.json>"
+      ],
+      "triage": "All nine initial reference timeouts accompanied native exit2/nonliteral-multiplication rejections. Replays retained Z3 output and explicitly reported unsupported nonlinear arithmetic for each identical input hash, resolving them as invalid generated input. No unresolved native rejection remains.",
+      "earlier_attempts": {
+        "323310_0": "opfuzz0.3.0 rejects --seed;0solver cases, setup failure, not correctness evidence",
+        "323310_1..2": "24seeds x100 iterations, seeds611821/611822;4730/4792 reported solver calls,0bug triggers; discard reasons initially unclassified, not accepted qualification evidence, superseded by retained gate",
+        "324090": "typefuzz0.3.0 rejects wrapper -d diagnostic flag;0solver cases, setup failure",
+        "324141": "2seeds x2 iterations retained4files; diagnostic generation only, not a separate correctness gate",
+        "324196": "2seeds x100 iterations,200retained inputs independently replayed:14PASS,186invalid-generated-nonlinear; diagnostic triage, no hard failures"
+      },
+      "initial_counts": {
+        "INVALID_GENERATED_NONLINEAR": 419,
+        "PASS": 52,
+        "TIMEOUT": 9
+      },
+      "triage_job": "334724",
+      "triage_raw_sha256": "0310280a6659b05dabcda3a100a45a62c7756e442e99de89cc395d95f87e517c",
+      "review": "SOIMUT-01 independently raised and resolved by hash-identical reference-output replays; no unresolved valid-input rejection."
+    },
+    {
       "id": "2026-11-02-soi-documentation-guide-review",
       "date": "2026-11-02",
       "kind": "independent-writer-reviewer",
@@ -55,7 +522,7 @@
       "verification": {
         "normal_test_groups": 45,
         "normal_seconds": 13.56,
-        "python_tests": 269,
+        "python_tests": 271,
         "asan_test_groups": 45,
         "asan_seconds": 100.93,
         "external_conflict_refutations": 60,
@@ -163,10 +630,27 @@
             "TIMEOUT": 21
           }
         },
-        "doc_examples": "12/12 including captured help"
+        "doc_examples": "12/12 including captured help",
+        "hard_outcomes": {
+          "wrong_answer": 0,
+          "crash": 0,
+          "parser_type_error": 0,
+          "unsupported": 0,
+          "reference_disagreement": 0
+        },
+        "latest_clang_tidy": {
+          "job": "323316",
+          "scope": "all130 tracked non-generated C++ files",
+          "status": "Job323316 COMPLETED; all130 files in both clang-tidy and include-cleaner logs.",
+          "warnings": 17,
+          "disposition": "Same inspected classes as stage1: external CLI11 leak, shared_ptr aggregate analyzer leak, intentionally guarded enum reflection casts. No new SOI warning.",
+          "artifact": "results/soi-improvements-20261102/stage6-static/tidy.log",
+          "sha256": "e12bf58eec302bb19ac5c6d85c82fb381b18b49886960af3b2003cb7921502ae",
+          "include_advisories": 402
+        }
       },
       "commands": {
-        "prepare": "scripts/slurm_prepare_benchmark_workspace.py --build-via-slurm --reuse-dependencies --extra-target primo_lra_tableau_tests --extra-target primo_lra_soi_explanation_tests --jobs4; private SSH/compiler/header settings outside tracked files",
+        "prepare": "scripts/slurm_prepare_benchmark_workspace.py --build-via-slurm --reuse-dependencies --extra-target primo_lra_tableau_tests --extra-target primo_lra_soi_explanation_tests --jobs 4; private SSH/compiler/header settings outside tracked files",
         "checks": "sbatch scripts/qualification/soi_improvements/checks.sbatch: make -j4 check BUILD_DIR=build-slurm-rel; scripts/check_soi_explanations.py --reference contrib/local/bin/z3",
         "asan": "sbatch scripts/qualification/soi_endpoints/asan.sbatch: make -j4 asan-test ASAN_BUILD_DIR=build-soi-asan",
         "fuzz": "sbatch scripts/slurm_qfuf_fuzz_gate.sbatch; QF_LRA; 5sec; reference z3; seed_base=611720; 6 shards x 500 cases; final solver args are in profiles_fuzz.sbatch/full-plan.json",
@@ -208,7 +692,7 @@
       "verification": {
         "normal_test_groups": 45,
         "normal_seconds": 13.12,
-        "python_tests": 269,
+        "python_tests": 271,
         "asan_test_groups": 45,
         "asan_seconds": 100.3,
         "external_conflict_refutations": 45,
@@ -217,10 +701,17 @@
           "PASS": 982,
           "TIMEOUT": 18
         },
-        "hard_failures": 0
+        "hard_failures": 0,
+        "hard_outcomes": {
+          "wrong_answer": 0,
+          "crash": 0,
+          "parser_type_error": 0,
+          "unsupported": 0,
+          "reference_disagreement": 0
+        }
       },
       "commands": {
-        "prepare": "scripts/slurm_prepare_benchmark_workspace.py --build-via-slurm --reuse-dependencies --extra-target primo_lra_tableau_tests --extra-target primo_lra_soi_explanation_tests --jobs4; private SSH/compiler/header settings outside tracked files",
+        "prepare": "scripts/slurm_prepare_benchmark_workspace.py --build-via-slurm --reuse-dependencies --extra-target primo_lra_tableau_tests --extra-target primo_lra_soi_explanation_tests --jobs 4; private SSH/compiler/header settings outside tracked files",
         "checks": "sbatch scripts/qualification/soi_improvements/checks.sbatch: make -j4 check BUILD_DIR=build-slurm-rel; scripts/check_soi_explanations.py --reference contrib/local/bin/z3",
         "asan": "sbatch scripts/qualification/soi_endpoints/asan.sbatch: make -j4 asan-test ASAN_BUILD_DIR=build-soi-asan",
         "fuzz": "sbatch scripts/slurm_qfuf_fuzz_gate.sbatch; QF_LRA; 5sec; reference z3; seed_base=611420; 4 shards x 250 cases; final solver args are in profiles_fuzz.sbatch/full-plan.json"
@@ -330,7 +821,8 @@
         "reference_disagreement": 0,
         "saved_inputs": "All saved bugs/ files classified TIMEOUT; no untriaged hard failures",
         "docs": "Independent read-only review accepted source accuracy/exposition; make docs passed. All12source3documentation examples passed on SLURM.",
-        "code_review": "Ownership/occurrence/status updates, exact score/preference and rollback reviewed; no blocking new-code issue found. No default promotion."
+        "code_review": "Ownership/occurrence/status updates, exact score/preference and rollback reviewed; no blocking new-code issue found. No default promotion.",
+        "python_tests": 271
       }
     },
     {
