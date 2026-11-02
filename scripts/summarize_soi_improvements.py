@@ -38,6 +38,10 @@ def load_run(root):
             or meta["solver"]["sha256"] != plan["solver_sha256"]
         ):
             raise ValueError(f"incomplete/mismatched timing metadata: {shard}")
+        if "binaries" in plan and {
+            key: value["sha256"] for key, value in meta["binaries"].items()
+        } != {key: value["sha256"] for key, value in plan["binaries"].items()}:
+            raise ValueError(f"frozen binary registry differs: {shard}")
         got = read_rows(shard / "rows.jsonl")
         expected = [
             (n, r, c["id"]) for n, r, c in schedule(plan, names, meta["shard"], count)
@@ -119,6 +123,15 @@ def summarize(roots, historical, baselines):
         "comparisons": {},
         "per_input": compact,
     }
+    machines = Counter()
+    for root in roots:
+        for path in (root / "timing").glob("shard-*/metadata.json"):
+            meta = json.loads(path.read_text())
+            machines[(meta["host"], meta["cpu_model"], len(meta["affinity"]))] += 1
+    report["timing_machines"] = [
+        {"host": host, "cpu_model": cpu, "affinity_logical_cpus": size, "shards": n}
+        for (host, cpu, size), n in sorted(machines.items())
+    ]
     for config, cases in compact.items():
         by_family = defaultdict(list)
         outcomes = Counter()
