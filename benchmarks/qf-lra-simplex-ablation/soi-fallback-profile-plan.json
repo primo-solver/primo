@@ -98,6 +98,34 @@
     },
     {
       "args": [
+        "--lra-pivoting-rule=bland"
+      ],
+      "binary": "original",
+      "id": "original-bland-g1-f0"
+    },
+    {
+      "args": [
+        "--lra-pivoting-rule=bland"
+      ],
+      "binary": "candidate",
+      "id": "current-bland-g1-f0"
+    },
+    {
+      "args": [
+        "--lra-pivoting-rule=dantzig"
+      ],
+      "binary": "original",
+      "id": "original-dantzig-g1-f0"
+    },
+    {
+      "args": [
+        "--lra-pivoting-rule=dantzig"
+      ],
+      "binary": "candidate",
+      "id": "current-dantzig-g1-f0"
+    },
+    {
+      "args": [
         "--lra-pivoting-rule=soi",
         "--lra-fixed-elimination"
       ],
@@ -181,6 +209,38 @@
       ],
       "binary": "candidate",
       "id": "current-sparse-g1-f1"
+    },
+    {
+      "args": [
+        "--lra-pivoting-rule=bland",
+        "--lra-fixed-elimination"
+      ],
+      "binary": "original",
+      "id": "original-bland-g1-f1"
+    },
+    {
+      "args": [
+        "--lra-pivoting-rule=bland",
+        "--lra-fixed-elimination"
+      ],
+      "binary": "candidate",
+      "id": "current-bland-g1-f1"
+    },
+    {
+      "args": [
+        "--lra-pivoting-rule=dantzig",
+        "--lra-fixed-elimination"
+      ],
+      "binary": "original",
+      "id": "original-dantzig-g1-f1"
+    },
+    {
+      "args": [
+        "--lra-pivoting-rule=dantzig",
+        "--lra-fixed-elimination"
+      ],
+      "binary": "candidate",
+      "id": "current-dantzig-g1-f1"
     }
   ],
   "expected_statuses_sha256": "24d5d14936c5ac6e39ed38317b4afaea1ff5390431a495b802526b5aff655866",
@@ -1199,6 +1259,6 @@
   ],
   "solver_sha256": "18b3182d9f95698dc7684ade226cbdaf091e691c648640971ef20b34d5274bd0",
   "solver_source": "8faa775",
-  "stages": "First use the previously frozen 100-input pilot (all16 configurations, three repeats); proceed to all1000 if non-regressing. Separate diagnostic profile repeats1; SAT-model replay never enters speed measurements.",
+  "stages": "First use the previously frozen 100-input pilot (all16 configurations, three repeats); proceed to all1000 if non-regressing. Separate diagnostic profile repeats1; SAT-model replay never enters speed measurements. Full evaluation adds paired old/new Bland and Dantzig controls because the shared Bland leaving scan also skips unused violation arithmetic. This addition is frozen before pilot-summary inspection and full execution; it does not change any SOI parameter or the frozen16-profile pilot.",
   "timeout_seconds": 15
 }

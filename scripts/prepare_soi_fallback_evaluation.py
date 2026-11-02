@@ -16,6 +16,7 @@ def main():
     parser.add_argument("--candidate-sha256", required=True)
     parser.add_argument("--candidate-source", required=True)
     parser.add_argument("--out", type=Path, required=True)
+    parser.add_argument("--ordinary-controls", action="store_true")
     args = parser.parse_args()
     base_path = Path("benchmarks/qf-lra-simplex-ablation/soi-full-plan.json")
     base = json.loads(base_path.read_text())
@@ -41,15 +42,18 @@ def main():
                         "args": [*native_args, *extra, *suffix],
                     }
                 )
-        for arm, binary in [("original", "original"), ("current", "candidate")]:
-            configs.append(
-                {
-                    "id": f"{arm}-sparse-g1-f{fixed}",
-                    "binary": binary,
-                    "args": ["--lra-pivoting-rule=sparse", *suffix],
-                }
-            )
-    assert len(configs) == 16 and len({c["id"] for c in configs}) == 16
+        rules = ["sparse", "bland", "dantzig"] if args.ordinary_controls else ["sparse"]
+        for rule in rules:
+            for arm, binary in [("original", "original"), ("current", "candidate")]:
+                configs.append(
+                    {
+                        "id": f"{arm}-{rule}-g1-f{fixed}",
+                        "binary": binary,
+                        "args": [f"--lra-pivoting-rule={rule}", *suffix],
+                    }
+                )
+    count = 24 if args.ordinary_controls else 16
+    assert len(configs) == count and len({c["id"] for c in configs}) == count
     plan.update(
         experiment="soi-bland-fallback-lifecycle-20261102",
         configurations=configs,
@@ -75,6 +79,10 @@ def main():
     plan["stages"] = (
         "First use the previously frozen 100-input pilot (all16 configurations, three repeats); proceed to all1000 if non-regressing. Separate diagnostic profile repeats1; SAT-model replay never enters speed measurements."
     )
+    if args.ordinary_controls:
+        plan["stages"] += (
+            " Full evaluation adds paired old/new Bland and Dantzig controls because the shared Bland leaving scan also skips unused violation arithmetic. This addition is frozen before pilot-summary inspection and full execution; it does not change any SOI parameter or the frozen16-profile pilot."
+        )
     write_json(args.out, plan)
 
 
