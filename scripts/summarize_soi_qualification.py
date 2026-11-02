@@ -117,9 +117,10 @@ def diagnostics(root):
     }:
         raise ValueError("missing diagnostic shards")
     common = set.intersection(*(set(cases[c["id"]]) for c in plan["configurations"]))
-    # No-check processes publish no LRA counters. Infer zero only for metrics
-    # demonstrably supported by that binary elsewhere. The archived binary
-    # predates the new SOI counters, so their absence there remains unknown.
+    # Sum published values and expose absent fields separately. A terminal
+    # assertion conflict can prevent deferred publication of objective work;
+    # absence is not proof of zero work. A metric unsupported by the archived
+    # binary remains unknown rather than being assigned a recorded sum.
     supported = defaultdict(set)
     for config in plan["configurations"]:
         for work in cases[config["id"]].values():
@@ -132,11 +133,17 @@ def diagnostics(root):
             "coverage": dict(coverage[cfg]),
             "successful": len(cases[cfg]),
             "common_sums": {},
+            "absent_common_inputs": {},
         }
         for metric in metrics:
             values = [cases[cfg][n].get(metric, 0) for n in sorted(common)]
             result[cfg]["common_sums"][metric] = (
                 sum(values) if metric in supported[config["binary"]] else None
+            )
+            result[cfg]["absent_common_inputs"][metric] = (
+                sum(metric not in cases[cfg][n] for n in common)
+                if metric in supported[config["binary"]]
+                else None
             )
     return {
         "common_successful_inputs": len(common),
