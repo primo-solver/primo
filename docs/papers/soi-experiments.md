@@ -429,3 +429,148 @@ preprocessing remains (94 versus 95 inclusive samples). Sample counts overlap
 and GDB perturbs execution; its 12.152/7.851-second wall times are not benchmark
 speedups. The process table and separate counters are the performance evidence.
 The run log retains commands, binary hashes, seeds, jobs and artifact paths.
+
+
+(soi-fallback-full-results)=
+### Full lifecycle comparison
+
+All 1,000 timing shards completed: 72,000 process runs across 24 configurations.
+They contain 46,746 SAT, 22,353 UNSAT and 2,901 timeout results, with zero solver
+errors, unsupported results, normal unknown responses or answer disagreements.
+The unresolved-label input times out in all 72 runs; it contributes the same
+30-second mean-repeat PAR2 penalty to every configuration. The
+[full process report](../coverage/soi-fallback-results-20261102.json) retains
+family summaries, stable-runtime distributions and loss identities.
+
+| SOI profile | Fixed elimination | Archived: stable / PAR2 s | Eager: stable / PAR2 s | Suspended: stable / PAR2 s |
+| --- | --- | ---: | ---: | ---: |
+| Historical | Off | 913 / 4315.720 | 912 / 4330.439 | 926 / 3887.574 |
+| Combined | Off | 948 / 2444.629 | 948 / 2455.251 | 958 / 2012.218 |
+| Historical | On | 913 / 3878.995 | 912 / 3891.745 | 913 / 3822.117 |
+| Combined | On | 978 / 1396.639 | 978 / 1401.538 | 982 / 1188.174 |
+
+Archived means the immutable `9a1efcf` binary. Eager and suspended use the same
+`8faa775` binary, isolating lifecycle behavior from other binary changes.
+Suspension loses no stable solves against either corresponding control in
+either fixed-elimination setting. In production fixed-off, historical SOI gains
+13 stable solves against the archive and lowers process PAR2 by 9.9%; combined
+SOI gains ten and lowers it by 17.7%. Against same-binary eager controls, the
+respective gains are 14 and ten, with PAR2 reductions of 10.2% and 18.0%.
+
+| Fixed elimination | SOI profile | Mean PAR2 change vs eager (s/input) | Parent-bootstrap 95% interval |
+| --- | --- | ---: | --- |
+| Off | Historical | -0.443 | [-0.671, -0.243] |
+| Off | Combined | -0.443 | [-0.646, -0.255] |
+| On | Historical | -0.070 | [-0.113, -0.034] |
+| On | Combined | -0.213 | [-0.325, -0.121] |
+
+These are mean per-input score changes, not intervals for total PAR2 or
+percent speedup. Negative favors suspension. Resampling uses 460 original
+parents, 2,000 draws and seed 20261102. Production comparisons to the archive
+also exclude zero: historical [-0.659, -0.230], combined [-0.627, -0.249]
+seconds per input. Fixed-on archived comparisons retain all stable solves;
+historical remains at 913 and combined rises from 978 to 982.
+
+Ordinary old/new controls keep identical stable counts. Their total PAR2 scores
+differ by at most 0.35%, separating the substantial SOI lifecycle effect from
+small binary-wide shifts. This is a fresh paired comparison of Bland, Dantzig,
+Sparse and SOI; the {ref}`overall table <lra-simplex-overall-current>` uses its
+current rows. Dantzig still solves more inputs than combined SOI (968 vs 958
+with fixed off), and Sparse retains 996. Removing inactive work does not imply
+that the remaining SOI prefix chooses better bases or costs less than those
+policies on this corpus.
+
+Historical SOI's 13 production gains comprise five clock-synchronization and
+eight tropical-matrix inputs. The compact report gives all 12 family summaries.
+Combined SOI still loses `fdb4e04e83e390b2edfd2cd5bf9dbe257a35c8a59fba261b6bcdd75a938012fc`
+from the historical profile's stable set. With fixed elimination on it also
+loses `ee2ee1f93bcfb44b80ab1123b5e1e19ed177ca5cc766fb64b3e88367994eb343`.
+It therefore remains experimental under the zero-loss selector-replacement
+rule. The lifecycle is accepted as the default within opt-in SOI: historical
+selection is retained, while its Bland suffix suspends unused SOI bookkeeping.
+The global solver default remains Sparse.
+
+
+### Separate model qualification and remaining limits
+
+All 46,746 successful SAT timing rows passed native model checking and direct
+Dolmen 0.10 validation with the exact binary, profile and input that produced
+the row. There are zero invalid models, changed answers, solver/validator
+timeouts, unsupported validator inputs or missing selected rows. Validation
+allowed Primo 90 seconds and Dolmen 30 seconds per selected row; both budgets
+are separate from the 15-second speed limit and excluded from process PAR2.
+The [joined qualification report](../coverage/soi-fallback-qualification-20261102.json)
+records per-profile coverage and validator identities. All 24,000 diagnostic
+scheduled diagnostic processes have records; timeout prefixes remain censored.
+
+The fresh retained mutation gate completed with 52 exact agreements (16 SAT,
+36 UNSAT) and 428 explicitly witnessed invalid generated nonlinear inputs.
+All 480 distinct input hashes and process classifications are in the
+[mutation report](../coverage/soi-fallback-mutations-20261102.json). Invalid
+generation is not a passing solver case. No wrong answer, invalid model, crash
+or untriaged disagreement remains in this qualification.
+
+A saved-set comparison to the original `d4944eb` audit baseline also retains
+every historical stable solve: the new historical arm gains 11 fixed-off
+solves and has the same fixed-on stable set. This is a cross-study set check,
+not a paired speed estimate. The combined arm still loses the same one/two
+inputs against that archive, so its experimental status is unchanged.
+
+(soi-fallback-diagnostic-work)=
+### Lifecycle diagnostic work
+
+The separate one-repetition profiles have **883 inputs completing every
+configuration**. The following sums use only that matched population with
+fixed elimination off. Published phase counters are separate from the
+uninstrumented process scores.
+
+| Profile | Check time (s) | Pivots | Prefix pivots | Bland pivots |
+| --- | ---: | ---: | ---: | ---: |
+| Historical eager | 1212.841 | 3,551,546 | 3,354,858 | 196,688 |
+| Historical suspended | 1086.595 | 3,551,546 | 3,354,858 | 196,688 |
+| Combined eager | 278.716 | 281,753 | 49,180 | 232,573 |
+| Combined suspended | 166.078 | 281,753 | 49,180 | 232,573 |
+
+| Profile | Incremental objective terms | Objective phase (s) | Selection phase (s) | Activity contributions |
+| --- | ---: | ---: | ---: | ---: |
+| Historical eager | 927,835,812 | 94.786 | 754.257 | 0 |
+| Historical suspended | 25,521,472 | 2.199 | 753.874 | 0 |
+| Combined eager | 961,960,591 | 53.453 | 6.251 | 1,018,425,512 |
+| Combined suspended | 25,550,937 | 1.379 | 6.280 | 45,034,803 |
+
+The matched pivot counts are unchanged. Combined executes 232,573 Bland pivots
+without individual assignment/pivot records, using 797 snapshots containing
+2,021,191 stored row terms; reconstruction visits 160,473 ordinary row terms.
+Historical uses 621 snapshots with 1,812,001 stored terms and 169,341 rebuild
+term visits. These counters measure snapshot creation/reconstruction, not all
+bytes or undo/destruction cost. Combined activity-maintenance contributions
+fall from 1,018,425,512 to 45,034,803; the cache is rebuilt at suffix exit.
+
+Dantzig uses 111,315 pivots and 34.950 seconds of check time on these same
+inputs; Sparse uses 171,823 pivots and 9.448 seconds. The remaining SOI repair
+trajectory is more expensive on this population. Historical selection alone
+still consumes 753.874 seconds. Combined has a much smaller prefix, but its
+total pivot count remains about 2.53 times Dantzig's. Pivot counts do not
+measure row sizes or exact-arithmetic bit cost, and the phase clocks do not
+fully separate every ordinary repair cost. The results support eliminating
+inactive bookkeeping; they do not imply that SOI dominates simpler policies.
+
+Assertion-time work stays visible. Combined with fixed elimination on has
+160,524 check pivots **plus 156,666 assertion elimination pivots**, and check
+time 130.400 seconds. Fixed off has 281,753 check pivots and 166.078 seconds.
+The process table includes both assertion and check costs. Objective clocks include assertion-time updates, snapshot creation and
+boundary reconstruction; they are not an additive partition of check or
+process time. They exclude snapshot
+release/undo and generic pivot work. Missing or unsupported counters must not
+be interpreted as a measured zero; the joined report exposes field coverage.
+
+All full timing/model/diagnostic/summary jobs (`336029`, `336030`, `336031`,
+`336032`, `336033`) completed. Independent diagnostic aggregation `339267`
+agrees exactly with the joined diagnostic result. Timing used one physical CPU
+(two SMT siblings in the affinity mask) and 8 GiB per input task on CIIRC
+`node-02` through `node-09`, all Intel Xeon E5-2690 v4 at 2.60 GHz. The corpus,
+clock scope, binary hashes, limits, commands and machine counts are retained
+in the run log and compact reports. The command/profile flags remain those
+frozen before the full run. The benchmark still consists of cold conjunctions;
+it does not qualify warm whole-parent SMT performance, snapshot rollback cost
+or a different elimination/default profile.

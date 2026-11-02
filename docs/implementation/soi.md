@@ -262,14 +262,16 @@ uses the existing smallest eligible IDs. Sparse/Dantzig already bypass their
 pricing when Bland is selected. The common leaving scan also skips
 violation-magnitude arithmetic once ID selection is sufficient.
 
-Implementation under qualification: {soifallbacksource}`suspend_soi_for_fallback <src/theory/arithmetic/lra_tableau.cpp#L666>` runs immediately before the
+Implementation: {soifallbacksource}`suspend_soi_for_fallback <src/theory/arithmetic/lra_tableau.cpp#L666>` runs immediately before the
 first actual Bland pivot in an SOI check. A suffix ending without a pivot needs
 no snapshot. {soifallbacksource}`SoiFallbackTrailEntry <src/theory/arithmetic/lra_tableau.hpp>` owns one copy of all `VarState`, `Row` and
 directional-multiplier vectors at that boundary. This costs O(n + nnz_stored)
-storage, where nnz_stored counts terms in every
+storage, where n is the variable count and nnz_stored counts terms in every
 copied row slot, including stale nonbasic rows,
 plus copying exact values. Occurrences, violations and activity are derived and
 are rebuilt rather than copied. Prefix rollback records remain untouched.
+The record lives in the tableau trail until pop crosses it or the tableau is
+destroyed; multiple completed checks can retain multiple snapshots.
 
 After saving the snapshot, detach the artificial objective from all occurrence
 lists and clear its live row. Set a private suspension flag. While suspended,
@@ -285,7 +287,17 @@ and exact ordinary row algebra do not depend on that order.
 At either normal suffix return (feasible or explained conflict),
 {soifallbacksource}`resume_soi_after_fallback <src/theory/arithmetic/lra_tableau.cpp#L679>` reconstructs all multipliers from current ordinary
 bounds/assignments, sums the signed violated rows, sorts the surviving objective
-support, reattaches its occurrences and rebuilds activity once. The artificial
+support, reattaches its occurrences and rebuilds activity once. The local
+`std::unordered_map<LraVarId, util::Rational>` accumulates coefficients. If $m_V$
+counts terms in the violated rows and $k$ is the surviving objective width,
+reconstruction takes expected amortized $O(n+m_V+k\log k)$ scalar operations; an enabled
+activity cache adds $O(n+\mathrm{nnz}_{active})$ work. Occurrence-vector appends
+have amortized constant insertion cost; a single reconstruction can reallocate
+and copy longer columns. Detachment uses existing
+occurrence removal, including binary-search back-slot repair in other rows.
+These are scalar-operation bounds, separate from exact-value copying and GMP
+bit costs. Snapshot restoration currently copies its owned vectors; destruction
+and restoration costs remain in whole-process measurements. The artificial
 assignment remains intentionally unused. The coefficient identity is restored
 before the caller can assert bounds, request a checkpoint or start another
 check. No re-entrant calls or new checkpoints occur inside `check`. Structural
@@ -312,11 +324,12 @@ suspended. {soifallbacksource}`Multi-pivot strict UNSAT fixtures <tests/unit/lra
 for independent refutation. Counters expose snapshots, copied stored
 row terms, untrailed suffix pivots and objective rebuild terms; profiling clocks
 include boundary rebuild work. `--lra-soi-suspend-on-fallback` enables the
-lifecycle (default on in this
-qualification candidate); its `--no-` counterpart retains the eager reference.
+lifecycle (default on within opt-in SOI); its `--no-` counterpart retains the
+eager reference.
 This does not select the experimental paper/short-column selector as default.
-This design does not remove the remaining full prefix trail or promise a speedup before SLURM
-comparison, fuzzing and independent SAT-model validation.
+The {ref}`qualified lifecycle comparison <soi-fallback-full-results>` covers
+this frozen conjunction corpus. Full prefix trailing remains; these measurements
+do not establish performance on warm whole-SMT search.
 
 ## Rollback and measurement
 

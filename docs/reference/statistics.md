@@ -1174,7 +1174,7 @@ the cache itself is rebuilt after rollback. See
 unlinks inside `set_soi_direction`. Generic-pivot occurrence changes and
 rollback index rebuilds are excluded. Surviving supports retain their slots with
 linear maintenance enabled. Full old-row trail copies remain outside these
-term/link counters. See
+incremental term/link counters, as do lifecycle detachment and reattachment. See
 {soimaintsource}`objective maintenance <src/theory/arithmetic/lra_tableau.cpp>`.
 
 ## SOI fallback lifecycle work
@@ -1187,6 +1187,8 @@ individual assignment/pivot records. `:lra.soi-fallback-rebuild-terms` counts
 ordinary RHS term visits reconstructing the objective at suffix exit; it excludes
 status scans, sorting and GMP bit complexity. Snapshot/reconstruction phase
 time is included in `:lra.soi-objective-ns` only when profiling is enabled.
+Snapshot release and undo copies are outside that phase timer and these
+creation/reconstruction counters. Whole-process timing includes their cost.
 These counters are cumulative and are not erased by rollback.
 
 See {soifallbacksource}`the work state <src/theory/arithmetic/lra_tableau.hpp>`,

@@ -6,7 +6,7 @@
       "id": "2026-11-02-soi-bland-fallback-lifecycle-qualification",
       "date": "2026-11-02",
       "kind": "implementation-qualification-and-frozen-paired-evaluation",
-      "evidence_status": "correctness-gates-passed-performance-and-corpus-models-pending",
+      "evidence_status": "accepted-lifecycle;combined-selector-remains-experimental",
       "source": "8faa77529aacdb1cab4647938b7af7aae7ce4aa8",
       "adjacent_fixture_repair": "e2eded8",
       "workflow": "9222fce",
@@ -46,10 +46,11 @@
         "full_analysis": "336032",
         "full_qualification": "336033",
         "fixture_include_recheck": "336722",
-        "check_after_include": "336783"
+        "check_after_include": "336783",
+        "independent_diagnostics": "339267"
       },
       "qualification": {
-        "check": "make -j4 check BUILD_DIR=build-slurm-rel:45 CTest and275 Python pass on retry335807; native hash unchanged from initial build. Adjacent e2eded8 updates missing fake machine metadata in report test, no native changes.",
+        "check": "Final make -j4 check BUILD_DIR=build-slurm-rel passes336783:45 CTest,275 Python,62 independent Z3 explanation refutations after adjacent e2eded8 fixture metadata and6a6a493 direct test include. Native binary remains SHA18b3182d9f95698dc7684ade226cbdaf091e691c648640971ef20b34d5274bd0. Earlier full retry335807 also passed; initial335791 fixture-only failure is retained.",
         "initial_check_failure": "335791: existing paired-summary Python fixture lacked host/cpu_model/affinity after machine aggregation was added; KeyError host. Fixed fixture, repeated full make check. No solver failure.",
         "asan": "make asan-test via scripts/qualification/soi_endpoints/asan.sbatch,45 CTest pass335792",
         "explanations": "scripts/check_soi_explanations.py --fixtures build-slurm-rel/soi-explanations --reference contrib/local/bin/z3 --out results/checks-retry/explanations.json:62 independent selected-premise refutations passed",
@@ -69,7 +70,16 @@
               612025
             ],
             "PASS": 2877,
-            "TIMEOUT": 123
+            "TIMEOUT": 123,
+            "SAT": 2153,
+            "UNSAT": 724,
+            "native_timeouts": 123,
+            "reference_timeouts": 6,
+            "WRONG_ANSWER": 0,
+            "CRASH": 0,
+            "PARSER_TYPE_ERROR": 0,
+            "UNSUPPORTED": 0,
+            "REFERENCE_DISAGREEMENT": 0
           },
           "combined": {
             "seeds": [
@@ -81,17 +91,28 @@
               612125
             ],
             "PASS": 2956,
-            "TIMEOUT": 44
+            "TIMEOUT": 44,
+            "SAT": 2240,
+            "UNSAT": 716,
+            "native_timeouts": 44,
+            "reference_timeouts": 8,
+            "WRONG_ANSWER": 0,
+            "CRASH": 0,
+            "PARSER_TYPE_ERROR": 0,
+            "UNSUPPORTED": 0,
+            "REFERENCE_DISAGREEMENT": 0
           },
           "hard_errors": 0,
           "command": "scripts/slurm_qfuf_fuzz_gate.sbatch; exact per-arm env in jobs and artifact metadata; native --quiet --gaussian-elimination --lra-pivoting-rule=soi --check-model; combined additionally --lra-soi-selection=short-column --lra-soi-pricing-candidates=64 --lra-soi-stall-limit=8 --lra-soi-cached-conflicts --lra-soi-linear-maintenance --lra-soi-minimize=row-growing",
-          "artifacts": "fuzz-results/{historical,combined}/fuzzsmt/shard-*"
+          "artifacts": "fuzz-results/{historical,combined}/fuzzsmt/shard-*",
+          "summary_audit": "All6000 CSV rows inspected:everyTIMEOUT has native TIMEOUT;no native error hidden behind reference timeout. Reference timeout counts are subsets of native timeouts.",
+          "reference_sha256": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0"
         },
         "local": "make lint, git diff --check and make docs pass. make docs-check-links assembles current+historical site:269 pages,34929 local links,1169 unique Git links,0 failures;418 external URLs deferred.",
         "documentation_examples": "12/12 pass335912 against native8faa775, including refreshed exact help",
         "pure_class_probe": "16 independent diagonal rows with forced one-step SOI prefix:15 Bland suffix pivots; snapshot1/untrailed15 vs eager snapshot0/untrailed0; shorter lazy trail. Private two-pivot strict-bound probe has no incremental objective/cache updates and no per-pivot trail growth; resume/pop identities and activity slow checks pass.",
         "rendering": "Changed lifecycle HTML rendered and visually inspected:results/soi-fallback-20261102/lifecycle-cdp.png",
-        "static": "335795 completed all130translation units:17 unchanged clang-tidy diagnostics (externalCLI11 leak1,shared_ptr aggregate1,guarded enum casts15). Advisory include scan403 diagnostics:20 paired self-header suggestions retained,382 existing direct-provider suggestions,one new std::size_t missing direct include in explanation fixture. Added cstddef in adjacent test-only6a6a493;focused336722 COMPLETED and removed precisely that new warning, leaving the382+20 baseline advisories. Normal check336783 pending;native source/hash unchanged.",
+        "static": "335795 completed all130translation units:17 unchanged clang-tidy diagnostics (externalCLI11 leak1,shared_ptr aggregate1,guarded enum casts15). Advisory include scan403 diagnostics:20 paired self-header suggestions retained,382 existing direct-provider suggestions,one new std::size_t missing direct include in explanation fixture. Added cstddef in adjacent test-only6a6a493;focused336722 COMPLETED and removes precisely that warning, leaving402 baseline advisories. No changed native-code diagnostic.",
         "real_seed_mutations": {
           "job": "335812",
           "state": "COMPLETED",
@@ -115,26 +136,34 @@
         },
         "pilot_sat_models": "335810_0..99 completed all100shards;every selected SAT row passed native+Dolmen worker checks;full-run row-exact join336033 remains separate."
       },
-      "pending": [
-        "full speed acceptance",
-        "full native+Dolmen SAT coverage and diagnostic join",
-        "focused include recheck/normal check after test-only include",
-        "final docs/results/review and commits"
-      ],
+      "pending": [],
       "documentation_review": {
         "reviewer": "/root/soi_documentation_review",
-        "baseline": "b8432fa",
+        "baseline": "585213c",
         "native_source": "8faa775",
-        "verdict": "ready;SOIFALL01..04 resolved",
-        "scope": "Bland fallback lifecycle/options/statistics, LRA historical/candidate paragraph, source links and captured help. Separate performance and corpus-model acceptance pending.",
+        "verdict": "ready;no required findings remain",
+        "resolved_findings": [
+          "SOIFALL01-04:structural contract,stored nnz,source navigation,captured help",
+          "SOIFALLPILOT01:pinned16/24configuration plans",
+          "SOIFALLCOST01:expected amortized reconstruction bound",
+          "SOIFALLFULL01:Primo90s versus Dolmen30s model budgets"
+        ],
+        "scope": "Lifecycle proof/costs/options/statistics,full tables/intervals/stable-loss identities,all46746model passes,883-input diagnostic sums,guide/audit/literature updates and provenance/default decision. Final unique lifecycle-diagnostics heading rechecked.",
         "accepted_sha256": {
-          "docs/implementation/soi.md": "7a6cb206ef507258552d404840f0b6ddcaa7a202d51b991cb311723a93a122f3",
-          "docs/implementation/lra.md": "5242a9e372c72532a1b2c9f66164728f25ee468dc8839a62a336b56c6ae68c21",
-          "docs/reference/options.md": "f1fe983eeea1122cc09651dd246bf3595cacf1083f0a1a18a0dd4ca2bf1dd63e",
-          "docs/reference/statistics.md": "e61807b19fc966f8f8ffa14da78f2bdb0f6bff36210141cdd7667b5472fea8ef",
-          "docs/_config.yml": "956842a039b09c88af3103452e88bae2158528658245d56e9745167a63a0092e",
-          "docs/examples/primo-help.txt": "6ae5b9957815c2ec48d28b8cfa4d9b36b49d9ddb888d9e23591508f712c6e5fc"
-        }
+          "docs/papers/soi-experiments.md": "70088c5b1e27808e1287b00173741ba78c7fbb89de434f50cac358afae056f55",
+          "docs/papers/lra-call-ablation.md": "0488d7bfe3a4e0fd69b5ecd5fe947ea6efda76facf0f980b1d95c3bd08fdf3bd",
+          "docs/coverage/soi-fallback-results-20261102.json": "cb2e8c042a9b65964d60165b68b4662a125198013cbb48c3376b77db813b5ded",
+          "docs/coverage/soi-fallback-qualification-20261102.json": "549d0b4ac2c32d745bc3072a7f6edf569e398228a9505834e42969cf69443528",
+          "docs/implementation/soi.md": "bae266c4cbd36691d86b344d59e9a70ea467b813fce1971d2c3a448bd2faf11f",
+          "docs/implementation/lra.md": "c6d77f68ec834ad5926fdea17d15b3c66b8c280597734b4a6ca4a695045ff35e",
+          "docs/reference/options.md": "69b002b326d4adbd69405fede6a449e5481af9cf0162cb4428a1f34ae454c352",
+          "docs/reference/statistics.md": "576ca956461aa2695a904f7b1435e9972c32c095d1ae2a92de95053c434935ab",
+          "docs/papers/soi-guide.md": "5cdf30d3d67df6528e32fce7831b0d8a935f245b8339ce575e802fcc9fa619fe",
+          "docs/papers/soi-implementation-audit.md": "bb2a25ae203e44e7450570db020ebc5cb61afab69988844f87935b6f5bcb7214",
+          "docs/literature.md": "0944ed92a27f1db8b22dfe4f33da0d71bdcda9ae7135f8e12fb4a8c38c455f25"
+        },
+        "reviewed_run_log_before_completion_metadata_sha256": "7b288717db852b0f21b89f1af186c86e98202554c00113d4e7026905350b0aaa",
+        "not_independently_checked": "Remote per-process artifacts,scheduler state and rendering;primary checked scheduler/visual output."
       },
       "build_command": "scripts/slurm_prepare_benchmark_workspace.py --build-via-slurm --reuse-dependencies --jobs 4 --extra-target primo_lra_tableau_tests --extra-target primo_lra_soi_explanation_tests --require-tool contrib/local/bin/z3 --require-tool contrib/local/bin/dolmen (private remote/SSH/CMake/header-manifest arguments; source snapshot8faa775)",
       "pilot": {
@@ -197,6 +226,2296 @@
         },
         "links": "269pages;34937local;1171Git;0failures",
         "rendering": "Pilot table rendered and visually inspected:results/soi-fallback-20261102/pilot-table-cdp.png"
+      },
+      "full_timing_state": "All1000 shards complete:72000 records;46746 SAT,22353 UNSAT,2901 TIMEOUT,0 normal unknown/error/unsupported/wrong-answer records. Unknown-label input(shard368)times out in all72 runs;30s PAR2 contribution per configuration.",
+      "states": "All full timing/model/profile/analysis/join jobs completed successfully. Initial335791 failure was a pre-existing fake Python machine-metadata fixture, repaired by adjacent e2eded8; final336783 passes.",
+      "native_source_equivalence": "git diff 8faa775 -- src is empty. Adjacent e2eded8 changes a fake Python fixture and6a6a493 adds cstddef to an explanation test; later commits are workflow/documentation/evidence. Qualified native binary remains8faa775 SHA18b3182d9f95698dc7684ade226cbdaf091e691c648640971ef20b34d5274bd0.",
+      "reports": [
+        "docs/coverage/soi-fallback-results-20261102.json",
+        "docs/coverage/soi-fallback-qualification-20261102.json",
+        "docs/coverage/soi-fallback-pilot-20261102.json",
+        "docs/coverage/soi-fallback-mutations-20261102.json"
+      ],
+      "resources": {
+        "timing": "CIIRC SLURM compute partition;one physical CPU(two SMT siblings in affinity),8GiB,4h job cap;array1000 inputs with128 concurrent cap;72 processes per input task,15s limit each;Gaussian on,fixed both,3 repetitions. Other cluster jobs may share nodes;versions/repeats for one input share the same CPU.",
+        "model": "Same one-CPU8GiB task layout;Primo90s and Dolmen30s per selected row,after timing array;every successful SAT timing row selected.",
+        "diagnostic": "Separate24-profile1000-input array,one repetition,phase clocks enabled;timeouts censored.",
+        "actual_timing_machines": [
+          {
+            "affinity_logical_cpus": 2,
+            "cpu_model": "Intel(R) Xeon(R) CPU E5-2690 v4 @ 2.60GHz",
+            "host": "node-02.ciircluster",
+            "shards": 338
+          },
+          {
+            "affinity_logical_cpus": 2,
+            "cpu_model": "Intel(R) Xeon(R) CPU E5-2690 v4 @ 2.60GHz",
+            "host": "node-03.ciircluster",
+            "shards": 40
+          },
+          {
+            "affinity_logical_cpus": 2,
+            "cpu_model": "Intel(R) Xeon(R) CPU E5-2690 v4 @ 2.60GHz",
+            "host": "node-04.ciircluster",
+            "shards": 32
+          },
+          {
+            "affinity_logical_cpus": 2,
+            "cpu_model": "Intel(R) Xeon(R) CPU E5-2690 v4 @ 2.60GHz",
+            "host": "node-05.ciircluster",
+            "shards": 29
+          },
+          {
+            "affinity_logical_cpus": 2,
+            "cpu_model": "Intel(R) Xeon(R) CPU E5-2690 v4 @ 2.60GHz",
+            "host": "node-06.ciircluster",
+            "shards": 15
+          },
+          {
+            "affinity_logical_cpus": 2,
+            "cpu_model": "Intel(R) Xeon(R) CPU E5-2690 v4 @ 2.60GHz",
+            "host": "node-07.ciircluster",
+            "shards": 34
+          },
+          {
+            "affinity_logical_cpus": 2,
+            "cpu_model": "Intel(R) Xeon(R) CPU E5-2690 v4 @ 2.60GHz",
+            "host": "node-08.ciircluster",
+            "shards": 92
+          },
+          {
+            "affinity_logical_cpus": 2,
+            "cpu_model": "Intel(R) Xeon(R) CPU E5-2690 v4 @ 2.60GHz",
+            "host": "node-09.ciircluster",
+            "shards": 420
+          }
+        ]
+      },
+      "commands": {
+        "timing": "PRIMO_SOI_PHASE=timing sbatch --partition=compute --array=0-999%128 scripts/qualification/soi_improvements/measure.sbatch;plan benchmarks/qf-lra-simplex-ablation/soi-fallback-plan.json;binary map points to immutable qualified/{candidate,original}/primo.",
+        "models": "Same measure.sbatch with PRIMO_SOI_PHASE=models and Dolmen,afterok:336029;all selected SAT rows replayed.",
+        "profiles": "Same measure.sbatch with phase=profile,repeats1 profile plan,afterok:336029.",
+        "analysis": "scripts/qualification/soi_fallback/summarize.sbatch;original/eager historical and combined fixed-off baselines,eager historical/combined fixed-on baselines;2000 parent bootstrap draws seed20261102.",
+        "model_profile_join": "scripts/qualification/soi_fallback/qualify.sbatch afterok:336030:336031.",
+        "independent_diagnostics": "scripts/qualification/soi_fallback/diagnostics.sbatch (585213c),read-only aggregation of complete diagnostic shards;identical to joined diagnostics."
+      },
+      "model_validation": {
+        "status": "complete",
+        "expected": 46746,
+        "native_dolmen_passed": 46746,
+        "invalid_models": 0,
+        "changed_answers": 0,
+        "solver_errors": 0,
+        "solver_timeouts_or_unknowns": 0,
+        "validator_timeouts": 0,
+        "unsupported_validator_inputs": 0,
+        "missing": 0,
+        "tools": {
+          "candidate": {
+            "sha256": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e",
+            "version": "0.10\n"
+          },
+          "original": {
+            "sha256": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e",
+            "version": "0.10\n"
+          }
+        },
+        "per_configuration": {
+          "current-bland-g1-f0": 1926,
+          "current-bland-g1-f1": 1956,
+          "current-dantzig-g1-f0": 1953,
+          "current-dantzig-g1-f1": 2013,
+          "current-sparse-g1-f0": 2028,
+          "current-sparse-g1-f1": 2028,
+          "eager-combined-g1-f0": 1917,
+          "eager-combined-g1-f1": 1995,
+          "eager-historical-g1-f0": 1850,
+          "eager-historical-g1-f1": 1868,
+          "original-bland-g1-f0": 1926,
+          "original-bland-g1-f1": 1956,
+          "original-combined-g1-f0": 1918,
+          "original-combined-g1-f1": 1995,
+          "original-dantzig-g1-f0": 1953,
+          "original-dantzig-g1-f1": 2013,
+          "original-historical-g1-f0": 1851,
+          "original-historical-g1-f1": 1869,
+          "original-sparse-g1-f0": 2028,
+          "original-sparse-g1-f1": 2028,
+          "suspended-combined-g1-f0": 1935,
+          "suspended-combined-g1-f1": 2001,
+          "suspended-historical-g1-f0": 1869,
+          "suspended-historical-g1-f1": 1870
+        },
+        "limits": "Model costs never enter original speed times/PAR2;replay scope is every successful SAT timing row,not only stable triplets.",
+        "native_timeout_seconds": 90,
+        "dolmen_timeout_seconds": 30
+      },
+      "diagnostics": {
+        "status": "24000 records complete;1000 shards;prefix timeout records remain censored",
+        "common_all_configurations": 883,
+        "separate_aggregation_matches_join": true,
+        "interpretation": "Matched combined pivots unchanged281753=49180 prefix+232573 Bland. Eager/suspended check278.715590383/166.077643429s;objective term visits961960591/25550937;objective phase53.453229139/1.379116245s;activity contributions1018425512/45034803. Suspended uses797 snapshots copying2021191 stored row terms and160473 rebuild terms;232573 untrailed pivots. Historical check1212.840806786/1086.595248673s with unchanged3551546pivots;prefix3354858 andBland196688.",
+        "remaining_gap": "Dantzig111315pivots/34.950450727check seconds;Sparse171823/9.447863978 on same883inputs. Combined repair trajectory still more expensive;historical selection753.873939468s remains dominant.",
+        "assertion_work": "Combined fixed-on160524check pivots+156666assertion elimination pivots,130.400233710check seconds. Fixed-off281753check pivots,166.077643429s.",
+        "scope": "Published counters,not GMP instruction/bit counts;objective clocks include assertions/snapshot creation/reconstruction,exclude generic pivot andundo/destruction. Absent/unsupported fields exposed separately."
+      },
+      "performance": {
+        "configurations": {
+          "current-bland-g1-f0": {
+            "families": {
+              "2017-Heizmann-UltimateInvariantSynthesis": {
+                "inputs": 109,
+                "process_par2": 21.781367666666668,
+                "stable_solves": 109
+              },
+              "2019-ezsmt": {
+                "inputs": 103,
+                "process_par2": 3.2465900000000003,
+                "stable_solves": 103
+              },
+              "DTP-Scheduling": {
+                "inputs": 105,
+                "process_par2": 22.700221000000003,
+                "stable_solves": 105
+              },
+              "LassoRanker": {
+                "inputs": 105,
+                "process_par2": 306.4322683333333,
+                "stable_solves": 103
+              },
+              "clock_synchro": {
+                "inputs": 105,
+                "process_par2": 190.83142899999996,
+                "stable_solves": 103
+              },
+              "latendresse": {
+                "inputs": 17,
+                "process_par2": 510,
+                "stable_solves": 0
+              },
+              "miplib": {
+                "inputs": 112,
+                "process_par2": 655.0268326666667,
+                "stable_solves": 92
+              },
+              "sal": {
+                "inputs": 8,
+                "process_par2": 0.15111566666666668,
+                "stable_solves": 8
+              },
+              "sc": {
+                "inputs": 102,
+                "process_par2": 8.060556666666667,
+                "stable_solves": 102
+              },
+              "tropical-matrix": {
+                "inputs": 110,
+                "process_par2": 400.5520576666667,
+                "stable_solves": 105
+              },
+              "tta_startup": {
+                "inputs": 22,
+                "process_par2": 2.5818796666666666,
+                "stable_solves": 22
+              },
+              "uart": {
+                "inputs": 102,
+                "process_par2": 5.942562999999997,
+                "stable_solves": 102
+              }
+            },
+            "inputs": 1000,
+            "outcomes": {
+              "sat": 1926,
+              "timeout": 138,
+              "unsat": 936
+            },
+            "process_par2": 2127.306881333331,
+            "stable_process_seconds": {
+              "inputs": 954,
+              "max": 13.36217,
+              "p50": 0.0704965,
+              "p90": 2.361768,
+              "p99": 9.813082
+            },
+            "stable_solves": 954
+          },
+          "current-bland-g1-f1": {
+            "families": {
+              "2017-Heizmann-UltimateInvariantSynthesis": {
+                "inputs": 109,
+                "process_par2": 21.823280333333333,
+                "stable_solves": 109
+              },
+              "2019-ezsmt": {
+                "inputs": 103,
+                "process_par2": 3.1031603333333324,
+                "stable_solves": 103
+              },
+              "DTP-Scheduling": {
+                "inputs": 105,
+                "process_par2": 22.63189099999999,
+                "stable_solves": 105
+              },
+              "LassoRanker": {
+                "inputs": 105,
+                "process_par2": 304.7507140000001,
+                "stable_solves": 103
+              },
+              "clock_synchro": {
+                "inputs": 105,
+                "process_par2": 64.77246133333331,
+                "stable_solves": 105
+              },
+              "latendresse": {
+                "inputs": 17,
+                "process_par2": 289.68152499999997,
+                "stable_solves": 8
+              },
+              "miplib": {
+                "inputs": 112,
+                "process_par2": 636.5191453333333,
+                "stable_solves": 93
+              },
+              "sal": {
+                "inputs": 8,
+                "process_par2": 0.14113166666666666,
+                "stable_solves": 8
+              },
+              "sc": {
+                "inputs": 102,
+                "process_par2": 9.963711333333341,
+                "stable_solves": 102
+              },
+              "tropical-matrix": {
+                "inputs": 110,
+                "process_par2": 73.31074999999998,
+                "stable_solves": 110
+              },
+              "tta_startup": {
+                "inputs": 22,
+                "process_par2": 2.578262333333333,
+                "stable_solves": 22
+              },
+              "uart": {
+                "inputs": 102,
+                "process_par2": 5.6542140000000005,
+                "stable_solves": 102
+              }
+            },
+            "inputs": 1000,
+            "outcomes": {
+              "sat": 1956,
+              "timeout": 90,
+              "unsat": 954
+            },
+            "process_par2": 1434.9302466666654,
+            "stable_process_seconds": {
+              "inputs": 970,
+              "max": 13.122079,
+              "p50": 0.07509550000000001,
+              "p90": 1.607714,
+              "p99": 7.710858
+            },
+            "stable_solves": 970
+          },
+          "current-dantzig-g1-f0": {
+            "families": {
+              "2017-Heizmann-UltimateInvariantSynthesis": {
+                "inputs": 109,
+                "process_par2": 21.94653533333332,
+                "stable_solves": 109
+              },
+              "2019-ezsmt": {
+                "inputs": 103,
+                "process_par2": 3.098846333333333,
+                "stable_solves": 103
+              },
+              "DTP-Scheduling": {
+                "inputs": 105,
+                "process_par2": 22.06772966666667,
+                "stable_solves": 105
+              },
+              "LassoRanker": {
+                "inputs": 105,
+                "process_par2": 306.0567446666666,
+                "stable_solves": 103
+              },
+              "clock_synchro": {
+                "inputs": 105,
+                "process_par2": 21.908218333333338,
+                "stable_solves": 105
+              },
+              "latendresse": {
+                "inputs": 17,
+                "process_par2": 510,
+                "stable_solves": 0
+              },
+              "miplib": {
+                "inputs": 112,
+                "process_par2": 486.9260923333335,
+                "stable_solves": 99
+              },
+              "sal": {
+                "inputs": 8,
+                "process_par2": 0.14230700000000002,
+                "stable_solves": 8
+              },
+              "sc": {
+                "inputs": 102,
+                "process_par2": 8.056216000000003,
+                "stable_solves": 102
+              },
+              "tropical-matrix": {
+                "inputs": 110,
+                "process_par2": 140.33908166666666,
+                "stable_solves": 110
+              },
+              "tta_startup": {
+                "inputs": 22,
+                "process_par2": 2.5805986666666665,
+                "stable_solves": 22
+              },
+              "uart": {
+                "inputs": 102,
+                "process_par2": 5.9213246666666635,
+                "stable_solves": 102
+              }
+            },
+            "inputs": 1000,
+            "outcomes": {
+              "sat": 1953,
+              "timeout": 96,
+              "unsat": 951
+            },
+            "process_par2": 1529.0436946666648,
+            "stable_process_seconds": {
+              "inputs": 968,
+              "max": 14.021788,
+              "p50": 0.059290999999999996,
+              "p90": 1.425039,
+              "p99": 11.256259
+            },
+            "stable_solves": 968
+          },
+          "current-dantzig-g1-f1": {
+            "families": {
+              "2017-Heizmann-UltimateInvariantSynthesis": {
+                "inputs": 109,
+                "process_par2": 21.868373666666667,
+                "stable_solves": 109
+              },
+              "2019-ezsmt": {
+                "inputs": 103,
+                "process_par2": 3.058265333333334,
+                "stable_solves": 103
+              },
+              "DTP-Scheduling": {
+                "inputs": 105,
+                "process_par2": 22.001727666666667,
+                "stable_solves": 105
+              },
+              "LassoRanker": {
+                "inputs": 105,
+                "process_par2": 305.211602,
+                "stable_solves": 103
+              },
+              "clock_synchro": {
+                "inputs": 105,
+                "process_par2": 8.642929333333335,
+                "stable_solves": 105
+              },
+              "latendresse": {
+                "inputs": 17,
+                "process_par2": 240.74047866666666,
+                "stable_solves": 10
+              },
+              "miplib": {
+                "inputs": 112,
+                "process_par2": 199.2780966666665,
+                "stable_solves": 112
+              },
+              "sal": {
+                "inputs": 8,
+                "process_par2": 0.140889,
+                "stable_solves": 8
+              },
+              "sc": {
+                "inputs": 102,
+                "process_par2": 6.299164,
+                "stable_solves": 102
+              },
+              "tropical-matrix": {
+                "inputs": 110,
+                "process_par2": 49.02315199999998,
+                "stable_solves": 110
+              },
+              "tta_startup": {
+                "inputs": 22,
+                "process_par2": 2.580985,
+                "stable_solves": 22
+              },
+              "uart": {
+                "inputs": 102,
+                "process_par2": 5.532100666666665,
+                "stable_solves": 102
+              }
+            },
+            "inputs": 1000,
+            "outcomes": {
+              "sat": 2013,
+              "timeout": 27,
+              "unsat": 960
+            },
+            "process_par2": 864.3777639999987,
+            "stable_process_seconds": {
+              "inputs": 991,
+              "max": 14.176909,
+              "p50": 0.058294,
+              "p90": 1.139216,
+              "p99": 11.256555
+            },
+            "stable_solves": 991
+          },
+          "current-sparse-g1-f0": {
+            "families": {
+              "2017-Heizmann-UltimateInvariantSynthesis": {
+                "inputs": 109,
+                "process_par2": 21.27845866666666,
+                "stable_solves": 109
+              },
+              "2019-ezsmt": {
+                "inputs": 103,
+                "process_par2": 3.229706,
+                "stable_solves": 103
+              },
+              "DTP-Scheduling": {
+                "inputs": 105,
+                "process_par2": 23.103271,
+                "stable_solves": 105
+              },
+              "LassoRanker": {
+                "inputs": 105,
+                "process_par2": 304.0691173333333,
+                "stable_solves": 103
+              },
+              "clock_synchro": {
+                "inputs": 105,
+                "process_par2": 21.032373000000007,
+                "stable_solves": 105
+              },
+              "latendresse": {
+                "inputs": 17,
+                "process_par2": 109.17232766666666,
+                "stable_solves": 15
+              },
+              "miplib": {
+                "inputs": 112,
+                "process_par2": 9.672846666666672,
+                "stable_solves": 112
+              },
+              "sal": {
+                "inputs": 8,
+                "process_par2": 0.138422,
+                "stable_solves": 8
+              },
+              "sc": {
+                "inputs": 102,
+                "process_par2": 5.880900666666664,
+                "stable_solves": 102
+              },
+              "tropical-matrix": {
+                "inputs": 110,
+                "process_par2": 35.79796466666667,
+                "stable_solves": 110
+              },
+              "tta_startup": {
+                "inputs": 22,
+                "process_par2": 2.5757559999999993,
+                "stable_solves": 22
+              },
+              "uart": {
+                "inputs": 102,
+                "process_par2": 5.412203333333334,
+                "stable_solves": 102
+              }
+            },
+            "inputs": 1000,
+            "outcomes": {
+              "sat": 2028,
+              "timeout": 12,
+              "unsat": 960
+            },
+            "process_par2": 541.3633470000003,
+            "stable_process_seconds": {
+              "inputs": 996,
+              "max": 13.108004,
+              "p50": 0.057333,
+              "p90": 0.6549,
+              "p99": 8.522005
+            },
+            "stable_solves": 996
+          },
+          "current-sparse-g1-f1": {
+            "families": {
+              "2017-Heizmann-UltimateInvariantSynthesis": {
+                "inputs": 109,
+                "process_par2": 21.35658133333333,
+                "stable_solves": 109
+              },
+              "2019-ezsmt": {
+                "inputs": 103,
+                "process_par2": 3.2372166666666664,
+                "stable_solves": 103
+              },
+              "DTP-Scheduling": {
+                "inputs": 105,
+                "process_par2": 23.07379699999999,
+                "stable_solves": 105
+              },
+              "LassoRanker": {
+                "inputs": 105,
+                "process_par2": 304.150321,
+                "stable_solves": 103
+              },
+              "clock_synchro": {
+                "inputs": 105,
+                "process_par2": 17.868260333333343,
+                "stable_solves": 105
+              },
+              "latendresse": {
+                "inputs": 17,
+                "process_par2": 88.39398399999999,
+                "stable_solves": 15
+              },
+              "miplib": {
+                "inputs": 112,
+                "process_par2": 19.42021833333333,
+                "stable_solves": 112
+              },
+              "sal": {
+                "inputs": 8,
+                "process_par2": 0.13995833333333332,
+                "stable_solves": 8
+              },
+              "sc": {
+                "inputs": 102,
+                "process_par2": 6.380465000000002,
+                "stable_solves": 102
+              },
+              "tropical-matrix": {
+                "inputs": 110,
+                "process_par2": 34.585957000000015,
+                "stable_solves": 110
+              },
+              "tta_startup": {
+                "inputs": 22,
+                "process_par2": 2.583356666666667,
+                "stable_solves": 22
+              },
+              "uart": {
+                "inputs": 102,
+                "process_par2": 5.428095666666666,
+                "stable_solves": 102
+              }
+            },
+            "inputs": 1000,
+            "outcomes": {
+              "sat": 2028,
+              "timeout": 12,
+              "unsat": 960
+            },
+            "process_par2": 526.6182113333333,
+            "stable_process_seconds": {
+              "inputs": 996,
+              "max": 13.130939,
+              "p50": 0.0571325,
+              "p90": 0.876151,
+              "p99": 7.763863
+            },
+            "stable_solves": 996
+          },
+          "eager-combined-g1-f0": {
+            "families": {
+              "2017-Heizmann-UltimateInvariantSynthesis": {
+                "inputs": 109,
+                "process_par2": 24.16255799999999,
+                "stable_solves": 109
+              },
+              "2019-ezsmt": {
+                "inputs": 103,
+                "process_par2": 3.3816813333333338,
+                "stable_solves": 103
+              },
+              "DTP-Scheduling": {
+                "inputs": 105,
+                "process_par2": 27.47896433333334,
+                "stable_solves": 105
+              },
+              "LassoRanker": {
+                "inputs": 105,
+                "process_par2": 322.18412566666683,
+                "stable_solves": 103
+              },
+              "clock_synchro": {
+                "inputs": 105,
+                "process_par2": 256.6552506666667,
+                "stable_solves": 102
+              },
+              "latendresse": {
+                "inputs": 17,
+                "process_par2": 510,
+                "stable_solves": 0
+              },
+              "miplib": {
+                "inputs": 112,
+                "process_par2": 608.910016,
+                "stable_solves": 96
+              },
+              "sal": {
+                "inputs": 8,
+                "process_par2": 0.17293733333333333,
+                "stable_solves": 8
+              },
+              "sc": {
+                "inputs": 102,
+                "process_par2": 11.964983000000002,
+                "stable_solves": 102
+              },
+              "tropical-matrix": {
+                "inputs": 110,
+                "process_par2": 680.269081,
+                "stable_solves": 96
+              },
+              "tta_startup": {
+                "inputs": 22,
+                "process_par2": 2.6222356666666666,
+                "stable_solves": 22
+              },
+              "uart": {
+                "inputs": 102,
+                "process_par2": 7.449012,
+                "stable_solves": 102
+              }
+            },
+            "inputs": 1000,
+            "outcomes": {
+              "sat": 1917,
+              "timeout": 156,
+              "unsat": 927
+            },
+            "process_par2": 2455.2508449999978,
+            "stable_process_seconds": {
+              "inputs": 948,
+              "max": 14.180221,
+              "p50": 0.090342,
+              "p90": 2.979289,
+              "p99": 11.253156
+            },
+            "stable_solves": 948
+          },
+          "eager-combined-g1-f1": {
+            "families": {
+              "2017-Heizmann-UltimateInvariantSynthesis": {
+                "inputs": 109,
+                "process_par2": 23.077575999999993,
+                "stable_solves": 109
+              },
+              "2019-ezsmt": {
+                "inputs": 103,
+                "process_par2": 3.229979999999999,
+                "stable_solves": 103
+              },
+              "DTP-Scheduling": {
+                "inputs": 105,
+                "process_par2": 27.180537999999995,
+                "stable_solves": 105
+              },
+              "LassoRanker": {
+                "inputs": 105,
+                "process_par2": 309.00441766666665,
+                "stable_solves": 103
+              },
+              "clock_synchro": {
+                "inputs": 105,
+                "process_par2": 273.583753,
+                "stable_solves": 100
+              },
+              "latendresse": {
+                "inputs": 17,
+                "process_par2": 302.52609466666667,
+                "stable_solves": 8
+              },
+              "miplib": {
+                "inputs": 112,
+                "process_par2": 310.8930560000001,
+                "stable_solves": 107
+              },
+              "sal": {
+                "inputs": 8,
+                "process_par2": 0.14486633333333332,
+                "stable_solves": 8
+              },
+              "sc": {
+                "inputs": 102,
+                "process_par2": 11.854182333333332,
+                "stable_solves": 102
+              },
+              "tropical-matrix": {
+                "inputs": 110,
+                "process_par2": 131.58819833333328,
+                "stable_solves": 109
+              },
+              "tta_startup": {
+                "inputs": 22,
+                "process_par2": 2.606075333333333,
+                "stable_solves": 22
+              },
+              "uart": {
+                "inputs": 102,
+                "process_par2": 5.8493233333333325,
+                "stable_solves": 102
+              }
+            },
+            "inputs": 1000,
+            "outcomes": {
+              "sat": 1995,
+              "timeout": 66,
+              "unsat": 939
+            },
+            "process_par2": 1401.538061000001,
+            "stable_process_seconds": {
+              "inputs": 978,
+              "max": 14.338491,
+              "p50": 0.08003099999999999,
+              "p90": 2.130055,
+              "p99": 10.163919
+            },
+            "stable_solves": 978
+          },
+          "eager-historical-g1-f0": {
+            "families": {
+              "2017-Heizmann-UltimateInvariantSynthesis": {
+                "inputs": 109,
+                "process_par2": 141.184622,
+                "stable_solves": 107
+              },
+              "2019-ezsmt": {
+                "inputs": 103,
+                "process_par2": 13.320855333333327,
+                "stable_solves": 103
+              },
+              "DTP-Scheduling": {
+                "inputs": 105,
+                "process_par2": 60.537520666666715,
+                "stable_solves": 104
+              },
+              "LassoRanker": {
+                "inputs": 105,
+                "process_par2": 884.5486013333335,
+                "stable_solves": 86
+              },
+              "clock_synchro": {
+                "inputs": 105,
+                "process_par2": 661.430563,
+                "stable_solves": 94
+              },
+              "latendresse": {
+                "inputs": 17,
+                "process_par2": 480.200967,
+                "stable_solves": 1
+              },
+              "miplib": {
+                "inputs": 112,
+                "process_par2": 820.4529376666671,
+                "stable_solves": 92
+              },
+              "sal": {
+                "inputs": 8,
+                "process_par2": 0.7910766666666668,
+                "stable_solves": 8
+              },
+              "sc": {
+                "inputs": 102,
+                "process_par2": 205.88094133333334,
+                "stable_solves": 102
+              },
+              "tropical-matrix": {
+                "inputs": 110,
+                "process_par2": 948.4001849999997,
+                "stable_solves": 91
+              },
+              "tta_startup": {
+                "inputs": 22,
+                "process_par2": 6.315495666666666,
+                "stable_solves": 22
+              },
+              "uart": {
+                "inputs": 102,
+                "process_par2": 107.37486066666665,
+                "stable_solves": 102
+              }
+            },
+            "inputs": 1000,
+            "outcomes": {
+              "sat": 1850,
+              "timeout": 262,
+              "unsat": 888
+            },
+            "process_par2": 4330.438626333328,
+            "stable_process_seconds": {
+              "inputs": 912,
+              "max": 14.687614,
+              "p50": 0.561177,
+              "p90": 6.358719,
+              "p99": 11.576132
+            },
+            "stable_solves": 912
+          },
+          "eager-historical-g1-f1": {
+            "families": {
+              "2017-Heizmann-UltimateInvariantSynthesis": {
+                "inputs": 109,
+                "process_par2": 77.63860800000003,
+                "stable_solves": 109
+              },
+              "2019-ezsmt": {
+                "inputs": 103,
+                "process_par2": 3.405028666666666,
+                "stable_solves": 103
+              },
+              "DTP-Scheduling": {
+                "inputs": 105,
+                "process_par2": 57.500866666666674,
+                "stable_solves": 104
+              },
+              "LassoRanker": {
+                "inputs": 105,
+                "process_par2": 598.1231639999999,
+                "stable_solves": 97
+              },
+              "clock_synchro": {
+                "inputs": 105,
+                "process_par2": 575.8305613333332,
+                "stable_solves": 94
+              },
+              "latendresse": {
+                "inputs": 17,
+                "process_par2": 451.2269023333333,
+                "stable_solves": 2
+              },
+              "miplib": {
+                "inputs": 112,
+                "process_par2": 676.9265243333332,
+                "stable_solves": 93
+              },
+              "sal": {
+                "inputs": 8,
+                "process_par2": 0.14332033333333333,
+                "stable_solves": 8
+              },
+              "sc": {
+                "inputs": 102,
+                "process_par2": 140.3308016666667,
+                "stable_solves": 102
+              },
+              "tropical-matrix": {
+                "inputs": 110,
+                "process_par2": 1300.0814333333335,
+                "stable_solves": 76
+              },
+              "tta_startup": {
+                "inputs": 22,
+                "process_par2": 2.5955806666666663,
+                "stable_solves": 22
+              },
+              "uart": {
+                "inputs": 102,
+                "process_par2": 7.942065999999995,
+                "stable_solves": 102
+              }
+            },
+            "inputs": 1000,
+            "outcomes": {
+              "sat": 1868,
+              "timeout": 262,
+              "unsat": 870
+            },
+            "process_par2": 3891.744857333336,
+            "stable_process_seconds": {
+              "inputs": 912,
+              "max": 14.256012,
+              "p50": 0.14364949999999999,
+              "p90": 4.511337,
+              "p99": 13.02675
+            },
+            "stable_solves": 912
+          },
+          "original-bland-g1-f0": {
+            "families": {
+              "2017-Heizmann-UltimateInvariantSynthesis": {
+                "inputs": 109,
+                "process_par2": 21.63227133333334,
+                "stable_solves": 109
+              },
+              "2019-ezsmt": {
+                "inputs": 103,
+                "process_par2": 3.2389916666666667,
+                "stable_solves": 103
+              },
+              "DTP-Scheduling": {
+                "inputs": 105,
+                "process_par2": 22.698594666666683,
+                "stable_solves": 105
+              },
+              "LassoRanker": {
+                "inputs": 105,
+                "process_par2": 305.0391166666666,
+                "stable_solves": 103
+              },
+              "clock_synchro": {
+                "inputs": 105,
+                "process_par2": 190.71279400000006,
+                "stable_solves": 103
+              },
+              "latendresse": {
+                "inputs": 17,
+                "process_par2": 510,
+                "stable_solves": 0
+              },
+              "miplib": {
+                "inputs": 112,
+                "process_par2": 654.9934056666666,
+                "stable_solves": 92
+              },
+              "sal": {
+                "inputs": 8,
+                "process_par2": 0.15032733333333334,
+                "stable_solves": 8
+              },
+              "sc": {
+                "inputs": 102,
+                "process_par2": 8.013158999999998,
+                "stable_solves": 102
+              },
+              "tropical-matrix": {
+                "inputs": 110,
+                "process_par2": 398.9896106666667,
+                "stable_solves": 105
+              },
+              "tta_startup": {
+                "inputs": 22,
+                "process_par2": 2.566515666666667,
+                "stable_solves": 22
+              },
+              "uart": {
+                "inputs": 102,
+                "process_par2": 5.923541666666667,
+                "stable_solves": 102
+              }
+            },
+            "inputs": 1000,
+            "outcomes": {
+              "sat": 1926,
+              "timeout": 138,
+              "unsat": 936
+            },
+            "process_par2": 2123.9583283333363,
+            "stable_process_seconds": {
+              "inputs": 954,
+              "max": 13.4122,
+              "p50": 0.070343,
+              "p90": 2.350227,
+              "p99": 9.749471
+            },
+            "stable_solves": 954
+          },
+          "original-bland-g1-f1": {
+            "families": {
+              "2017-Heizmann-UltimateInvariantSynthesis": {
+                "inputs": 109,
+                "process_par2": 21.708429666666667,
+                "stable_solves": 109
+              },
+              "2019-ezsmt": {
+                "inputs": 103,
+                "process_par2": 3.091117666666667,
+                "stable_solves": 103
+              },
+              "DTP-Scheduling": {
+                "inputs": 105,
+                "process_par2": 22.659203333333338,
+                "stable_solves": 105
+              },
+              "LassoRanker": {
+                "inputs": 105,
+                "process_par2": 303.4982263333334,
+                "stable_solves": 103
+              },
+              "clock_synchro": {
+                "inputs": 105,
+                "process_par2": 64.82742633333334,
+                "stable_solves": 105
+              },
+              "latendresse": {
+                "inputs": 17,
+                "process_par2": 289.7183846666667,
+                "stable_solves": 8
+              },
+              "miplib": {
+                "inputs": 112,
+                "process_par2": 636.0618843333334,
+                "stable_solves": 93
+              },
+              "sal": {
+                "inputs": 8,
+                "process_par2": 0.141016,
+                "stable_solves": 8
+              },
+              "sc": {
+                "inputs": 102,
+                "process_par2": 9.882997333333336,
+                "stable_solves": 102
+              },
+              "tropical-matrix": {
+                "inputs": 110,
+                "process_par2": 73.12243000000002,
+                "stable_solves": 110
+              },
+              "tta_startup": {
+                "inputs": 22,
+                "process_par2": 2.575349333333333,
+                "stable_solves": 22
+              },
+              "uart": {
+                "inputs": 102,
+                "process_par2": 5.632455333333335,
+                "stable_solves": 102
+              }
+            },
+            "inputs": 1000,
+            "outcomes": {
+              "sat": 1956,
+              "timeout": 90,
+              "unsat": 954
+            },
+            "process_par2": 1432.9189203333362,
+            "stable_process_seconds": {
+              "inputs": 970,
+              "max": 13.098852,
+              "p50": 0.07447899999999999,
+              "p90": 1.608227,
+              "p99": 7.702145
+            },
+            "stable_solves": 970
+          },
+          "original-combined-g1-f0": {
+            "families": {
+              "2017-Heizmann-UltimateInvariantSynthesis": {
+                "inputs": 109,
+                "process_par2": 23.960183666666662,
+                "stable_solves": 109
+              },
+              "2019-ezsmt": {
+                "inputs": 103,
+                "process_par2": 3.355594666666667,
+                "stable_solves": 103
+              },
+              "DTP-Scheduling": {
+                "inputs": 105,
+                "process_par2": 27.294960666666682,
+                "stable_solves": 105
+              },
+              "LassoRanker": {
+                "inputs": 105,
+                "process_par2": 320.86984899999993,
+                "stable_solves": 103
+              },
+              "clock_synchro": {
+                "inputs": 105,
+                "process_par2": 256.13733366666673,
+                "stable_solves": 102
+              },
+              "latendresse": {
+                "inputs": 17,
+                "process_par2": 510,
+                "stable_solves": 0
+              },
+              "miplib": {
+                "inputs": 112,
+                "process_par2": 607.6976376666665,
+                "stable_solves": 96
+              },
+              "sal": {
+                "inputs": 8,
+                "process_par2": 0.17283833333333332,
+                "stable_solves": 8
+              },
+              "sc": {
+                "inputs": 102,
+                "process_par2": 11.850753999999997,
+                "stable_solves": 102
+              },
+              "tropical-matrix": {
+                "inputs": 110,
+                "process_par2": 673.2573133333335,
+                "stable_solves": 96
+              },
+              "tta_startup": {
+                "inputs": 22,
+                "process_par2": 2.61964,
+                "stable_solves": 22
+              },
+              "uart": {
+                "inputs": 102,
+                "process_par2": 7.4132533333333335,
+                "stable_solves": 102
+              }
+            },
+            "inputs": 1000,
+            "outcomes": {
+              "sat": 1918,
+              "timeout": 155,
+              "unsat": 927
+            },
+            "process_par2": 2444.6293583333286,
+            "stable_process_seconds": {
+              "inputs": 948,
+              "max": 13.918567,
+              "p50": 0.089747,
+              "p90": 2.968247,
+              "p99": 11.171884
+            },
+            "stable_solves": 948
+          },
+          "original-combined-g1-f1": {
+            "families": {
+              "2017-Heizmann-UltimateInvariantSynthesis": {
+                "inputs": 109,
+                "process_par2": 22.91193700000001,
+                "stable_solves": 109
+              },
+              "2019-ezsmt": {
+                "inputs": 103,
+                "process_par2": 3.2139520000000004,
+                "stable_solves": 103
+              },
+              "DTP-Scheduling": {
+                "inputs": 105,
+                "process_par2": 27.15523733333332,
+                "stable_solves": 105
+              },
+              "LassoRanker": {
+                "inputs": 105,
+                "process_par2": 307.61659766666673,
+                "stable_solves": 103
+              },
+              "clock_synchro": {
+                "inputs": 105,
+                "process_par2": 273.1945133333332,
+                "stable_solves": 100
+              },
+              "latendresse": {
+                "inputs": 17,
+                "process_par2": 302.440239,
+                "stable_solves": 8
+              },
+              "miplib": {
+                "inputs": 112,
+                "process_par2": 309.3136963333333,
+                "stable_solves": 107
+              },
+              "sal": {
+                "inputs": 8,
+                "process_par2": 0.14495333333333335,
+                "stable_solves": 8
+              },
+              "sc": {
+                "inputs": 102,
+                "process_par2": 11.690048333333337,
+                "stable_solves": 102
+              },
+              "tropical-matrix": {
+                "inputs": 110,
+                "process_par2": 130.53819266666665,
+                "stable_solves": 109
+              },
+              "tta_startup": {
+                "inputs": 22,
+                "process_par2": 2.582495666666667,
+                "stable_solves": 22
+              },
+              "uart": {
+                "inputs": 102,
+                "process_par2": 5.837167999999999,
+                "stable_solves": 102
+              }
+            },
+            "inputs": 1000,
+            "outcomes": {
+              "sat": 1995,
+              "timeout": 66,
+              "unsat": 939
+            },
+            "process_par2": 1396.639030666667,
+            "stable_process_seconds": {
+              "inputs": 978,
+              "max": 14.129444,
+              "p50": 0.0795825,
+              "p90": 2.108629,
+              "p99": 10.069126
+            },
+            "stable_solves": 978
+          },
+          "original-dantzig-g1-f0": {
+            "families": {
+              "2017-Heizmann-UltimateInvariantSynthesis": {
+                "inputs": 109,
+                "process_par2": 21.795731666666665,
+                "stable_solves": 109
+              },
+              "2019-ezsmt": {
+                "inputs": 103,
+                "process_par2": 3.092517000000001,
+                "stable_solves": 103
+              },
+              "DTP-Scheduling": {
+                "inputs": 105,
+                "process_par2": 22.055533333333322,
+                "stable_solves": 105
+              },
+              "LassoRanker": {
+                "inputs": 105,
+                "process_par2": 304.7263470000001,
+                "stable_solves": 103
+              },
+              "clock_synchro": {
+                "inputs": 105,
+                "process_par2": 21.866152333333343,
+                "stable_solves": 105
+              },
+              "latendresse": {
+                "inputs": 17,
+                "process_par2": 510,
+                "stable_solves": 0
+              },
+              "miplib": {
+                "inputs": 112,
+                "process_par2": 487.584498,
+                "stable_solves": 99
+              },
+              "sal": {
+                "inputs": 8,
+                "process_par2": 0.14382266666666665,
+                "stable_solves": 8
+              },
+              "sc": {
+                "inputs": 102,
+                "process_par2": 8.03492,
+                "stable_solves": 102
+              },
+              "tropical-matrix": {
+                "inputs": 110,
+                "process_par2": 140.8690813333333,
+                "stable_solves": 110
+              },
+              "tta_startup": {
+                "inputs": 22,
+                "process_par2": 2.5665159999999996,
+                "stable_solves": 22
+              },
+              "uart": {
+                "inputs": 102,
+                "process_par2": 5.917644666666663,
+                "stable_solves": 102
+              }
+            },
+            "inputs": 1000,
+            "outcomes": {
+              "sat": 1953,
+              "timeout": 96,
+              "unsat": 951
+            },
+            "process_par2": 1528.6527640000006,
+            "stable_process_seconds": {
+              "inputs": 968,
+              "max": 14.164071,
+              "p50": 0.059161,
+              "p90": 1.433613,
+              "p99": 11.162184
+            },
+            "stable_solves": 968
+          },
+          "original-dantzig-g1-f1": {
+            "families": {
+              "2017-Heizmann-UltimateInvariantSynthesis": {
+                "inputs": 109,
+                "process_par2": 21.767368666666673,
+                "stable_solves": 109
+              },
+              "2019-ezsmt": {
+                "inputs": 103,
+                "process_par2": 3.0494563333333327,
+                "stable_solves": 103
+              },
+              "DTP-Scheduling": {
+                "inputs": 105,
+                "process_par2": 22.045765999999993,
+                "stable_solves": 105
+              },
+              "LassoRanker": {
+                "inputs": 105,
+                "process_par2": 303.9471563333334,
+                "stable_solves": 103
+              },
+              "clock_synchro": {
+                "inputs": 105,
+                "process_par2": 8.618620999999997,
+                "stable_solves": 105
+              },
+              "latendresse": {
+                "inputs": 17,
+                "process_par2": 240.988896,
+                "stable_solves": 10
+              },
+              "miplib": {
+                "inputs": 112,
+                "process_par2": 201.17360100000013,
+                "stable_solves": 112
+              },
+              "sal": {
+                "inputs": 8,
+                "process_par2": 0.14052366666666666,
+                "stable_solves": 8
+              },
+              "sc": {
+                "inputs": 102,
+                "process_par2": 6.287210999999999,
+                "stable_solves": 102
+              },
+              "tropical-matrix": {
+                "inputs": 110,
+                "process_par2": 49.03975333333331,
+                "stable_solves": 110
+              },
+              "tta_startup": {
+                "inputs": 22,
+                "process_par2": 2.569519333333333,
+                "stable_solves": 22
+              },
+              "uart": {
+                "inputs": 102,
+                "process_par2": 5.527711333333332,
+                "stable_solves": 102
+              }
+            },
+            "inputs": 1000,
+            "outcomes": {
+              "sat": 2013,
+              "timeout": 27,
+              "unsat": 960
+            },
+            "process_par2": 865.1555840000013,
+            "stable_process_seconds": {
+              "inputs": 991,
+              "max": 14.343394,
+              "p50": 0.058452,
+              "p90": 1.136666,
+              "p99": 11.1457
+            },
+            "stable_solves": 991
+          },
+          "original-historical-g1-f0": {
+            "families": {
+              "2017-Heizmann-UltimateInvariantSynthesis": {
+                "inputs": 109,
+                "process_par2": 140.57099700000003,
+                "stable_solves": 107
+              },
+              "2019-ezsmt": {
+                "inputs": 103,
+                "process_par2": 13.239801999999997,
+                "stable_solves": 103
+              },
+              "DTP-Scheduling": {
+                "inputs": 105,
+                "process_par2": 55.136488666666665,
+                "stable_solves": 105
+              },
+              "LassoRanker": {
+                "inputs": 105,
+                "process_par2": 882.3753526666666,
+                "stable_solves": 86
+              },
+              "clock_synchro": {
+                "inputs": 105,
+                "process_par2": 659.8813593333334,
+                "stable_solves": 94
+              },
+              "latendresse": {
+                "inputs": 17,
+                "process_par2": 480.19674433333336,
+                "stable_solves": 1
+              },
+              "miplib": {
+                "inputs": 112,
+                "process_par2": 820.2932723333337,
+                "stable_solves": 92
+              },
+              "sal": {
+                "inputs": 8,
+                "process_par2": 0.7858353333333333,
+                "stable_solves": 8
+              },
+              "sc": {
+                "inputs": 102,
+                "process_par2": 203.6898933333334,
+                "stable_solves": 102
+              },
+              "tropical-matrix": {
+                "inputs": 110,
+                "process_par2": 946.9024316666665,
+                "stable_solves": 91
+              },
+              "tta_startup": {
+                "inputs": 22,
+                "process_par2": 6.254560333333333,
+                "stable_solves": 22
+              },
+              "uart": {
+                "inputs": 102,
+                "process_par2": 106.39314499999998,
+                "stable_solves": 102
+              }
+            },
+            "inputs": 1000,
+            "outcomes": {
+              "sat": 1851,
+              "timeout": 261,
+              "unsat": 888
+            },
+            "process_par2": 4315.719882000008,
+            "stable_process_seconds": {
+              "inputs": 913,
+              "max": 14.722206,
+              "p50": 0.563749,
+              "p90": 6.395523,
+              "p99": 12.041207
+            },
+            "stable_solves": 913
+          },
+          "original-historical-g1-f1": {
+            "families": {
+              "2017-Heizmann-UltimateInvariantSynthesis": {
+                "inputs": 109,
+                "process_par2": 77.15591666666671,
+                "stable_solves": 109
+              },
+              "2019-ezsmt": {
+                "inputs": 103,
+                "process_par2": 3.388640333333334,
+                "stable_solves": 103
+              },
+              "DTP-Scheduling": {
+                "inputs": 105,
+                "process_par2": 52.053711333333325,
+                "stable_solves": 105
+              },
+              "LassoRanker": {
+                "inputs": 105,
+                "process_par2": 595.5325503333333,
+                "stable_solves": 97
+              },
+              "clock_synchro": {
+                "inputs": 105,
+                "process_par2": 574.4539956666667,
+                "stable_solves": 94
+              },
+              "latendresse": {
+                "inputs": 17,
+                "process_par2": 451.214965,
+                "stable_solves": 2
+              },
+              "miplib": {
+                "inputs": 112,
+                "process_par2": 676.6123503333334,
+                "stable_solves": 93
+              },
+              "sal": {
+                "inputs": 8,
+                "process_par2": 0.14336466666666664,
+                "stable_solves": 8
+              },
+              "sc": {
+                "inputs": 102,
+                "process_par2": 139.37779699999996,
+                "stable_solves": 102
+              },
+              "tropical-matrix": {
+                "inputs": 110,
+                "process_par2": 1298.5611913333337,
+                "stable_solves": 76
+              },
+              "tta_startup": {
+                "inputs": 22,
+                "process_par2": 2.5827736666666663,
+                "stable_solves": 22
+              },
+              "uart": {
+                "inputs": 102,
+                "process_par2": 7.917708333333335,
+                "stable_solves": 102
+              }
+            },
+            "inputs": 1000,
+            "outcomes": {
+              "sat": 1869,
+              "timeout": 261,
+              "unsat": 870
+            },
+            "process_par2": 3878.9949646666637,
+            "stable_process_seconds": {
+              "inputs": 913,
+              "max": 14.611141,
+              "p50": 0.142589,
+              "p90": 4.51828,
+              "p99": 13.032447
+            },
+            "stable_solves": 913
+          },
+          "original-sparse-g1-f0": {
+            "families": {
+              "2017-Heizmann-UltimateInvariantSynthesis": {
+                "inputs": 109,
+                "process_par2": 21.180010000000006,
+                "stable_solves": 109
+              },
+              "2019-ezsmt": {
+                "inputs": 103,
+                "process_par2": 3.229946666666666,
+                "stable_solves": 103
+              },
+              "DTP-Scheduling": {
+                "inputs": 105,
+                "process_par2": 23.22101233333332,
+                "stable_solves": 105
+              },
+              "LassoRanker": {
+                "inputs": 105,
+                "process_par2": 302.8187980000001,
+                "stable_solves": 103
+              },
+              "clock_synchro": {
+                "inputs": 105,
+                "process_par2": 20.97507566666667,
+                "stable_solves": 105
+              },
+              "latendresse": {
+                "inputs": 17,
+                "process_par2": 108.66014333333331,
+                "stable_solves": 15
+              },
+              "miplib": {
+                "inputs": 112,
+                "process_par2": 9.61480766666667,
+                "stable_solves": 112
+              },
+              "sal": {
+                "inputs": 8,
+                "process_par2": 0.138903,
+                "stable_solves": 8
+              },
+              "sc": {
+                "inputs": 102,
+                "process_par2": 5.884370666666668,
+                "stable_solves": 102
+              },
+              "tropical-matrix": {
+                "inputs": 110,
+                "process_par2": 35.76592866666665,
+                "stable_solves": 110
+              },
+              "tta_startup": {
+                "inputs": 22,
+                "process_par2": 2.561859,
+                "stable_solves": 22
+              },
+              "uart": {
+                "inputs": 102,
+                "process_par2": 5.426082666666667,
+                "stable_solves": 102
+              }
+            },
+            "inputs": 1000,
+            "outcomes": {
+              "sat": 2028,
+              "timeout": 12,
+              "unsat": 960
+            },
+            "process_par2": 539.4769376666666,
+            "stable_process_seconds": {
+              "inputs": 996,
+              "max": 13.001261,
+              "p50": 0.0574975,
+              "p90": 0.642793,
+              "p99": 8.431836
+            },
+            "stable_solves": 996
+          },
+          "original-sparse-g1-f1": {
+            "families": {
+              "2017-Heizmann-UltimateInvariantSynthesis": {
+                "inputs": 109,
+                "process_par2": 21.22685233333334,
+                "stable_solves": 109
+              },
+              "2019-ezsmt": {
+                "inputs": 103,
+                "process_par2": 3.223621666666667,
+                "stable_solves": 103
+              },
+              "DTP-Scheduling": {
+                "inputs": 105,
+                "process_par2": 23.190691333333326,
+                "stable_solves": 105
+              },
+              "LassoRanker": {
+                "inputs": 105,
+                "process_par2": 302.9293083333334,
+                "stable_solves": 103
+              },
+              "clock_synchro": {
+                "inputs": 105,
+                "process_par2": 17.925583999999994,
+                "stable_solves": 105
+              },
+              "latendresse": {
+                "inputs": 17,
+                "process_par2": 88.24844533333332,
+                "stable_solves": 15
+              },
+              "miplib": {
+                "inputs": 112,
+                "process_par2": 19.313934333333336,
+                "stable_solves": 112
+              },
+              "sal": {
+                "inputs": 8,
+                "process_par2": 0.13984,
+                "stable_solves": 8
+              },
+              "sc": {
+                "inputs": 102,
+                "process_par2": 6.355218333333331,
+                "stable_solves": 102
+              },
+              "tropical-matrix": {
+                "inputs": 110,
+                "process_par2": 34.489801,
+                "stable_solves": 110
+              },
+              "tta_startup": {
+                "inputs": 22,
+                "process_par2": 2.568791,
+                "stable_solves": 22
+              },
+              "uart": {
+                "inputs": 102,
+                "process_par2": 5.42993166666667,
+                "stable_solves": 102
+              }
+            },
+            "inputs": 1000,
+            "outcomes": {
+              "sat": 2028,
+              "timeout": 12,
+              "unsat": 960
+            },
+            "process_par2": 525.0420193333337,
+            "stable_process_seconds": {
+              "inputs": 996,
+              "max": 13.0739,
+              "p50": 0.057207999999999995,
+              "p90": 0.871859,
+              "p99": 7.768241
+            },
+            "stable_solves": 996
+          },
+          "suspended-combined-g1-f0": {
+            "families": {
+              "2017-Heizmann-UltimateInvariantSynthesis": {
+                "inputs": 109,
+                "process_par2": 23.074353333333317,
+                "stable_solves": 109
+              },
+              "2019-ezsmt": {
+                "inputs": 103,
+                "process_par2": 3.2958236666666663,
+                "stable_solves": 103
+              },
+              "DTP-Scheduling": {
+                "inputs": 105,
+                "process_par2": 27.110674999999997,
+                "stable_solves": 105
+              },
+              "LassoRanker": {
+                "inputs": 105,
+                "process_par2": 312.49132433333324,
+                "stable_solves": 103
+              },
+              "clock_synchro": {
+                "inputs": 105,
+                "process_par2": 205.79805333333326,
+                "stable_solves": 102
+              },
+              "latendresse": {
+                "inputs": 17,
+                "process_par2": 510,
+                "stable_solves": 0
+              },
+              "miplib": {
+                "inputs": 112,
+                "process_par2": 477.30729266666657,
+                "stable_solves": 100
+              },
+              "sal": {
+                "inputs": 8,
+                "process_par2": 0.16053333333333333,
+                "stable_solves": 8
+              },
+              "sc": {
+                "inputs": 102,
+                "process_par2": 8.838655000000001,
+                "stable_solves": 102
+              },
+              "tropical-matrix": {
+                "inputs": 110,
+                "process_par2": 434.7480806666667,
+                "stable_solves": 102
+              },
+              "tta_startup": {
+                "inputs": 22,
+                "process_par2": 2.608828333333333,
+                "stable_solves": 22
+              },
+              "uart": {
+                "inputs": 102,
+                "process_par2": 6.783960666666667,
+                "stable_solves": 102
+              }
+            },
+            "inputs": 1000,
+            "outcomes": {
+              "sat": 1935,
+              "timeout": 126,
+              "unsat": 939
+            },
+            "process_par2": 2012.2175803333334,
+            "stable_process_seconds": {
+              "inputs": 958,
+              "max": 13.714018,
+              "p50": 0.0819345,
+              "p90": 2.373423,
+              "p99": 9.856913
+            },
+            "stable_solves": 958
+          },
+          "suspended-combined-g1-f1": {
+            "families": {
+              "2017-Heizmann-UltimateInvariantSynthesis": {
+                "inputs": 109,
+                "process_par2": 22.539973999999987,
+                "stable_solves": 109
+              },
+              "2019-ezsmt": {
+                "inputs": 103,
+                "process_par2": 3.225936,
+                "stable_solves": 103
+              },
+              "DTP-Scheduling": {
+                "inputs": 105,
+                "process_par2": 27.049321,
+                "stable_solves": 105
+              },
+              "LassoRanker": {
+                "inputs": 105,
+                "process_par2": 307.36767499999996,
+                "stable_solves": 103
+              },
+              "clock_synchro": {
+                "inputs": 105,
+                "process_par2": 225.95421199999998,
+                "stable_solves": 101
+              },
+              "latendresse": {
+                "inputs": 17,
+                "process_par2": 291.15230866666667,
+                "stable_solves": 8
+              },
+              "miplib": {
+                "inputs": 112,
+                "process_par2": 210.91045900000003,
+                "stable_solves": 109
+              },
+              "sal": {
+                "inputs": 8,
+                "process_par2": 0.148221,
+                "stable_solves": 8
+              },
+              "sc": {
+                "inputs": 102,
+                "process_par2": 9.186157666666666,
+                "stable_solves": 102
+              },
+              "tropical-matrix": {
+                "inputs": 110,
+                "process_par2": 82.214426,
+                "stable_solves": 110
+              },
+              "tta_startup": {
+                "inputs": 22,
+                "process_par2": 2.594893999999999,
+                "stable_solves": 22
+              },
+              "uart": {
+                "inputs": 102,
+                "process_par2": 5.830263000000002,
+                "stable_solves": 102
+              }
+            },
+            "inputs": 1000,
+            "outcomes": {
+              "sat": 2001,
+              "timeout": 54,
+              "unsat": 945
+            },
+            "process_par2": 1188.1738473333344,
+            "stable_process_seconds": {
+              "inputs": 982,
+              "max": 13.219416,
+              "p50": 0.0753975,
+              "p90": 2.05865,
+              "p99": 9.368173
+            },
+            "stable_solves": 982
+          },
+          "suspended-historical-g1-f0": {
+            "families": {
+              "2017-Heizmann-UltimateInvariantSynthesis": {
+                "inputs": 109,
+                "process_par2": 140.45641766666665,
+                "stable_solves": 107
+              },
+              "2019-ezsmt": {
+                "inputs": 103,
+                "process_par2": 13.306521666666661,
+                "stable_solves": 103
+              },
+              "DTP-Scheduling": {
+                "inputs": 105,
+                "process_par2": 55.472443,
+                "stable_solves": 105
+              },
+              "LassoRanker": {
+                "inputs": 105,
+                "process_par2": 883.9294769999999,
+                "stable_solves": 86
+              },
+              "clock_synchro": {
+                "inputs": 105,
+                "process_par2": 538.621337,
+                "stable_solves": 99
+              },
+              "latendresse": {
+                "inputs": 17,
+                "process_par2": 480.200413,
+                "stable_solves": 1
+              },
+              "miplib": {
+                "inputs": 112,
+                "process_par2": 788.2265106666666,
+                "stable_solves": 92
+              },
+              "sal": {
+                "inputs": 8,
+                "process_par2": 0.7770290000000001,
+                "stable_solves": 8
+              },
+              "sc": {
+                "inputs": 102,
+                "process_par2": 200.3015966666666,
+                "stable_solves": 102
+              },
+              "tropical-matrix": {
+                "inputs": 110,
+                "process_par2": 673.1021096666668,
+                "stable_solves": 99
+              },
+              "tta_startup": {
+                "inputs": 22,
+                "process_par2": 6.312428333333333,
+                "stable_solves": 22
+              },
+              "uart": {
+                "inputs": 102,
+                "process_par2": 106.86794599999999,
+                "stable_solves": 102
+              }
+            },
+            "inputs": 1000,
+            "outcomes": {
+              "sat": 1869,
+              "timeout": 222,
+              "unsat": 909
+            },
+            "process_par2": 3887.5742296666645,
+            "stable_process_seconds": {
+              "inputs": 926,
+              "max": 14.880187,
+              "p50": 0.5804745,
+              "p90": 5.7926,
+              "p99": 12.439836
+            },
+            "stable_solves": 926
+          },
+          "suspended-historical-g1-f1": {
+            "families": {
+              "2017-Heizmann-UltimateInvariantSynthesis": {
+                "inputs": 109,
+                "process_par2": 77.295241,
+                "stable_solves": 109
+              },
+              "2019-ezsmt": {
+                "inputs": 103,
+                "process_par2": 3.413546333333334,
+                "stable_solves": 103
+              },
+              "DTP-Scheduling": {
+                "inputs": 105,
+                "process_par2": 52.366208,
+                "stable_solves": 105
+              },
+              "LassoRanker": {
+                "inputs": 105,
+                "process_par2": 597.282655,
+                "stable_solves": 97
+              },
+              "clock_synchro": {
+                "inputs": 105,
+                "process_par2": 558.2269980000001,
+                "stable_solves": 94
+              },
+              "latendresse": {
+                "inputs": 17,
+                "process_par2": 451.2262826666667,
+                "stable_solves": 2
+              },
+              "miplib": {
+                "inputs": 112,
+                "process_par2": 643.2443656666667,
+                "stable_solves": 93
+              },
+              "sal": {
+                "inputs": 8,
+                "process_par2": 0.14344366666666666,
+                "stable_solves": 8
+              },
+              "sc": {
+                "inputs": 102,
+                "process_par2": 138.47312799999997,
+                "stable_solves": 102
+              },
+              "tropical-matrix": {
+                "inputs": 110,
+                "process_par2": 1289.8904843333337,
+                "stable_solves": 76
+              },
+              "tta_startup": {
+                "inputs": 22,
+                "process_par2": 2.5991910000000003,
+                "stable_solves": 22
+              },
+              "uart": {
+                "inputs": 102,
+                "process_par2": 7.955727666666667,
+                "stable_solves": 102
+              }
+            },
+            "inputs": 1000,
+            "outcomes": {
+              "sat": 1870,
+              "timeout": 260,
+              "unsat": 870
+            },
+            "process_par2": 3822.117271333333,
+            "stable_process_seconds": {
+              "inputs": 913,
+              "max": 14.750458,
+              "p50": 0.144686,
+              "p90": 4.314725,
+              "p99": 12.824607
+            },
+            "stable_solves": 913
+          }
+        },
+        "primary_comparisons": {
+          "suspended-combined-g1-f0-vs-eager-combined-g1-f0": {
+            "par2_change": {
+              "bootstrap_samples": 2000,
+              "ci95": [
+                -0.6457631337448552,
+                -0.25511753102453083
+              ],
+              "inputs": 1000,
+              "mean_per_input_seconds": -0.4430332646666666,
+              "parents": 460,
+              "seed": 20261102
+            },
+            "process_speedup": {
+              "bootstrap_samples": 2000,
+              "ci95": [
+                1.1556469595849934,
+                1.2225213207294083
+              ],
+              "geomean": 1.1883114379864688,
+              "pairs": 948,
+              "parents": 439,
+              "seed": 20261102
+            },
+            "stable_solve_gains": [
+              "cubes/044413f6ce001681c49644ec4de24cb473048690743a5f6b348c1f24bfc63615.smt2",
+              "cubes/11b4e9a8b8f6025095d4e2356ac6b57ee5689cc76ffa7efa7b235cea2a4a0ac0.smt2",
+              "cubes/30d2fb539c8c166f18549c38520f11d5d721ed2703aba68d894faf2deac1416d.smt2",
+              "cubes/90257399f55a7ed1eac36be554d34f084c40e18bf0e8200f63e909a0d5b676ad.smt2",
+              "cubes/97154ffb1f3d1a00f76eb796661a1b01012b0f39fa72c8fa9416c7db44814180.smt2",
+              "cubes/98b884440d35b4dcf779ae4819d7ae992bb0fd165315dc254c9b2038dc0c7451.smt2",
+              "cubes/c08078021ae4416fd7a4954ce2bab0eddba89eab7f2f0fbbe34bf4db236a1d7f.smt2",
+              "cubes/e90fbbef1570606a3cfed150e27973af6d1bd9325d975e00ddcc2208df0916fb.smt2",
+              "cubes/f2517a86e811c462e24805a3172edf37b34d6c3dde71578c4ba307bad5d89852.smt2",
+              "cubes/fee7d1a3638c9c92da9eb7df1045b1176915f721e1d7c8ad1ee1c8a2566dff45.smt2"
+            ],
+            "stable_solve_losses": []
+          },
+          "suspended-combined-g1-f0-vs-original-combined-g1-f0": {
+            "par2_change": {
+              "bootstrap_samples": 2000,
+              "ci95": [
+                -0.6267278086043356,
+                -0.24910707360226494
+              ],
+              "inputs": 1000,
+              "mean_per_input_seconds": -0.4324117779999999,
+              "parents": 460,
+              "seed": 20261102
+            },
+            "process_speedup": {
+              "bootstrap_samples": 2000,
+              "ci95": [
+                1.1493785652642825,
+                1.2154938133522102
+              ],
+              "geomean": 1.1819440799725138,
+              "pairs": 948,
+              "parents": 439,
+              "seed": 20261102
+            },
+            "stable_solve_gains": [
+              "cubes/044413f6ce001681c49644ec4de24cb473048690743a5f6b348c1f24bfc63615.smt2",
+              "cubes/11b4e9a8b8f6025095d4e2356ac6b57ee5689cc76ffa7efa7b235cea2a4a0ac0.smt2",
+              "cubes/30d2fb539c8c166f18549c38520f11d5d721ed2703aba68d894faf2deac1416d.smt2",
+              "cubes/90257399f55a7ed1eac36be554d34f084c40e18bf0e8200f63e909a0d5b676ad.smt2",
+              "cubes/97154ffb1f3d1a00f76eb796661a1b01012b0f39fa72c8fa9416c7db44814180.smt2",
+              "cubes/98b884440d35b4dcf779ae4819d7ae992bb0fd165315dc254c9b2038dc0c7451.smt2",
+              "cubes/c08078021ae4416fd7a4954ce2bab0eddba89eab7f2f0fbbe34bf4db236a1d7f.smt2",
+              "cubes/e90fbbef1570606a3cfed150e27973af6d1bd9325d975e00ddcc2208df0916fb.smt2",
+              "cubes/f2517a86e811c462e24805a3172edf37b34d6c3dde71578c4ba307bad5d89852.smt2",
+              "cubes/fee7d1a3638c9c92da9eb7df1045b1176915f721e1d7c8ad1ee1c8a2566dff45.smt2"
+            ],
+            "stable_solve_losses": []
+          },
+          "suspended-combined-g1-f1-vs-eager-combined-g1-f1": {
+            "par2_change": {
+              "bootstrap_samples": 2000,
+              "ci95": [
+                -0.32533511563241746,
+                -0.12060013962136584
+              ],
+              "inputs": 1000,
+              "mean_per_input_seconds": -0.2133642136666667,
+              "parents": 460,
+              "seed": 20261102
+            },
+            "process_speedup": {
+              "bootstrap_samples": 2000,
+              "ci95": [
+                1.0852593440631926,
+                1.1225681020621032
+              ],
+              "geomean": 1.1039169010083294,
+              "pairs": 978,
+              "parents": 449,
+              "seed": 20261102
+            },
+            "stable_solve_gains": [
+              "cubes/0d6e4ad55b5cedd356b5a6c45f4e5138f28ce50b2ed45ccae7c34dc069a641ba.smt2",
+              "cubes/4540e4215df7a561c2079d0cd1c49597e28cfb4f91587b043172bde7de6f47d4.smt2",
+              "cubes/7b11c509cf81ebfbe49da3c8f8483cd2f0b01282c6e6e33a7b8c979038a6e95a.smt2",
+              "cubes/fee7d1a3638c9c92da9eb7df1045b1176915f721e1d7c8ad1ee1c8a2566dff45.smt2"
+            ],
+            "stable_solve_losses": []
+          },
+          "suspended-historical-g1-f0-vs-eager-historical-g1-f0": {
+            "par2_change": {
+              "bootstrap_samples": 2000,
+              "ci95": [
+                -0.6706064689493116,
+                -0.24302485992732104
+              ],
+              "inputs": 1000,
+              "mean_per_input_seconds": -0.4428643966666666,
+              "parents": 460,
+              "seed": 20261102
+            },
+            "process_speedup": {
+              "bootstrap_samples": 2000,
+              "ci95": [
+                1.0354214871935015,
+                1.0744262314104898
+              ],
+              "geomean": 1.054146772142415,
+              "pairs": 912,
+              "parents": 419,
+              "seed": 20261102
+            },
+            "stable_solve_gains": [
+              "cubes/332b993042b17d276d1fe1631503aa8a6029d14ce6085580e3bfe68491fbbfeb.smt2",
+              "cubes/4d2ca0f1faf86c0590a506200dd2700737c302172f72c72225021231389eb5e2.smt2",
+              "cubes/515b1420c7630de524ec3da0e61edae313df5bf3e604f00910cf97f4ddd85210.smt2",
+              "cubes/52af07e727430198840b0791c135722c0fad3f25c125fe0254d4b9c10a97376d.smt2",
+              "cubes/7b11c509cf81ebfbe49da3c8f8483cd2f0b01282c6e6e33a7b8c979038a6e95a.smt2",
+              "cubes/86fbbe951cf463a37c91f6de876ab7382771227cc7ede952ea4935eb6ba26ee1.smt2",
+              "cubes/90257399f55a7ed1eac36be554d34f084c40e18bf0e8200f63e909a0d5b676ad.smt2",
+              "cubes/97154ffb1f3d1a00f76eb796661a1b01012b0f39fa72c8fa9416c7db44814180.smt2",
+              "cubes/bd476719ea1da6dfad42ec5029399a2c55232c5c2f1e6c9cbfda6b166a01a663.smt2",
+              "cubes/c0bc422f6e80e74ce723f36021f48f46376bd17e97b9a9ac285f4cc2a57594d4.smt2",
+              "cubes/d6a2a20dc173b4bf803b25449927e6c971801dd530e9c37dd143fc432b15ae5f.smt2",
+              "cubes/e79ee0b248442be1de9b2771f13b9257cce7bcac04c5af478af3f619c95dfcb7.smt2",
+              "cubes/fcc17c0acc9ad1a6f3b96ce63cc04c3990061113fcf110c080af2d8358144b46.smt2",
+              "cubes/fee7d1a3638c9c92da9eb7df1045b1176915f721e1d7c8ad1ee1c8a2566dff45.smt2"
+            ],
+            "stable_solve_losses": []
+          },
+          "suspended-historical-g1-f0-vs-original-historical-g1-f0": {
+            "par2_change": {
+              "bootstrap_samples": 2000,
+              "ci95": [
+                -0.6591359210019266,
+                -0.23017971942446022
+              ],
+              "inputs": 1000,
+              "mean_per_input_seconds": -0.4281456523333334,
+              "parents": 460,
+              "seed": 20261102
+            },
+            "process_speedup": {
+              "bootstrap_samples": 2000,
+              "ci95": [
+                1.0294913941981678,
+                1.0675560567510949
+              ],
+              "geomean": 1.0477894478134235,
+              "pairs": 913,
+              "parents": 420,
+              "seed": 20261102
+            },
+            "stable_solve_gains": [
+              "cubes/332b993042b17d276d1fe1631503aa8a6029d14ce6085580e3bfe68491fbbfeb.smt2",
+              "cubes/515b1420c7630de524ec3da0e61edae313df5bf3e604f00910cf97f4ddd85210.smt2",
+              "cubes/52af07e727430198840b0791c135722c0fad3f25c125fe0254d4b9c10a97376d.smt2",
+              "cubes/7b11c509cf81ebfbe49da3c8f8483cd2f0b01282c6e6e33a7b8c979038a6e95a.smt2",
+              "cubes/86fbbe951cf463a37c91f6de876ab7382771227cc7ede952ea4935eb6ba26ee1.smt2",
+              "cubes/90257399f55a7ed1eac36be554d34f084c40e18bf0e8200f63e909a0d5b676ad.smt2",
+              "cubes/97154ffb1f3d1a00f76eb796661a1b01012b0f39fa72c8fa9416c7db44814180.smt2",
+              "cubes/bd476719ea1da6dfad42ec5029399a2c55232c5c2f1e6c9cbfda6b166a01a663.smt2",
+              "cubes/c0bc422f6e80e74ce723f36021f48f46376bd17e97b9a9ac285f4cc2a57594d4.smt2",
+              "cubes/d6a2a20dc173b4bf803b25449927e6c971801dd530e9c37dd143fc432b15ae5f.smt2",
+              "cubes/e79ee0b248442be1de9b2771f13b9257cce7bcac04c5af478af3f619c95dfcb7.smt2",
+              "cubes/fcc17c0acc9ad1a6f3b96ce63cc04c3990061113fcf110c080af2d8358144b46.smt2",
+              "cubes/fee7d1a3638c9c92da9eb7df1045b1176915f721e1d7c8ad1ee1c8a2566dff45.smt2"
+            ],
+            "stable_solve_losses": []
+          },
+          "suspended-historical-g1-f1-vs-eager-historical-g1-f1": {
+            "par2_change": {
+              "bootstrap_samples": 2000,
+              "ci95": [
+                -0.11303543512195119,
+                -0.034339407638888916
+              ],
+              "inputs": 1000,
+              "mean_per_input_seconds": -0.06962758600000003,
+              "parents": 460,
+              "seed": 20261102
+            },
+            "process_speedup": {
+              "bootstrap_samples": 2000,
+              "ci95": [
+                1.0098991329260618,
+                1.025404063565026
+              ],
+              "geomean": 1.016788022057993,
+              "pairs": 912,
+              "parents": 432,
+              "seed": 20261102
+            },
+            "stable_solve_gains": [
+              "cubes/4d2ca0f1faf86c0590a506200dd2700737c302172f72c72225021231389eb5e2.smt2"
+            ],
+            "stable_solve_losses": []
+          }
+        },
+        "decision": "Accept suspended lifecycle(default-on within opt-in SOI):historical production gains13 stable solves vs co-run9a and loses0;parent-bootstrap mean PAR2 change95%CI[-0.659135921,-0.230179719]seconds/input. Both profiles/settings retain corresponding archived/eager stable sets. Preserve historical selector default;combined remains experimental because it loses1 stable historical input fixed-off and2 fixed-on. Global default remains Sparse.",
+        "combined_losses": {
+          "production": [
+            "cubes/fdb4e04e83e390b2edfd2cd5bf9dbe257a35c8a59fba261b6bcdd75a938012fc.smt2"
+          ],
+          "fixed_on": [
+            "cubes/ee2ee1f93bcfb44b80ab1123b5e1e19ed177ca5cc766fb64b3e88367994eb343.smt2",
+            "cubes/fdb4e04e83e390b2edfd2cd5bf9dbe257a35c8a59fba261b6bcdd75a938012fc.smt2"
+          ]
+        },
+        "old_d494_saved_set_check": "Cross-study only(no paired speed claim):new historical retains all915 old production stable inputs(gains11)and same913 fixed-on stable set. Combined still loses1/2 against that original immutable baseline."
+      },
+      "limitations": [
+        "Cold frozen conjunctions do not reproduce warm theory-state/SAT learning or qualify whole-parent SMT performance.",
+        "Full prefix trailing remains;each fallback check retains one full stored-state snapshot until rollback/destruction.",
+        "Model validation is separate from speed and does not certify every UNSAT lemma;focused explanations and reference-answer checks are bounded evidence.",
+        "No selector retuning or post-hoc leave-one-out winner selection;combined remains experimental."
+      ],
+      "documentation_source_cost_review": {
+        "reviewer": "/root/soi_documentation_review",
+        "verdict": "ready;SOIFALLCOST01 resolved",
+        "scope": "Snapshot lifetime/copy cost,expected amortized reconstruction bound,phase counter exclusions and all480 mutation outcomes/raw hash;full timing/model acceptance reviewed separately.",
+        "accepted_hashes_before_final_status_wording": {
+          "soi": "5a57331cf780d74ac31efeb3c2fc0ef330121a20ca256e0d33272a549ae45e12",
+          "statistics": "576ca956461aa2695a904f7b1435e9972c32c095d1ae2a92de95053c434935ab",
+          "mutations": "e2a1716e896ce2f86256a0ea22acb055321db300cd25765e81e8c8a60dff2f77"
+        }
+      },
+      "verification_final": {
+        "normal": "make check on SLURM336783:45 CTest+275Python pass;62 Z3 premise refutations pass;native hash unchanged18b.",
+        "asan": "make asan-test on SLURM335792:45 CTest pass for native source8faa775.",
+        "fuzz": "Fresh6000generated cases+480retained real-seed mutants with classifications above;no hard errors.",
+        "models": "46746/46746 native+direct Dolmen selected SAT timing rows pass;zero missing.",
+        "lint": "make lint and git diff --check pass after final edits;no C++ source changes since qualified8faa775.",
+        "docs": "make docs-check-links passes269pages/34965local links/1172unique Git links/0failures;418external URLs deferred. Navigation-only final heading repair passes incremental docs-site/link check with same totals.",
+        "rendering": [
+          "results/soi-fallback-20261102/final-overall-cdp.png",
+          "results/soi-fallback-20261102/final-comparison-cdp.png",
+          "results/soi-fallback-20261102/final-diagnostic-cdp.png"
+        ],
+        "scheduler": "Primary sacct audit:336029,336030,336031 each1000COMPLETED;336032,336033,339267,336722,336783 eachCOMPLETED.",
+        "code_review": "Whole tracked-file inventory and focused architectural/borrow/mutation/rollback/explanation review;whole130CPPclang-tidy and include baseline disposition above. Pure-class probes showzero incremental objective/cache work and no per-pivot trail growth in suspended suffix."
       }
     },
     {

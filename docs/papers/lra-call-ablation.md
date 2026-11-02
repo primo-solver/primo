@@ -480,6 +480,34 @@ experiments; this 16-configuration matrix does not include them.
 (lra-simplex-overall-current)=
 ## Overall comparison after the SOI improvements
 
+All rows in this fresh table were measured together on the frozen 1,000 inputs,
+with Gaussian elimination on, three repetitions and a 15-second process limit.
+All profiles/repetitions for an input share one SLURM CPU allocation. The
+current binary is `8faa775`; the previous historical SOI control is `9a1efcf`.
+All 46,746 successful SAT timing rows passed separate native model checking
+and direct Dolmen validation. No wrong answer, invalid model or crash was found.
+
+| Policy | Fixed off: stable / 1,000 | Fixed off: PAR2 s | Fixed on: stable / 1,000 | Fixed on: PAR2 s |
+| --- | ---: | ---: | ---: | ---: |
+| Bland | 954 | 2127.307 | 970 | 1434.930 |
+| Dantzig | 968 | 1529.044 | 991 | 864.378 |
+| Sparse (solver default) | 996 | 541.363 | 996 | 526.618 |
+| SOI, previous historical implementation | 913 | 4315.720 | 913 | 3878.995 |
+| SOI, historical with suspended fallback | 926 | 3887.574 | 913 | 3822.117 |
+| SOI, combined with suspended fallback (experimental) | 958 | 2012.218 | 982 | 1188.174 |
+
+The [fresh full report](../coverage/soi-fallback-results-20261102.json) includes
+old/new ordinary controls and eager/suspended SOI arms. The
+{ref}`lifecycle follow-up <soi-fallback-full-results>` gives the mechanism
+comparison, qualification and default decision. Historical selection remains
+the default within opt-in SOI; the combined selector bundle remains experimental
+because it still loses one production-setting historical stable solve. Sparse
+remains the solver default.
+
+### Earlier published overview
+
+The following overview preserves the preceding study's measurements.
+
 This overview brings the four pivot policies and the new combined SOI arm
 into one table. Gaussian elimination is **on** throughout; fixed elimination
 is shown both ways. Stable solves require success in all three repetitions at

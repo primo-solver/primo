@@ -1055,10 +1055,11 @@ conflict derivation. It makes several concrete choices:
 - SOI maintains its objective during bound assertion and restores it on SAT
   rollback. The archived implementation also continued objective maintenance
   and individual assignment/pivot trailing after switching to Bland. The
-  candidate [fallback lifecycle](soi.md#bland-fallback-lifecycle) instead takes
+  qualified [fallback lifecycle](soi.md#bland-fallback-lifecycle) instead takes
   one owned snapshot, suspends this unused bookkeeping during the suffix,
   and rebuilds derived SOI state before returning. Its disabling flag retains
-  the eager reference; qualification and timing acceptance are separate.
+  the eager reference. The {ref}`full lifecycle evaluation <soi-fallback-full-results>`
+  records its correctness gates and performance acceptance.
   Prefix rollback is described in
   [Incrementality and rollback](#incrementality-and-rollback).
 

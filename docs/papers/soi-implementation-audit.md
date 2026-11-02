@@ -301,3 +301,22 @@ record separate measurements and the acceptance decision.
 | SOI-7 | Reconstruct original equations and only selected premises for Z3 | Strict, propagated-premise, multi-row and non-monotone fixtures; not a universal online lemma checker. |
 | SOI-8 | Separate coefficient identity from ordinary assignment invariants; corrected rollback comment | Objective identity tests through update/pivot/pop. Artificial assignment remains intentionally unused. |
 | SOI-9 | Independent Figure 3.6 row-growing arm and explicit boundary decisions | All four minimizer arms independently refuted in fixtures. No inclusion-minimality or generic QuickXplain complexity claim. |
+
+
+### Subsequent Bland lifecycle resolution
+
+Source `8faa775` separately addresses the post-fallback portion of SOI-3.
+{soifallbacksource}`The lifecycle helpers <src/theory/arithmetic/lra_tableau.cpp>`
+save one owned pre-suffix state, detach the artificial objective and suspend
+incremental objective/cache maintenance and individual suffix records. They
+reconstruct derived SOI state before returning. Full prefix records and exact
+rollback remain. This is a separate Primo design with an explicit
+[rollback proof](../implementation/soi.md#bland-fallback-lifecycle), rather than
+an extension of the ordinary bounds-only rollback argument to SOI.
+
+Strict/nested/copy regressions, independently refuted explanations, fresh
+generated cases and retained real-seed mutations qualify the mechanism's
+behavior. Its {ref}`separate evaluation <soi-fallback-full-results>` records
+archived, eager and suspended arms, boundary costs and completed model gates.
+The dated audit and `9a1efcf` resolution table above retain their original
+scope and evidence.

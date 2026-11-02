@@ -126,7 +126,12 @@ The optional linear-maintenance arm merges sorted rows, changes occurrence
 links only when support changes, and reuses event coefficients. Convexity
 allows stopping once the forward slope is nonnegative, after a complete event
 group. Conflict preference takes priority, so pruning cannot skip an unseen
-preferred conflict. These optimizations preserve full objective trailing;
+preferred conflict. These optimizations preserve full objective trailing in
+the SOI prefix. The later Primo-specific
+[fallback lifecycle](../implementation/soi.md#bland-fallback-lifecycle) suspends
+objective maintenance and individual undo records during Bland repair, using
+one owned snapshot and boundary reconstruction. It has its own proof and
+{ref}`evaluation <soi-fallback-full-results>`; it is not a thesis mechanism.
 Primo does not claim the thesis's complete linked-matrix representation.
 
 ## FMCAD §V-B and thesis §3.3.5: multi-row explanations

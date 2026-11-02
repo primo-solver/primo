@@ -154,7 +154,7 @@ and {soimaintsource}`the implementation <src/theory/arithmetic/lra_tableau.cpp>`
 
 ## SOI Bland fallback lifecycle
 
-`--lra-soi-suspend-on-fallback` (candidate default on) snapshots the tableau
+`--lra-soi-suspend-on-fallback` (default on within opt-in SOI) snapshots the tableau
 once before an SOI check's first Bland suffix pivot, disables the artificial
 objective/activity hooks and individual suffix undo records, then rebuilds SOI
 state before returning. `--no-lra-soi-suspend-on-fallback` retains the eager
