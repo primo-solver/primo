@@ -35,6 +35,9 @@ class PairedSummaryTests(unittest.TestCase):
             shard.mkdir(parents=True)
             meta = {
                 "complete": True,
+                "host": "test-host",
+                "cpu_model": "test-cpu",
+                "affinity": [0],
                 "shards": 1,
                 "shard": 0,
                 "plan_sha256": module.digest(root / "plan.json"),
@@ -79,6 +82,17 @@ class PairedSummaryTests(unittest.TestCase):
                     }
                 )
             report = module.summarize([root], historical, ["baseline"])
+            self.assertEqual(
+                report["timing_machines"],
+                [
+                    {
+                        "host": "test-host",
+                        "cpu_model": "test-cpu",
+                        "affinity_logical_cpus": 1,
+                        "shards": 1,
+                    }
+                ],
+            )
             self.assertEqual(
                 report["comparisons"]["candidate-vs-baseline"]["stable_solve_losses"],
                 ["case.smt2"],
