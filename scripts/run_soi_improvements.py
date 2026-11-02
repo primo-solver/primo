@@ -9,6 +9,7 @@ turns on phase clocks. Profiles are a separately identified measurement.
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 from pathlib import Path
 
@@ -18,13 +19,88 @@ from bench_qf_uf_full import run_solver
 from benchmark_model_replay import digest, write_json
 
 
+def binary_paths(args, plan):
+    if "binaries" not in plan:
+        return {"candidate": args.solver}
+    if not getattr(args, "binary_map", None):
+        raise ValueError("multi-binary plan requires --binary-map")
+    paths = {
+        key: Path(value).resolve()
+        for key, value in json.loads(args.binary_map.read_text()).items()
+    }
+    if set(paths) != set(plan["binaries"]):
+        raise ValueError("binary map differs from frozen registry")
+    for key, path in paths.items():
+        if digest(path) != plan["binaries"][key]["sha256"]:
+            raise ValueError(f"binary identity mismatch: {key}")
+    return paths
+
+
+def replay_models(args, plan):
+    paths = binary_paths(args, plan)
+    if "binaries" not in plan:
+        return base.models(args, plan)
+    parent = args.out / "timing" / f"shard-{args.shard}"
+    original = json.loads((parent / "metadata.json").read_text())
+    if not original["complete"] or original["plan_sha256"] != digest(args.plan):
+        raise ValueError("model parent is incomplete or changed")
+    rows = base.read_rows(parent / "rows.jsonl")
+    # Derive non-timing selection artifacts per binary. Original timings and
+    # identities remain immutable. The established model checker then sees
+    # exactly the binary/profile/input identity that produced each selected row.
+    for binary, path in paths.items():
+        configs = [
+            cfg
+            for cfg in plan["configurations"]
+            if cfg.get("binary", "candidate") == binary
+        ]
+        chosen = {cfg["id"] for cfg in configs}
+        subset = [row for row in rows if row["configuration"] in chosen]
+        if any(
+            row.get("binary") != binary or row["command"][0] != str(path)
+            for row in subset
+        ):
+            raise ValueError("selected model row has the wrong binary identity")
+        child = copy.copy(args)
+        child.out = args.out / "model-selections" / binary
+        child.out.mkdir(parents=True, exist_ok=True)
+        child.plan = child.out / f"plan-{args.shard}.json"
+        child.solver = path
+        child_plan = copy.deepcopy(plan)
+        child_plan.update(
+            configurations=configs,
+            solver_sha256=plan["binaries"][binary]["sha256"],
+            solver_source=plan["binaries"][binary]["source"],
+        )
+        write_json(child.plan, child_plan)
+        target = child.out / "timing" / f"shard-{args.shard}"
+        target.mkdir(parents=True, exist_ok=False)
+        metadata = base.metadata(child, child_plan)
+        metadata.update(
+            complete=True,
+            rows=len(subset),
+            derived_selection=True,
+            parent_plan_sha256=digest(args.plan),
+            parent_metadata_sha256=digest(parent / "metadata.json"),
+        )
+        metadata["workflow_sha256"][Path(__file__).name] = digest(Path(__file__))
+        write_json(target / "metadata.json", metadata)
+        (target / "rows.jsonl").write_text(
+            "".join(json.dumps(row) + "\n" for row in subset)
+        )
+        base.models(child, child_plan)
+
+
 def measure(args, plan, names):
     out = args.out / args.phase / f"shard-{args.shard}"
     out.mkdir(parents=True, exist_ok=False)
+    paths = binary_paths(args, plan)
     meta = base.metadata(args, plan)
     meta["workflow_sha256"][Path(__file__).name] = digest(Path(__file__))
     if meta["solver"]["sha256"] != plan["solver_sha256"]:
         raise ValueError("binary differs from frozen plan")
+    if "binaries" in plan:
+        meta["binaries"] = {key: base.identity(path) for key, path in paths.items()}
     write_json(out / "metadata.json", meta)
     expected = json.loads((args.corpus / "expected-statuses.json").read_text())
     written = 0
@@ -37,7 +113,8 @@ def measure(args, plan, names):
             checksum = digest(path)
             if checksum != path.stem:
                 raise ValueError("frozen input content differs from filename")
-            command = [str(args.solver), *plan["common_args"], *config["args"]]
+            binary = config.get("binary", "candidate")
+            command = [str(paths[binary]), *plan["common_args"], *config["args"]]
             profile = case / "calls.jsonl"
             if args.phase == "profile":
                 command.extend(["--lra-call-profile", str(profile)])
@@ -66,6 +143,7 @@ def measure(args, plan, names):
                 "input_sha256": checksum,
                 "repeat": repeat,
                 "configuration": config["id"],
+                "binary": binary,
                 "expected": expected[name],
                 "command": [*command, str(path)],
                 "run": run,
@@ -78,6 +156,7 @@ def measure(args, plan, names):
             base.check_run(run, expected[name])
     if digest(args.solver) != meta["solver"]["sha256"]:
         raise ValueError("binary changed during measurement")
+    binary_paths(args, plan)  # recheck every frozen binary after execution
     meta.update(complete=True, finished=base.now(), rows=written)
     write_json(out / "metadata.json", meta)
 
@@ -89,6 +168,7 @@ def main():
     parser.add_argument("--corpus", type=Path, required=True)
     parser.add_argument("--solver", type=Path, required=True)
     parser.add_argument("--dolmen", type=Path)
+    parser.add_argument("--binary-map", type=Path)
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--shards", type=int, default=64)
     parser.add_argument("--shard", type=int, required=True)
@@ -117,7 +197,7 @@ def main():
     if args.phase == "models":
         if not args.dolmen:
             parser.error("models requires --dolmen")
-        base.models(args, plan)
+        replay_models(args, plan)
     else:
         measure(args, plan, names)
 

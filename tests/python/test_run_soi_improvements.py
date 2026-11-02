@@ -55,7 +55,7 @@ class MeasurementContractTests(unittest.TestCase):
                 }
                 commands = []
 
-                def run(command, _path, _timeout):
+                def run(command, _path, _timeout, commands=commands, failed=failed):
                     commands.append(command)
                     if "--lra-call-profile" in command:
                         Path(command[-1]).write_text("diagnostic trace")
@@ -96,3 +96,76 @@ class MeasurementContractTests(unittest.TestCase):
                     json.loads((output / "metadata.json").read_text())["complete"],
                     not failed,
                 )
+
+
+class MultiBinaryReplayTests(unittest.TestCase):
+    def test_model_selection_preserves_each_rows_binary(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            paths = {key: root / key for key in ("candidate", "original")}
+            for key, path in paths.items():
+                path.write_text(key)
+            registry = {
+                key: {"sha256": module.digest(path), "source": key}
+                for key, path in paths.items()
+            }
+            plan = {
+                "binaries": registry,
+                "configurations": [
+                    {"id": "new", "binary": "candidate", "args": []},
+                    {"id": "old", "binary": "original", "args": []},
+                ],
+            }
+            plan_path = root / "plan.json"
+            plan_path.write_text(json.dumps(plan))
+            mapping = root / "binaries.json"
+            mapping.write_text(
+                json.dumps({key: str(path) for key, path in paths.items()})
+            )
+            parent = root / "timing/shard-7"
+            parent.mkdir(parents=True)
+            (parent / "metadata.json").write_text(
+                json.dumps({"complete": True, "plan_sha256": module.digest(plan_path)})
+            )
+            rows = [
+                {
+                    "configuration": cfg["id"],
+                    "binary": cfg["binary"],
+                    "command": [str(paths[cfg["binary"]])],
+                    "key": cfg["id"],
+                }
+                for cfg in plan["configurations"]
+            ]
+            (parent / "rows.jsonl").write_text(
+                "".join(json.dumps(row) + "\n" for row in rows)
+            )
+            args = Namespace(
+                out=root,
+                plan=plan_path,
+                binary_map=mapping,
+                solver=paths["candidate"],
+                shard=7,
+            )
+            seen = []
+
+            def models(child, child_plan):
+                selected = module.base.read_rows(
+                    child.out / "timing/shard-7/rows.jsonl"
+                )
+                self.assertEqual(len(selected), 1)
+                self.assertEqual(selected[0]["command"][0], str(child.solver))
+                self.assertEqual(child.plan.name, "plan-7.json")
+                self.assertEqual(
+                    module.digest(child.solver), child_plan["solver_sha256"]
+                )
+                seen.append(selected[0]["key"])
+
+            with (
+                patch.object(
+                    module.base, "metadata", return_value={"workflow_sha256": {}}
+                ),
+                patch.object(module.base, "models", side_effect=models),
+            ):
+                module.replay_models(args, plan)
+            self.assertEqual(set(seen), {"new", "old"})
+            self.assertEqual(module.base.read_rows(parent / "rows.jsonl"), rows)

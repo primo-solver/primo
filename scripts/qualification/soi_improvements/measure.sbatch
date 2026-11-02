@@ -10,6 +10,9 @@ set -euo pipefail
 [[ -n ${SLURM_JOB_ID:-} ]]
 cd "${PRIMO_WORKDIR:?}"
 extra=()
+if [[ -n ${PRIMO_SOI_BINARY_MAP:-} ]]; then
+  extra+=(--binary-map "$PRIMO_SOI_BINARY_MAP")
+fi
 if [[ ${PRIMO_SOI_PHASE:?} == models ]]; then
   extra+=(--dolmen "${PRIMO_DOLMEN:?}")
 fi
