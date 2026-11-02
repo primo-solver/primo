@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Historical exploratory dispatch. Task0 needs an opfuzz supporting --seed.
+# Use verified_mutations.sbatch for retained-input correctness qualification.
 #SBATCH --job-name=primo-soi-mutations
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=2G
