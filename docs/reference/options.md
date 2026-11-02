@@ -127,3 +127,13 @@ Figure 3.3 error-row conflict checks. Both retain the finite Bland fallback.
 See the [SOI chapter](../implementation/soi.md) for zero-event boundaries and
 {soiselectsource}`the option names <src/cli/option_names.hpp>` and
 {soiselectsource}`CLI wiring <src/main.cpp>` for the public spelling.
+
+
+`--lra-soi-selection=short-column` adds increasing-column-length pricing to the
+reference arm. `--lra-soi-pricing-candidates N` controls positive partial-sort
+chunk size (initially 16), and `--lra-soi-stall-limit N` controls the positive
+consecutive-zero-progress limit before ordinary Bland repair (initially 16).
+All remaining candidates are examined when earlier chunks make no progress.
+These are experimental Primo constants; see [short-column pricing](../implementation/soi.md#experimental-short-column-pricing).
+{soishortsource}`The CLI <src/main.cpp>` and
+{soishortsource}`tuning state <src/theory/arithmetic/lra_tableau.hpp>` own them.

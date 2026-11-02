@@ -455,6 +455,9 @@ int run_main(int argc, char** argv) {
                  "SOI short-column zero-progress steps before Bland (default 16)")
       ->check(CLI::PositiveNumber);
 
+  app.add_flag("--lra-soi-cached-conflicts", solver_options.lra_tuning.soi_cached_conflicts,
+               "Experimental cached row activity and conflict preference for SOI paper selectors");
+
   add_enum_option(app, "--lra-soi-minimize", solver_options.lra_tuning.soi_minimization,
                   primo::cli::kLraSoiMinimizationNames,
                   "How --lra-pivoting-rule soi shrinks a multi-row conflict before turning "

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <optional>
@@ -229,6 +230,7 @@ class LraTableau {
     // partial-sort chunks; selection stops at the first progressing candidate.
     std::size_t soi_pricing_candidates = 16;
     std::size_t soi_stall_limit = 16;
+    bool soi_cached_conflicts = false;
     SoiMinimization soi_minimization = SoiMinimization::QuickXplain;
     SoiMinimizationOrder soi_minimization_order = SoiMinimizationOrder::Id;
   };
@@ -236,7 +238,7 @@ class LraTableau {
   // Intended to be set before solving starts, like set_sparse_leaving():
   // not trailed, so changing it mid-search would alter selection with no
   // record of having done so.
-  void set_tuning(const Tuning& tuning) { tuning_ = tuning; }
+  void set_tuning(const Tuning& tuning);
   const Tuning& tuning() const { return tuning_; }
 
   explicit LraTableau(PivotingRule rule = PivotingRule::Bland) : rule_(rule) {
@@ -725,6 +727,8 @@ class LraTableau {
     std::uint64_t predicate_calls = 0;
     std::uint64_t arithmetic_terms = 0;
     std::uint64_t selected_rows = 0;
+    std::uint64_t activity_updates = 0;
+    std::uint64_t conflict_preferences = 0;
     std::uint64_t selection_ns = 0;
     std::uint64_t objective_ns = 0;
   };
@@ -918,9 +922,30 @@ class LraTableau {
     LraVarId leaving;
     DeltaRational delta;
     DeltaRational objective_delta;
+    bool exposes_conflict = false;
   };
   std::optional<SoiSelection> soi_select() const;
   std::optional<std::vector<sat::Lit>> soi_row_conflict(const std::vector<LraVarId>& candidates);
+
+  // King 2014 Section 2.2.8/Figures 2.11-12, adapted to stored RHS
+  // terms ONLY (no implicit -1 basic diagonal). Indices: h+, h-, g+, g-.
+  using RowActivity = std::array<std::size_t, 4>;
+  struct BoundStatus {
+    bool lower = false;
+    bool upper = false;
+    bool operator==(const BoundStatus&) const = default;
+  };
+  bool activity_enabled() const {
+    return rule_ == PivotingRule::Soi && tuning_.soi_cached_conflicts;
+  }
+  BoundStatus bound_status(LraVarId var) const;
+  void sync_activity_status(LraVarId var);
+  void rebuild_row_activity(LraVarId basic);
+  void rebuild_activity();
+  bool soi_crossing_conflicts(LraVarId entering, LraVarId leaving, const DeltaRational& delta,
+                              const util::Rational& coefficient, bool upper) const;
+  std::vector<RowActivity> row_activity_;
+  std::vector<BoundStatus> bound_status_;
 
   // f_S = sum of d_i*row_i over only `subset` -- shared by
   // build_soi_conflict and soi_subset_still_conflicts.

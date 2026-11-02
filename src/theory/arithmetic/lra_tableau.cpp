@@ -6,6 +6,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <set>
+#include <stdexcept>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
@@ -34,12 +35,96 @@ class SoiPhaseTimer {
 };
 }  // namespace
 
+void LraTableau::set_tuning(const Tuning& tuning) {
+  tuning_ = tuning;
+  if (activity_enabled()) {
+    row_activity_.resize(vars_.size());
+    bound_status_.resize(vars_.size());
+    rebuild_activity();
+  }
+}
+
+LraTableau::BoundStatus LraTableau::bound_status(LraVarId var) const {
+  const auto& state = vars_[var];
+  return BoundStatus{state.lower && state.assignment == state.lower->value,
+                     state.upper && state.assignment == state.upper->value};
+}
+
+void LraTableau::sync_activity_status(LraVarId var) {
+  if (!activity_enabled()) return;
+  const auto status = bound_status(var);
+  const auto old = bound_status_[var];
+  if (status == old) return;
+  bound_status_[var] = status;
+  for (const auto basic : occurs_in_[var]) {
+    if (basic == *f_var_) continue;
+    const auto& row = rows_[basic];
+    const auto entry =
+        std::lower_bound(row.begin(), row.end(), var,
+                         [](const RowEntry& term, LraVarId id) { return term.var < id; });
+    assert(entry != row.end() && entry->var == var);
+    auto& counts = row_activity_[basic];
+    const auto lower = entry->coeff.sign() > 0 ? 0U : 1U;
+    const auto upper = entry->coeff.sign() > 0 ? 3U : 2U;
+    counts[lower] -= static_cast<std::size_t>(old.lower);
+    counts[upper] -= static_cast<std::size_t>(old.upper);
+    counts[lower] += static_cast<std::size_t>(status.lower);
+    counts[upper] += static_cast<std::size_t>(status.upper);
+    ++soi_work_.activity_updates;
+  }
+}
+
+void LraTableau::rebuild_row_activity(LraVarId basic) {
+  if (!activity_enabled() || basic == *f_var_) return;
+  auto& counts = row_activity_[basic];
+  counts.fill(0);
+  for (const auto& entry : rows_[basic]) {
+    const auto status = bound_status(entry.var);
+    counts[entry.coeff.sign() > 0 ? 0U : 1U] += static_cast<std::size_t>(status.lower);
+    counts[entry.coeff.sign() > 0 ? 3U : 2U] += static_cast<std::size_t>(status.upper);
+    ++soi_work_.activity_updates;
+  }
+}
+
+void LraTableau::rebuild_activity() {
+  for (LraVarId var = 0; var < vars_.size(); ++var) bound_status_[var] = bound_status(var);
+  for (LraVarId var = 0; var < vars_.size(); ++var) {
+    if (vars_[var].is_basic) rebuild_row_activity(var);
+  }
+}
+
+// Section 3.3.4: after solving row k for j, the unchanged columns have
+// direction sigma=-lambda_j*sign(a_kj). Remove j's old active contribution,
+// then require every remaining column and newly nonbasic k to block the row.
+bool LraTableau::soi_crossing_conflicts(LraVarId entering, LraVarId leaving,
+                                        const DeltaRational& delta,
+                                        const util::Rational& coefficient, bool upper) const {
+  if (!activity_enabled() || entering == leaving) return false;
+  const auto& state = vars_[entering];
+  const auto value = state.assignment + delta;
+  const int direction = state.lower && value < state.lower->value   ? -1
+                        : state.upper && value > state.upper->value ? 1
+                                                                    : 0;
+  if (direction == 0) return false;
+  const int sigma = -direction * coefficient.sign();
+  if (upper != (sigma > 0) && !is_fixed(leaving)) return false;
+  const auto& counts = row_activity_[leaving];
+  const auto active = sigma > 0 ? counts[0] + counts[2] : counts[1] + counts[3];
+  const auto status = bound_status_[entering];
+  const auto own_active = sigma * coefficient.sign() > 0 ? status.lower : status.upper;
+  return active - static_cast<std::size_t>(own_active) == rows_[leaving].size() - 1;
+}
+
 LraVarId LraTableau::add_variable() {
   const LraVarId id = vars_.size();
   vars_.push_back(VarState{});
   rows_.emplace_back();
   occurs_in_.emplace_back();
   soi_directions_.push_back(0);
+  if (activity_enabled()) {
+    row_activity_.push_back({});
+    bound_status_.push_back({});
+  }
   return id;
 }
 
@@ -65,6 +150,8 @@ void LraTableau::add_row(LraVarId basic_var,
   vars_.at(basic_var).is_basic = true;
   vars_.at(basic_var).assignment = assignment;
   rows_[basic_var] = std::move(row);
+  sync_activity_status(basic_var);
+  rebuild_row_activity(basic_var);
 }
 
 std::optional<std::vector<sat::Lit>> LraTableau::assert_upper(LraVarId var, DeltaRational value,
@@ -78,6 +165,7 @@ std::optional<std::vector<sat::Lit>> LraTableau::assert_upper(LraVarId var, Delt
   }
   trail_.push_back(BoundTrailEntry{var, true, state.upper});
   state.upper = Bound{value, reason};
+  sync_activity_status(var);
   if (!state.is_basic) {
     if (state.assignment > value) {
       update(var, value);
@@ -103,6 +191,7 @@ std::optional<std::vector<sat::Lit>> LraTableau::assert_lower(LraVarId var, Delt
   }
   trail_.push_back(BoundTrailEntry{var, false, state.lower});
   state.lower = Bound{value, reason};
+  sync_activity_status(var);
   if (!state.is_basic) {
     if (state.assignment < value) {
       update(var, value);
@@ -124,6 +213,7 @@ void LraTableau::update(LraVarId nonbasic_var, const DeltaRational& new_value) {
     trail_.push_back(AssignmentTrailEntry{nonbasic_var, state.assignment});
   }
   state.assignment = new_value;
+  sync_activity_status(nonbasic_var);
   // nonbasic_var is, by this function's own contract, never basic --
   // update_violation_status() therefore always erases it here (a no-op if
   // it was never a member). This specifically matters right after
@@ -149,6 +239,7 @@ void LraTableau::update(LraVarId nonbasic_var, const DeltaRational& new_value) {
           trail_.push_back(AssignmentTrailEntry{basic_var, basic_state.assignment});
         }
         basic_state.assignment = basic_state.assignment + delta.scaled(coefficient);
+        sync_activity_status(basic_var);
         // f_var_ is harmless to include here too: it has no bounds, so
         // update_violation_status() always computes "not violated" for it.
         update_violation_status(basic_var);
@@ -344,6 +435,7 @@ void LraTableau::pivot(LraVarId basic_var, LraVarId entering_var) {
       trail_entry.old_other_rows.emplace_back(other_basic, std::move(other_row));
     }
     rows_[other_basic] = std::move(rebuilt);
+    rebuild_row_activity(other_basic);
   }
 
   for (auto& entry : new_entering_row) {
@@ -351,6 +443,7 @@ void LraTableau::pivot(LraVarId basic_var, LraVarId entering_var) {
     occurs_in_[entry.var].push_back(entering_var);
   }
   rows_[entering_var] = std::move(new_entering_row);
+  rebuild_row_activity(entering_var);
 
   if (trail_this_pivot) {
     trail_.push_back(std::move(trail_entry));
@@ -536,6 +629,7 @@ struct SoiBreakPoint {
   DeltaRational delta;
   LraVarId k;
   bool is_upper;
+  util::Rational coefficient;
 };
 }  // namespace
 
@@ -545,6 +639,7 @@ std::optional<LraTableau::SoiSelection> LraTableau::soi_select() const {
   const Row& f_row = rows_.at(*f_var_);
 
   bool have_best = false;
+  bool best_conflict = false;
   int best_sign = 0;
   util::Rational best_abs_score(0);
   util::Rational best_paper_score(0);
@@ -603,7 +698,7 @@ std::optional<LraTableau::SoiSelection> LraTableau::soi_select() const {
         continue;
       const auto delta = bound->value - j_state.assignment;
       if ((delta_positive && delta >= kZero) || (!delta_positive && delta <= kZero)) {
-        points.push_back(SoiBreakPoint{delta, j, upper});
+        points.push_back(SoiBreakPoint{delta, j, upper, util::Rational(1)});
       }
     }
     // Every row k currently referencing j (excluding f_var_ itself, which
@@ -627,13 +722,13 @@ std::optional<LraTableau::SoiSelection> LraTableau::soi_select() const {
       if (k_state.lower.has_value()) {
         const DeltaRational point_delta = (k_state.lower->value - k_state.assignment).scaled(inv);
         if ((delta_positive && point_delta >= kZero) || (!delta_positive && point_delta <= kZero)) {
-          points.push_back(SoiBreakPoint{point_delta, k, false});
+          points.push_back(SoiBreakPoint{point_delta, k, false, coeff});
         }
       }
       if (k_state.upper.has_value()) {
         const DeltaRational point_delta = (k_state.upper->value - k_state.assignment).scaled(inv);
         if ((delta_positive && point_delta >= kZero) || (!delta_positive && point_delta <= kZero)) {
-          points.push_back(SoiBreakPoint{point_delta, k, true});
+          points.push_back(SoiBreakPoint{point_delta, k, true, coeff});
         }
       }
     }
@@ -661,6 +756,7 @@ std::optional<LraTableau::SoiSelection> LraTableau::soi_select() const {
     util::Rational beta = t0j;
     DeltaRational delta_vio = kZero;
     bool have_best_for_j = false;
+    bool best_conflict_for_j = false;
     DeltaRational best_delta_for_j = kZero;
     LraVarId best_k_for_j = j;
     DeltaRational best_delta_vio_for_j = kZero;
@@ -673,17 +769,28 @@ std::optional<LraTableau::SoiSelection> LraTableau::soi_select() const {
       std::size_t group_end = index;
       while (group_end < points.size() && points[group_end].delta == this_delta) {
         const LraVarId k = points[group_end].k;
+        const bool conflict =
+            tuning_.soi_selection != SoiSelectionRule::Historical &&
+            soi_crossing_conflicts(j, k, this_delta, points[group_end].coefficient,
+                                   points[group_end].is_upper);
         const DeltaRational abs_delta = delta_positive ? this_delta : -this_delta;
         if (!have_best_for_j) {
           have_best_for_j = true;
+          best_conflict_for_j = conflict;
           best_delta_for_j = this_delta;
           best_k_for_j = k;
           best_delta_vio_for_j = delta_vio;
         } else {
           const DeltaRational best_abs = delta_positive ? best_delta_for_j : -best_delta_for_j;
-          if (delta_vio < best_delta_vio_for_j ||
+          const bool ordinary_better =
+              delta_vio < best_delta_vio_for_j ||
               (delta_vio == best_delta_vio_for_j && abs_delta < best_abs) ||
-              (delta_vio == best_delta_vio_for_j && abs_delta == best_abs && k < best_k_for_j)) {
+              (delta_vio == best_delta_vio_for_j && abs_delta == best_abs && k < best_k_for_j);
+          const bool conflict_better =
+              abs_delta < best_abs || (abs_delta == best_abs && k < best_k_for_j);
+          if ((conflict && !best_conflict_for_j) ||
+              (conflict == best_conflict_for_j && (conflict ? conflict_better : ordinary_better))) {
+            best_conflict_for_j = conflict;
             best_delta_for_j = this_delta;
             best_k_for_j = k;
             best_delta_vio_for_j = delta_vio;
@@ -727,8 +834,9 @@ std::optional<LraTableau::SoiSelection> LraTableau::soi_select() const {
       continue;
     }
 
-    if (short_column && best_delta_vio_for_j < kZero) {
-      return SoiSelection{j, best_k_for_j, best_delta_for_j, best_delta_vio_for_j};
+    if (short_column && (best_conflict_for_j || best_delta_vio_for_j < kZero)) {
+      return SoiSelection{j, best_k_for_j, best_delta_for_j, best_delta_vio_for_j,
+                          best_conflict_for_j};
     }
     const int sign = best_delta_vio_for_j == kZero ? 0 : (best_delta_vio_for_j < kZero ? -1 : 1);
     const util::Rational abs_score = t0j.sign() < 0 ? -t0j : t0j;
@@ -740,19 +848,26 @@ std::optional<LraTableau::SoiSelection> LraTableau::soi_select() const {
             ? (sign < best_sign || (sign == best_sign && abs_score > best_abs_score) ||
                (sign == best_sign && abs_score == best_abs_score && j < best_j))
             : (paper_score < best_paper_score || (paper_score == best_paper_score && j < best_j));
+    const bool conflict_preferred = best_conflict_for_j && !best_conflict;
+    const bool same_class_preferred =
+        best_conflict_for_j == best_conflict && (best_conflict_for_j ? j < best_j : prefer);
     if (!have_best) {
       have_best = true;
+      best_conflict = best_conflict_for_j;
       best_sign = sign;
       best_abs_score = abs_score;
       best_paper_score = paper_score;
       best_j = j;
-      best_selection = SoiSelection{j, best_k_for_j, best_delta_for_j, best_delta_vio_for_j};
-    } else if (prefer) {
+      best_selection = SoiSelection{j, best_k_for_j, best_delta_for_j, best_delta_vio_for_j,
+                                    best_conflict_for_j};
+    } else if (conflict_preferred || same_class_preferred) {
+      best_conflict = best_conflict_for_j;
       best_sign = sign;
       best_abs_score = abs_score;
       best_paper_score = paper_score;
       best_j = j;
-      best_selection = SoiSelection{j, best_k_for_j, best_delta_for_j, best_delta_vio_for_j};
+      best_selection = SoiSelection{j, best_k_for_j, best_delta_for_j, best_delta_vio_for_j,
+                                    best_conflict_for_j};
     }
   }
 
@@ -1796,7 +1911,15 @@ std::optional<std::vector<sat::Lit>> LraTableau::soi_row_conflict(
   for (const auto var : candidates) {
     if (!vars_[var].is_basic || !violated_vars_.contains(var)) continue;
     const bool too_low = soi_direction(var) < 0;
-    if (select_entering_variable(var, too_low, true) == vars_.size()) {
+    bool blocked = false;
+    if (activity_enabled()) {
+      const auto& counts = row_activity_[var];
+      const auto active = too_low ? counts[1] + counts[3] : counts[0] + counts[2];
+      blocked = active == rows_[var].size();
+    } else {
+      blocked = select_entering_variable(var, too_low, true) == vars_.size();
+    }
+    if (blocked) {
       return build_conflict(var, too_low);
     }
   }
@@ -1892,6 +2015,14 @@ std::optional<std::vector<sat::Lit>> LraTableau::check() {
         update(selection->leaving, target);
       }
       ++pivot_count;
+      if (selection->exposes_conflict) {
+        // Recheck the actual solved row before extracting any explanation.
+        const auto conflict = soi_row_conflict({selection->entering});
+        if (!conflict)
+          throw std::logic_error("SOI cached crossing did not expose its predicted conflict");
+        ++soi_work_.conflict_preferences;
+        return conflict;
+      }
       if (paper) {
         if (auto conflict = soi_row_conflict(affected)) return conflict;
       }
@@ -2045,6 +2176,7 @@ void LraTableau::pop(std::size_t checkpoint) {
   // comment for why a full rebuild here, rather than per-entry patching,
   // is the right tradeoff.
   rebuild_violated_vars();
+  if (activity_enabled()) rebuild_activity();
 }
 
 void LraTableau::undo(const TrailEntry& entry) {

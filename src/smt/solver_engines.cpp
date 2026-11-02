@@ -380,6 +380,7 @@ theory::arithmetic::LraTableau::Tuning lra_tuning_from_options(const LraTuning& 
   }
   result.soi_pricing_candidates = tuning.soi_pricing_candidates;
   result.soi_stall_limit = tuning.soi_stall_limit;
+  result.soi_cached_conflicts = tuning.soi_cached_conflicts;
   result.soi_minimization = lra_soi_minimization_from_options(tuning.soi_minimization);
   result.soi_minimization_order =
       lra_soi_minimization_order_from_options(tuning.soi_minimization_order);
@@ -7457,6 +7458,11 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
                             tableau_.soi_work().selection_ns - soi_before.selection_ns);
       statistics_.increment(util::StatKey::LraSoiObjectiveNs,
                             tableau_.soi_work().objective_ns - soi_before.objective_ns);
+      statistics_.increment(util::StatKey::LraSoiActivityUpdates,
+                            tableau_.soi_work().activity_updates - soi_before.activity_updates);
+      statistics_.increment(
+          util::StatKey::LraSoiConflictPreferences,
+          tableau_.soi_work().conflict_preferences - soi_before.conflict_preferences);
       reported_soi_work_ = tableau_.soi_work();
     }
 
@@ -9055,6 +9061,11 @@ class ComponentLraExecution final {
                             tableau_.soi_work().selection_ns - soi_before.selection_ns);
       statistics_.increment(util::StatKey::LraSoiObjectiveNs,
                             tableau_.soi_work().objective_ns - soi_before.objective_ns);
+      statistics_.increment(util::StatKey::LraSoiActivityUpdates,
+                            tableau_.soi_work().activity_updates - soi_before.activity_updates);
+      statistics_.increment(
+          util::StatKey::LraSoiConflictPreferences,
+          tableau_.soi_work().conflict_preferences - soi_before.conflict_preferences);
       reported_soi_work_ = tableau_.soi_work();
     }
 

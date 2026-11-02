@@ -47,6 +47,9 @@ sphinx:
       callsource:
         - "https://github.com/primo-solver/primo/blob/d4944ebbe6cf202c0485e783655209ba204df71c/%s"
         - "%s"
+      soishortsource:
+        - "https://github.com/primo-solver/primo/blob/0ecd29e/%s"
+        - "%s"
       soiselectsource:
         - "https://github.com/primo-solver/primo/blob/e0e34ff/%s"
         - "%s"

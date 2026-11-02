@@ -22,6 +22,46 @@ using primo::util::Rational;
 namespace primo::theory::arithmetic {
 struct LraTableauTestAccess {
   static auto selection(const LraTableau& tableau) { return tableau.soi_select(); }
+  static void verify_activity(const LraTableau& t) {
+    assert(t.activity_enabled());
+    for (LraVarId k = 0; k < t.variable_count(); ++k) {
+      assert(t.bound_status_[k] == t.bound_status(k));
+      if (!t.is_basic(k) || k == t.f_var_) continue;
+      LraTableau::RowActivity expected{};
+      for (const auto& entry : t.row(k)) {
+        const auto status = t.bound_status(entry.var);
+        expected[entry.coeff.sign() > 0 ? 0U : 1U] += static_cast<std::size_t>(status.lower);
+        expected[entry.coeff.sign() > 0 ? 3U : 2U] += static_cast<std::size_t>(status.upper);
+      }
+      assert(expected == t.row_activity_[k]);
+      for (const auto& entering : t.row(k)) {
+        for (const bool upper : {false, true}) {
+          const auto bound = upper ? t.upper_bound(k) : t.lower_bound(k);
+          if (!bound) continue;
+          const auto delta = (bound->value - t.assignment(k)).scaled(Rational(1) / entering.coeff);
+          const auto new_j = t.assignment(entering.var) + delta;
+          const auto lower_j = t.lower_bound(entering.var);
+          const auto upper_j = t.upper_bound(entering.var);
+          const int direction = lower_j && new_j < lower_j->value   ? -1
+                                : upper_j && new_j > upper_j->value ? 1
+                                                                    : 0;
+          bool slow = direction != 0;
+          const auto blocked = [&](LraVarId var, const Rational& coefficient,
+                                   const DeltaRational& value) {
+            const auto blocker = coefficient.sign() > 0 ? t.lower_bound(var) : t.upper_bound(var);
+            return blocker && value == blocker->value;
+          };
+          slow = slow && blocked(k, Rational(direction) / entering.coeff, bound->value);
+          for (const auto& other : t.row(k)) {
+            if (other.var == entering.var) continue;
+            slow = slow && blocked(other.var, -Rational(direction) * other.coeff / entering.coeff,
+                                   t.assignment(other.var));
+          }
+          assert(slow == t.soi_crossing_conflicts(entering.var, k, delta, entering.coeff, upper));
+        }
+      }
+    }
+  }
 };
 }  // namespace primo::theory::arithmetic
 
@@ -821,6 +861,54 @@ void assert_soi_objective_identity(const LraTableau& tableau) {
   for (const auto& entry : tableau.row(*objective)) expected[entry.var] -= entry.coeff;
   for (const auto& coefficient : expected) assert(coefficient.is_zero());
   assert_tableau_invariants(tableau);
+}
+
+void soi_cached_activity_matches_recomputation_across_operations() {
+  for (const long sign : {-1L, 1L}) {
+    LraTableau t(LraTableau::PivotingRule::Soi);
+    auto tuning = t.tuning();
+    tuning.soi_selection = LraTableau::SoiSelectionRule::Paper;
+    tuning.soi_cached_conflicts = true;
+    t.set_tuning(tuning);
+    const auto x = t.add_variable();
+    const auto y = t.add_variable();
+    const auto b = t.add_variable();
+    const auto c = t.add_variable();
+    t.add_row(b, {{x, Rational(sign * 2)}, {y, Rational(-1)}});
+    t.add_row(c, {{x, Rational(sign)}, {y, Rational(1)}});
+    const auto verify = [&] {
+      primo::theory::arithmetic::LraTableauTestAccess::verify_activity(t);
+    };
+    verify();
+    const auto initial = t.push();
+    assert(!t.assert_lower(y, rat(0), Lit{1}));
+    verify();
+    assert(!t.assert_upper(y, rat(0), Lit{2}));
+    verify();
+    assert(!t.assert_upper(x, rat(1), Lit{3}));
+    verify();
+    assert(!t.assert_lower(x, rat(-1), Lit{4}));
+    verify();
+    assert(!t.assert_lower(b, rat(6), Lit{5}));
+    verify();
+    assert(t.check());
+    verify();
+    assert(t.soi_work().conflict_preferences > 0);
+    assert_soi_objective_identity(t);
+    t.pop(initial);
+    verify();
+    assert_soi_objective_identity(t);
+    const auto second = t.push();
+    assert(!t.assert_lower(x, DeltaRational{Rational(0), Rational(1)}, Lit{6}));
+    verify();
+    assert(!t.assert_upper(c, rat(0), Lit{7}));
+    verify();
+    assert(!t.check());
+    verify();
+    t.pop(second);
+    verify();
+    assert_soi_objective_identity(t);
+  }
 }
 
 void soi_short_column_continues_after_a_nonprogressing_shortlist() {
@@ -2900,6 +2988,7 @@ int main() {
   sparse_matches_bland_on_multi_pivot_scenarios();
   least_violated_leaving_matches_bland_on_multi_pivot_scenarios();
   least_violated_leaving_selects_differently_from_most_violated();
+  soi_cached_activity_matches_recomputation_across_operations();
   soi_short_column_continues_after_a_nonprogressing_shortlist();
   soi_short_column_stall_limit_enters_ordinary_bland_repair();
   soi_paper_zero_progress_uses_smallest_entering_id();

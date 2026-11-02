@@ -203,6 +203,8 @@ constexpr std::array<std::string_view, static_cast<std::size_t>(StatKey::Count)>
     ":lra.soi-predicate-calls"sv,
     ":lra.soi-arithmetic-terms"sv,
     ":lra.soi-selected-rows"sv,
+    ":lra.soi-activity-updates"sv,
+    ":lra.soi-conflict-preferences"sv,
     ":lra.soi-selection-ns"sv,
     ":lra.soi-objective-ns"sv,
 

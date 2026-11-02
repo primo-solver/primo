@@ -172,6 +172,7 @@ struct LraTuning {
   LraSoiSelectionRule soi_selection = LraSoiSelectionRule::Historical;
   std::size_t soi_pricing_candidates = 16;
   std::size_t soi_stall_limit = 16;
+  bool soi_cached_conflicts = false;
   LraSoiMinimization soi_minimization = LraSoiMinimization::QuickXplain;
   LraSoiMinimizationOrder soi_minimization_order = LraSoiMinimizationOrder::Id;
 };

@@ -95,6 +95,33 @@ event can select a no-op; the finite guard covers that boundary too. This is a
 defensive implementation safeguard, and this profile is not presented as an
 unrestricted execution of the paper's algorithm.
 
+## Experimental short-column pricing
+
+`--lra-soi-selection=short-column` retains the reference arm's complete crossing
+walk and row-conflict checks, but considers columns in increasing occurrence
+count, breaking ties by variable ID. It stops at the first candidate with
+negative objective change. A zero-progress candidate cannot stop the search:
+the selector examines the remaining columns before selecting a zero-progress
+step or concluding that the objective is blocked.
+
+{soishortsource}`The selector <src/theory/arithmetic/lra_tableau.cpp>` orders
+columns with partial-sort chunks. `--lra-soi-pricing-candidates` is the chunk
+size, initially 16; it controls sorting work rather than truncating the set of
+eligible columns. A chunk can include ineligible columns, which are skipped
+before crossing calculation. Candidate budgets 4, 16 and 64 are the frozen
+pilot grid. `--lra-soi-stall-limit`, initially 16, counts consecutive steps with
+zero objective change and switches to ordinary Bland repair once the limit
+is reached. Progress resets that count. Stall limits 8, 16 and 32 are the
+frozen grid. The overall finite guard remains active too.
+
+These constants and the partial-sort organization are Primo engineering
+choices, motivated by thesis §3.3.3 / FMCAD §V-D rather than specified by them.
+The budget changes sorting cost; stopping at the first progressing column means
+all three budgets visit the same ordered sequence, apart from time limits.
+The stall limit can change the repair path. Pure tableau regressions exercise
+continuing beyond an unproductive chunk and entering the Bland suffix at a
+one-step stall limit. No tuning result or performance acceptance is claimed yet.
+
 ## Conflict explanations
 
 For a nonempty subset $S\subseteq E$, let $f_S=\sum_{i\in S}d_i b_i$ and
@@ -167,7 +194,7 @@ checklist; no other solver implementation is an implementation source.
 | Figure 3.4: entering and leaving score | `SoiSelection`; zero-score entering tie is by ID | Experimental `paper` arm implemented; historical arm retained |
 | Figure 3.3: error-row conflicts before and after updates | `check`, `build_conflict`; sufficient selected bounds must independently refute | Experimental paper-arm early scans and focused external refutation gate implemented |
 | §3.3.2 / §V-C: termination | `check`; finite prefix then Bland | Defensive fallback retained, with prefix/fallback pivot counters |
-| §3.3.3 / §V-D: short columns, stalled progress | `Tuning`, `soi_select`; exhaust remaining candidates before declaring blocked | Separate profile planned; shortlist/stall constants require pilot qualification |
+| §3.3.3 / §V-D: short columns, stalled progress | `Tuning`, `soi_select`; exhaust remaining candidates before declaring blocked | Experimental short-column arm implemented; chunk/stall constants require pilot qualification |
 | §3.3.4: constant-time breakpoint conflict preference | Tableau-owned activity counts, updated by status/sign changes | Planned; cache must match slow recomputation after rollback |
 | §3.3.5 / §V-B and Figure 3.6 | `restricted_soi_row`, conflict builder and minimizer; nonempty blocked certificate | Builder and historical reducers implemented; row-growing arm planned |
 | Thesis §3.4 / FMCAD §VI | Reproducible process measurements, qualified answers and separate SAT-model validation | Historical audit only; no new performance acceptance yet |
