@@ -3,6 +3,94 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-11-02-soi-paper-audit",
+      "date": "2026-11-02",
+      "kind": "paper-conformance-and-callgrind-audit",
+      "evidence_status": "complete-source-audit-18-native-replays-15-complete-and-3-partial-profiles",
+      "branch": "audit/soi-paper-conformance",
+      "audited_revision": "ba6fd9f",
+      "native_context_commit": "d4944ebbe6cf202c0485e783655209ba204df71c",
+      "native_binary_sha256": "710929c58c18970cf4fccf7eb479fb95bb1410e6b46559433e4af80b55a9eee8",
+      "native_changes": false,
+      "plan": "scripts/qualification/soi_audit/plan.json",
+      "execution": {
+        "environment": "SLURM node-09; six array tasks, one physical CPU and 8GiB each; eight-minute task limit",
+        "jobs": {
+          "profiles": "323130",
+          "checks_setup_failed": "323136",
+          "checks": "323137"
+        },
+        "workspace": "~/primo-lra-call-capture-20261030",
+        "artifacts": "results/soi-audit-20261102",
+        "preflight": "scripts/slurm_prepare_benchmark_workspace.py --check-only --no-sync against clean detached d4944eb worktree; Release/CaDiCaL 3.0.0 verified",
+        "driver_sha256_submitted": "8f890064cff1a2f9e572fe11d8aba1ae992451c84e90f7dd4019f513d7f8314a",
+        "accounting": "All six profile tasks COMPLETED 0:0 (15 seconds to 5m10s); checks323137 COMPLETED 0:0 in one second. Initial checks323136 FAILED127: ctest absent from PATH; no solver test ran in that attempt. Retry directly ran both existing executables.",
+        "profile_submission": "sbatch --partition=compute --nodelist=node-09 --array=0-5%6 --output=$WORKSPACE/logs/soi-audit-%A_%a.log --export=ALL,PRIMO_WORKDIR=$WORKSPACE,PRIMO_SOI_ARTIFACTS=$WORKSPACE/soi-audit-20261102/scripts/qualification/soi_audit,PRIMO_SOI_CORPUS=$WORKSPACE/results/lra-case-study-1000-20261030/selected,PRIMO_SOI_OUT=$WORKSPACE/results/soi-audit-20261102 $ARTIFACTS/profile.sbatch",
+        "checks_submission": "Same partition,node,workspace/output variables; no array; $ARTIFACTS/checks.sbatch",
+        "collection": "scp collected case-*/profiles,annotations,stdout/stderr,metadata plus check outputs; sacct JobID,State,ExitCode,Elapsed,NodeList saved to local results/soi-audit-20261102/accounting.txt. Raw artifacts retained remotely and locally, not tracked.",
+        "driver_sha256_committed": "e83dfa0b1c5e9c8fdc0660ec1a885f4c211aeb0b423b3b54f738398c8c1bf419",
+        "driver_revision_note": "Submitted driver retained remotely at soi-audit-20261102/scripts/qualification/soi_audit/profile.py and locally at results/soi-audit-20261102/executed-profile.py. Committed driver differs only in formatting and replacing nested stream-opening with equivalent multiple-context with; commands,limits,acceptance and configuration logic unchanged."
+      },
+      "method": "Six deliberately selected historical slow inputs, three configurations each: sparse-g1-f0,soi-g1-f0,soi-g1-f1. One native replay and one Callgrind instruction profile per pair. Thirty-second native timeout; ninety-second instrumented timeout; five-second TERM/KILL grace. Instrumented wall times are not benchmark speed evidence.",
+      "papers": [
+        {
+          "url": "https://cvc4.github.io/publications/2013/KBD13.pdf",
+          "sha256": "6f342398bfa091c9b5b287c450f3c3d90ec1331626934cd4e103dbb8b163176a",
+          "sections": "V-A through V-D, VI"
+        },
+        {
+          "url": "https://cs.nyu.edu/media/publications/king_tim.pdf",
+          "sha256": "a33b78c9b7e1d89001100152e2990f1d6a3c6c88264373431302ad2924fe157b",
+          "sections": "3.2,3.3.1-3.3.5,3.4; Figures 3.3,3.4,3.6"
+        }
+      ],
+      "summary": {
+        "native_runs": 18,
+        "native_sat": 12,
+        "native_unsat": 6,
+        "native_timeout": 0,
+        "native_wrong_answer": 0,
+        "native_crash": 0,
+        "native_unknown": 0,
+        "complete_profiles": 15,
+        "partial_profiles": 3,
+        "partial_reason": "All three configurations of case0 reached the90-second instrumentation timeout; excluded from selector cost claims. Their native answers were SAT.",
+        "complete_profile_answers": "15/15 matched frozen labels; pivot/fallback/minimizer counters equal corresponding native replay",
+        "selector_fraction_of_check_g1_f0": [
+          0.8009978969200481,
+          0.5419210750762917,
+          0.7096156948263876,
+          0.5209003297071667,
+          0.7701990382442071
+        ],
+        "unit_executables_passed": [
+          "primo_lra_tableau_tests",
+          "primo_qf_lra_solver_tests"
+        ]
+      },
+      "test_binary_sha256": {
+        "build-slurm-rel/primo_lra_tableau_tests": "a4f3465c82067ac9b3fadf23cc981a07447a472d3cfc3991474b80c63b9416e6",
+        "build-slurm-rel/primo_qf_lra_solver_tests": "4872c854776bf14237591e8d747ca95b920db90023552db5633340f6d2524692"
+      },
+      "report": "docs/coverage/soi-audit-20261102.json",
+      "report_sha256": "df36ae6ad6cc6858bda5a478abe0d26e5de575d7b6a6d55d7be2a4562771157d",
+      "note": "docs/papers/soi-implementation-audit.md",
+      "analysis_command": "python3 scripts/qualification/soi_audit/summarize.py --profiles results/soi-audit-20261102/profiles --out docs/coverage/soi-audit-20261102.json",
+      "verification": {
+        "source_identity": "git diff d4944eb HEAD -- src is empty at ba6fd9f; both preflights verify binary commit and CaDiCaL3.0.0",
+        "scripts": "Python compilation, Python3.9 syntax parse, Ruff, sbatch validation and bash -n; final analysis validates metadata,hashes,all18 native labels,15 complete instrumented labels and selected counters",
+        "lint": "make lint passed",
+        "docs": "pending build and independent review",
+        "native_gates": "No native changes. Existing focused tableau and QF_LRA tests rerun on SLURM; no fresh make check/ASAN/fuzz/model/full clang-tidy or include-cleaner campaign. Prior exact-binary corpus qualification remains historical context."
+      },
+      "limitations": [
+        "Deliberately selected diagnostics,not corpus-wide timing estimates; CallgrindIr counts are not time samples and inclusive counts overlap.",
+        "No new solver correctness defect demonstrated; nine conformance/performance/verification findings remain proposed follow-up work.",
+        "No per-step trace; no attribution of long prefix to cycling or of selector cost to individual loops.",
+        "No independent theory-lemma reconstruction gate; current tests partly check reason membership rather than certificate sufficiency."
+      ]
+    },
+    {
       "id": "2026-10-31-lra-simplex-factorial-1000",
       "date": "2026-10-31",
       "kind": "existing-simplex-settings-factorial",

@@ -1,0 +1,59 @@
+{
+  "native_commit": "d4944ebbe6cf202c0485e783655209ba204df71c",
+  "binary_sha256": "710929c58c18970cf4fccf7eb479fb95bb1410e6b46559433e4af80b55a9eee8",
+  "selection": "Six deliberately selected diagnostic cases: SAT/UNSAT with/without SOI fallback; add tropical-matrix fallback and sc without fallback. Selection uses historical complete SOI g1-f0 triples with median check between 50 and 350 ms, emphasizing large slowdowns; not a random or representative performance estimate.",
+  "source_csv_sha256": "6dc395e2547e93cdeb545a1eb4d4643bc4f5db018cd1bdf62ae340b51d0e2423",
+  "native_timeout_seconds": 30,
+  "callgrind_timeout_seconds": 90,
+  "kill_grace_seconds": 5,
+  "cases": [
+    {
+      "file": "cubes/c9bf7683b06ce747b29a1921bb9890933b6a477dfe318f9275298bbfd44a7b6a.smt2",
+      "parent": "LassoRanker/CooperatingT2/disj_nightmare.t2.c_Iteration1_Loop_7-phaseTemplate.smt2",
+      "expected": "sat",
+      "check_ns": "82260807",
+      "fallbacks": "0",
+      "sha256": "c9bf7683b06ce747b29a1921bb9890933b6a477dfe318f9275298bbfd44a7b6a"
+    },
+    {
+      "file": "cubes/4cc0d2fcde1f94881a8b9078763e17ba914ea94d0e0b5bea000c4c3661a7eaff.smt2",
+      "parent": "LassoRanker/SV-COMP/LeeJonesBen-Amram-2001POPL-Ex5_true-termination.c_Iteration2_Lasso_6-phaseTemplate.smt2",
+      "expected": "sat",
+      "check_ns": "282540247",
+      "fallbacks": "1",
+      "sha256": "4cc0d2fcde1f94881a8b9078763e17ba914ea94d0e0b5bea000c4c3661a7eaff"
+    },
+    {
+      "file": "cubes/8553fd48bc62db5e5d996e57517f9d81c2c6a248c294d0d73c8f7c144b1da108.smt2",
+      "parent": "2017-Heizmann-UltimateInvariantSynthesis/_functions1.i_3_5_2.bpl_11.smt2",
+      "expected": "unsat",
+      "check_ns": "66035134",
+      "fallbacks": "0",
+      "sha256": "8553fd48bc62db5e5d996e57517f9d81c2c6a248c294d0d73c8f7c144b1da108"
+    },
+    {
+      "file": "cubes/dddf2ec70c92d9584742f5b36708c93a17a740d09f34656efb0aac79129f004d.smt2",
+      "parent": "tta_startup/simple_startup_12nodes.abstract.induct.smt2",
+      "expected": "unsat",
+      "check_ns": "347286241",
+      "fallbacks": "1",
+      "sha256": "dddf2ec70c92d9584742f5b36708c93a17a740d09f34656efb0aac79129f004d"
+    },
+    {
+      "file": "cubes/47fbdf1cb06319da19e4212c241de0154c16b82e51ec36823cd8610cd92f1d32.smt2",
+      "parent": "tropical-matrix/constraint-223827.smt2",
+      "expected": "sat",
+      "check_ns": "196900869",
+      "fallbacks": "1",
+      "sha256": "47fbdf1cb06319da19e4212c241de0154c16b82e51ec36823cd8610cd92f1d32"
+    },
+    {
+      "file": "cubes/c4f1f92f814c6f9949abb9d68cc83c8e4504e7e5969f9172beeb156aaf98f4fe.smt2",
+      "parent": "sc/sc-34.induction.cvc.smt2",
+      "expected": "sat",
+      "check_ns": "68926801",
+      "fallbacks": "0",
+      "sha256": "c4f1f92f814c6f9949abb9d68cc83c8e4504e7e5969f9172beeb156aaf98f4fe"
+    }
+  ]
+}
