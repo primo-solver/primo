@@ -117,6 +117,13 @@ def diagnostics(root):
     }:
         raise ValueError("missing diagnostic shards")
     common = set.intersection(*(set(cases[c["id"]]) for c in plan["configurations"]))
+    # No-check processes publish no LRA counters. Infer zero only for metrics
+    # demonstrably supported by that binary elsewhere. The archived binary
+    # predates the new SOI counters, so their absence there remains unknown.
+    supported = defaultdict(set)
+    for config in plan["configurations"]:
+        for work in cases[config["id"]].values():
+            supported[config["binary"]].update(work)
     metrics = sorted({k for files in cases.values() for w in files.values() for k in w})
     result = {}
     for config in plan["configurations"]:
@@ -127,9 +134,9 @@ def diagnostics(root):
             "common_sums": {},
         }
         for metric in metrics:
-            values = [cases[cfg][n].get(metric) for n in sorted(common)]
+            values = [cases[cfg][n].get(metric, 0) for n in sorted(common)]
             result[cfg]["common_sums"][metric] = (
-                sum(values) if all(v is not None for v in values) else None
+                sum(values) if metric in supported[config["binary"]] else None
             )
     return {
         "common_successful_inputs": len(common),
