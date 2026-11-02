@@ -160,4 +160,7 @@ objective/activity hooks and individual suffix undo records, then rebuilds SOI
 state before returning. `--no-lra-soi-suspend-on-fallback` retains the eager
 reference; the disabling flag wins if both appear. This option is inert for
 other pivot rules. See [the lifecycle proof](../implementation/soi.md#bland-fallback-lifecycle).
+{soifallbacksource}`The CLI <src/main.cpp>` maps this flag through
+{soifallbacksource}`engine tuning <src/smt/solver_engines.cpp>` to
+{soifallbacksource}`LraTableau::Tuning <src/theory/arithmetic/lra_tableau.hpp>`.
 The selector default remains historical and the solver default remains Sparse.

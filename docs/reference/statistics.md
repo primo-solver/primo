@@ -1188,3 +1188,7 @@ ordinary RHS term visits reconstructing the objective at suffix exit; it exclude
 status scans, sorting and GMP bit complexity. Snapshot/reconstruction phase
 time is included in `:lra.soi-objective-ns` only when profiling is enabled.
 These counters are cumulative and are not erased by rollback.
+
+See {soifallbacksource}`the work state <src/theory/arithmetic/lra_tableau.hpp>`,
+{soifallbacksource}`registered names <src/util/statistics.cpp>` and
+{soifallbacksource}`engine reporting <src/smt/solver_engines.cpp>` for these keys.

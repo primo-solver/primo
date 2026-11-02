@@ -3,6 +3,140 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-11-02-soi-bland-fallback-lifecycle-qualification",
+      "date": "2026-11-02",
+      "kind": "implementation-qualification-and-frozen-paired-evaluation",
+      "evidence_status": "correctness-gates-passed-performance-and-corpus-models-pending",
+      "source": "8faa77529aacdb1cab4647938b7af7aae7ce4aa8",
+      "adjacent_fixture_repair": "e2eded8",
+      "workflow": "9222fce",
+      "binary_sha256": "18b3182d9f95698dc7684ade226cbdaf091e691c648640971ef20b34d5274bd0",
+      "baseline": {
+        "source": "9a1efcf936e8b0657b51f534746f3e7a87d250a2",
+        "sha256": "41b3cb83e8b1cd7b5962301cbc188b9298bd8e5c88ac2f7e62328fec33cfe30b",
+        "status": "immutable archived qualified binary"
+      },
+      "plans": {
+        "benchmarks/qf-lra-simplex-ablation/soi-fallback-pilot-plan.json": "3a7e7283725f4448c258b5a9388f9cdf79e7b226efb086c3c29c37de6a05599c",
+        "benchmarks/qf-lra-simplex-ablation/soi-fallback-mutations-plan.json": "4addb806452c0bce7687dde5df916783c084bd616ed6d2967f5299416fb2e79c",
+        "benchmarks/qf-lra-simplex-ablation/soi-fallback-plan.json": "caaa847b15803f2a537d8224bec6b2d996666ec6bd35dba54d58b46856e65db0",
+        "benchmarks/qf-lra-simplex-ablation/soi-fallback-profile-plan.json": "d3bd7421020cd8fb0b777cc8582ecdfe952b0a544af128819f06657e114b6ea6"
+      },
+      "predeclaration": "Previously frozen stratified100 pilot with16 configurations first;full frozen1000 with24 configurations if non-regressing. SOI historical/combined original,eager,suspended plus paired old/new Sparse,Bland,Dantzig;fixed elimination both ways;3 repeats;Gaussian elimination on;15s process;all configurations/repeats for one input on same SLURM CPU. Bland/Dantzig controls added before reading pilot summary/full execution because shared Bland scan changed. No pricing/stall tuning. Separate profiling and native+Dolmen SAT replays.",
+      "execution": "CIIRC SLURM only; source editing/docs/lint/results analysis local. Private SSH settings outside tracked files.",
+      "workspace": "primo-soi-fallback-20261102",
+      "jobs": {
+        "build": "335789",
+        "build_preflight": "335790",
+        "initial_check_failed_fixture": "335791",
+        "check_retry": "335807",
+        "asan": "335792",
+        "historical_fuzz": "335793_0..5",
+        "combined_fuzz": "335794_0..5",
+        "whole_tree_static": "335795",
+        "pilot_timing": "335809_0..99",
+        "pilot_models": "335810_0..99",
+        "candidate_gdb": "335811",
+        "real_seed_mutations": "335812",
+        "documentation_examples": "335912",
+        "pilot_analysis": "335913"
+      },
+      "qualification": {
+        "check": "make -j4 check BUILD_DIR=build-slurm-rel:45 CTest and275 Python pass on retry335807; native hash unchanged from initial build. Adjacent e2eded8 updates missing fake machine metadata in report test, no native changes.",
+        "initial_check_failure": "335791: existing paired-summary Python fixture lacked host/cpu_model/affinity after machine aggregation was added; KeyError host. Fixed fixture, repeated full make check. No solver failure.",
+        "asan": "make asan-test via scripts/qualification/soi_endpoints/asan.sbatch,45 CTest pass335792",
+        "explanations": "scripts/check_soi_explanations.py --fixtures build-slurm-rel/soi-explanations --reference contrib/local/bin/z3 --out results/checks-retry/explanations.json:62 independent selected-premise refutations passed",
+        "fuzz": {
+          "generator": "FuzzSMT QF_LRA",
+          "shards": 6,
+          "count_per_shard": 500,
+          "timeout_seconds": 5,
+          "reference": "contrib/local/bin/z3",
+          "historical": {
+            "seeds": [
+              612020,
+              612021,
+              612022,
+              612023,
+              612024,
+              612025
+            ],
+            "PASS": 2877,
+            "TIMEOUT": 123
+          },
+          "combined": {
+            "seeds": [
+              612120,
+              612121,
+              612122,
+              612123,
+              612124,
+              612125
+            ],
+            "PASS": 2956,
+            "TIMEOUT": 44
+          },
+          "hard_errors": 0,
+          "command": "scripts/slurm_qfuf_fuzz_gate.sbatch; exact per-arm env in jobs and artifact metadata; native --quiet --gaussian-elimination --lra-pivoting-rule=soi --check-model; combined additionally --lra-soi-selection=short-column --lra-soi-pricing-candidates=64 --lra-soi-stall-limit=8 --lra-soi-cached-conflicts --lra-soi-linear-maintenance --lra-soi-minimize=row-growing",
+          "artifacts": "fuzz-results/{historical,combined}/fuzzsmt/shard-*"
+        },
+        "local": "make lint, git diff --check and make docs pass. make docs-check-links assembles current+historical site:269 pages,34929 local links,1169 unique Git links,0 failures;418 external URLs deferred.",
+        "documentation_examples": "12/12 pass335912 against native8faa775, including refreshed exact help",
+        "pure_class_probe": "16 independent diagonal rows with forced one-step SOI prefix:15 Bland suffix pivots; snapshot1/untrailed15 vs eager snapshot0/untrailed0; shorter lazy trail. Private two-pivot strict-bound probe has no incremental objective/cache updates and no per-pivot trail growth; resume/pop identities and activity slow checks pass.",
+        "rendering": "Changed lifecycle HTML rendered and visually inspected:results/soi-fallback-20261102/lifecycle-cdp.png"
+      },
+      "pending": [
+        "pilot/full speed acceptance",
+        "separate native+Dolmen SAT coverage",
+        "real-seed mutation classification",
+        "whole-tree static disposition",
+        "final docs/results/review and commits"
+      ],
+      "documentation_review": {
+        "reviewer": "/root/soi_documentation_review",
+        "baseline": "b8432fa",
+        "native_source": "8faa775",
+        "verdict": "ready;SOIFALL01..04 resolved",
+        "scope": "Bland fallback lifecycle/options/statistics, LRA historical/candidate paragraph, source links and captured help. Separate performance and corpus-model acceptance pending.",
+        "accepted_sha256": {
+          "docs/implementation/soi.md": "7a6cb206ef507258552d404840f0b6ddcaa7a202d51b991cb311723a93a122f3",
+          "docs/implementation/lra.md": "5242a9e372c72532a1b2c9f66164728f25ee468dc8839a62a336b56c6ae68c21",
+          "docs/reference/options.md": "f1fe983eeea1122cc09651dd246bf3595cacf1083f0a1a18a0dd4ca2bf1dd63e",
+          "docs/reference/statistics.md": "e61807b19fc966f8f8ffa14da78f2bdb0f6bff36210141cdd7667b5472fea8ef",
+          "docs/_config.yml": "956842a039b09c88af3103452e88bae2158528658245d56e9745167a63a0092e",
+          "docs/examples/primo-help.txt": "6ae5b9957815c2ec48d28b8cfa4d9b36b49d9ddb888d9e23591508f712c6e5fc"
+        }
+      },
+      "build_command": "scripts/slurm_prepare_benchmark_workspace.py --build-via-slurm --reuse-dependencies --jobs 4 --extra-target primo_lra_tableau_tests --extra-target primo_lra_soi_explanation_tests --require-tool contrib/local/bin/z3 --require-tool contrib/local/bin/dolmen (private remote/SSH/CMake/header-manifest arguments; source snapshot8faa775)"
+    },
+    {
+      "id": "2026-11-02-soi-fallback-baseline-standard-profile",
+      "date": "2026-11-02",
+      "kind": "standard-gdb-stack-sampling",
+      "evidence_status": "diagnostic-not-benchmark",
+      "source": "9a1efcf936e8b0657b51f534746f3e7a87d250a2",
+      "sha256": "41b3cb83e8b1cd7b5962301cbc188b9298bd8e5c88ac2f7e62328fec33cfe30b",
+      "job": "335787",
+      "workspace": "primo-soi-final-20261102",
+      "input": "cubes/fa718a03e97b909188f63f2803428b9f89ec4f7f1dc3b2d5b786ce31f42a79b7.smt2",
+      "choice": "Largest objective-term count among previously stable final-g1-f0 cases:102291658 terms;previous process median11.011202s. Chosen before patch measurement.",
+      "command": "scripts/profile_gdb_samples.py --out results/fallback-baseline-gdb-20261102 --timeout 90 --interval 0.05 --seed 611940 -- qualified/final/primo --quiet --stats --gaussian-elimination --lra-pivoting-rule=soi --lra-soi-selection=short-column --lra-soi-pricing-candidates=64 --lra-soi-stall-limit=8 --lra-soi-cached-conflicts --lra-soi-linear-maintenance --lra-soi-minimize=row-growing INPUT",
+      "samples": 210,
+      "inclusive_sample_counts": {
+        "LraTableau::check": 88,
+        "LraTableau::set_soi_direction": 71,
+        "LraTableau::update": 66,
+        "LraTableau::soi_select": 13,
+        "LraTableau::pivot": 9,
+        "LraTableau destructor": 8,
+        "substitute_solved_constants": 94
+      },
+      "interpretation": "SOI objective maintenance and owned-row copying dominate the tableau samples on this case. Preprocessing also remains substantial (89 leaf samples in substitute_solved_constants). Inclusive counts overlap; samples do not quantify pure suffix cost. Paired uninstrumented evaluation is separate.",
+      "profile_wall_seconds": 12.151516096666455,
+      "limitation": "GDB perturbs execution; profile wall seconds must not be used as headline speedup.",
+      "artifacts": "results/fallback-baseline-gdb-20261102/{summary.json,samples.jsonl,gdb-mi.log};local results/soi-fallback-20261102/{summary.json,samples.jsonl}"
+    },
+    {
       "id": "2026-11-02-lra-overall-table-soi-followup",
       "date": "2026-11-02",
       "kind": "documentation-overview-of-qualified-prior-evidence",

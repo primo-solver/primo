@@ -259,14 +259,14 @@ valid. Next: the fallback experiment in the experiments chapter.
 This is a Primo lifecycle design, motivated by the observed SOI tail costs;
 it is not a mechanism claimed from FMCAD or the thesis. Bland selection still
 uses the existing smallest eligible IDs. Sparse/Dantzig already bypass their
-pricing when Bland is selected. The common leaving scan should also skip
+pricing when Bland is selected. The common leaving scan also skips
 violation-magnitude arithmetic once ID selection is sufficient.
 
-Implementation under qualification: `LraTableau::suspend_soi_for_fallback`,
-immediately before the
+Implementation under qualification: {soifallbacksource}`suspend_soi_for_fallback <src/theory/arithmetic/lra_tableau.cpp#L666>` runs immediately before the
 first actual Bland pivot in an SOI check. A suffix ending without a pivot needs
-no snapshot. `SoiFallbackTrailEntry` owns one copy of all `VarState`, `Row` and
-directional-multiplier vectors at that boundary. This costs O(n + nnz_stored) storage, where nnz_stored counts terms in every
+no snapshot. {soifallbacksource}`SoiFallbackTrailEntry <src/theory/arithmetic/lra_tableau.hpp>` owns one copy of all `VarState`, `Row` and
+directional-multiplier vectors at that boundary. This costs O(n + nnz_stored)
+storage, where nnz_stored counts terms in every
 copied row slot, including stale nonbasic rows,
 plus copying exact values. Occurrences, violations and activity are derived and
 are rebuilt rather than copied. Prefix rollback records remain untouched.
@@ -283,7 +283,7 @@ ordinary Bland choice. Occurrence-list order may change, but Bland's ID choices
 and exact ordinary row algebra do not depend on that order.
 
 At either normal suffix return (feasible or explained conflict),
-`resume_soi_after_fallback` reconstructs all multipliers from current ordinary
+{soifallbacksource}`resume_soi_after_fallback <src/theory/arithmetic/lra_tableau.cpp#L679>` reconstructs all multipliers from current ordinary
 bounds/assignments, sums the signed violated rows, sorts the surviving objective
 support, reattaches its occurrences and rebuilds activity once. The artificial
 assignment remains intentionally unused. The coefficient identity is restored
@@ -304,13 +304,15 @@ rollback record for the suffix, not an unproved omission of rollback. Existing
 methods do not promise a strong allocation-exception guarantee; normal
 feasible/conflict exits must restore the active-state invariants.
 
-Focused tests compare eager and suspended suffixes on multi-pivot SAT and UNSAT
+{soifallbacksource}`Focused tests <tests/unit/lra_tableau_tests.cpp>` compare eager and suspended suffixes on multi-pivot SAT
 systems, ordinary basis/assignments/rows, strict bounds, nested checkpoints,
 repeated checks and cache recomputation. A direct private-state probe requires
 zero incremental objective/activity work and zero per-pivot trail growth while
-suspended. Selected-premise strict conflicts from eager and suspended suffixes are
-exported for independent refutation. Counters expose snapshots, copied stored
-row terms, untrailed suffix pivots and objective rebuild terms; profiling clocks include boundary rebuild work. `--lra-soi-suspend-on-fallback` enables the lifecycle (default on in this
+suspended. {soifallbacksource}`Multi-pivot strict UNSAT fixtures <tests/unit/lra_soi_explanation_tests.cpp>` export selected premises from eager and suspended suffixes
+for independent refutation. Counters expose snapshots, copied stored
+row terms, untrailed suffix pivots and objective rebuild terms; profiling clocks
+include boundary rebuild work. `--lra-soi-suspend-on-fallback` enables the
+lifecycle (default on in this
 qualification candidate); its `--no-` counterpart retains the eager reference.
 This does not select the experimental paper/short-column selector as default.
 This design does not remove the remaining full prefix trail or promise a speedup before SLURM
@@ -321,7 +323,7 @@ comparison, fuzzing and independent SAT-model validation.
 SOI retains per-operation bounds, assignment, basis and objective records in
 its prefix. A suspended suffix instead owns the full pre-suffix snapshot above;
 `--no-lra-soi-suspend-on-fallback` retains eager per-operation suffix records.
-{soiworksource}`pop <src/theory/arithmetic/lra_tableau.cpp#L1931>` restores those
+{soifallbacksource}`pop <src/theory/arithmetic/lra_tableau.cpp#L2373>` restores those
 records in reverse order and rebuilds occurrences and violations once. The
 suffix snapshot preserves rollback without individual suffix records.
 
@@ -397,7 +399,8 @@ the newly nonbasic k to its selected bound. After the composed operation, every
 nonbasic variable is within its bounds: variables other than k do not move,
 and k is exactly at its bound. The newly basic j is allowed to violate its own
 bound and is accounted for by `update`'s direction change. Ordinary row equations
-continue to hold by exact pivot/update algebra. SOI full trailing is unchanged.
+continue to hold by exact pivot/update algebra. SOI prefix operations retain
+full trailing; the Bland suffix uses the lifecycle described above.
 
 Example: b=2x, x<=1, b>=6, starting x=b=0. The historical cap chooses x=1
 without a pivot. The complete walk has DeltaV=-2 at x=1 and DeltaV=-4 at
@@ -444,9 +447,10 @@ rewritten row counts through substitution, and rebuild counts after pop.
 `sync_activity_status` applies old/new lower/upper status contributions to
 column rows. After substitution, `rebuild_row_activity` scans the rewritten RHS
 once; this is an additional linear pass, rather than the thesis's per-entry sign
-callbacks fused into substitution. `pop` restores the fully trailed tableau and
+callbacks fused into substitution. `pop` restores the tableau through prefix records or the suffix snapshot and
 then rebuilds all cache state from live assignments, bounds and rows. Counts
-exclude the artificial objective. No alternative rollback semantics is used.
+exclude the artificial objective. The lifecycle above also rebuilds the cache
+once when leaving a suspended suffix.
 
 For a crossing on row k with a=a_kj, suppose the new value of j is violated
 with direction lambda_j. Solve the row as j=k/a-sum_{i!=j}(a_ki/a)i. Put

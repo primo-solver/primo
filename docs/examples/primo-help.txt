@@ -344,15 +344,19 @@ QF_LRA theory options:
           --lra-soi-linear-maintenance
                               Experimental linear objective merge, crossing reuse and convex
                               pruning
+          --lra-soi-suspend-on-fallback [default: on]
+                              Suspend SOI objective/cache maintenance and use one rollback
+                              snapshot in Bland tails
+          --no-lra-soi-suspend-on-fallback [default: off]
+                              Retain eager SOI bookkeeping and per-pivot trailing in Bland
+                              tails
           --lra-soi-minimize TEXT:{quickxplain,row-growing,deletion,none} [quickxplain]
                               How --lra-pivoting-rule soi shrinks a multi-row conflict before
                               turning it into a clause: quickxplain (Junker 2001), deletion
                               (iterative, and steerable by --lra-soi-minimize-order),
                               row-growing (thesis Figure 3.6), or none (ablation baseline).
-                              Inert under every other pivoting rule. Measured, the error set
-                              averages 2.83 variables and never exceeded 9, so this changes
-                              which minimal conflict is learned rather than how fast it is
-                              found
+                              Inert under every other pivoting rule. Returns a sufficient
+                              certificate without an inclusion-minimality guarantee
           --lra-soi-minimize-order TEXT:{id,row-support,violation} [id]
                               Order --lra-soi-minimize deletion offers candidates for removal,
                               worst first: id (ascending, reproduces quickxplain's input

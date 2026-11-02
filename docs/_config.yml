@@ -35,6 +35,9 @@ sphinx:
   config:
     bibtex_reference_style: label
     extlinks:
+      soifallbacksource:
+        - "https://github.com/primo-solver/primo/blob/8faa77529aacdb1cab4647938b7af7aae7ce4aa8/%s"
+        - "%s"
       soimutationsource:
         - "https://github.com/primo-solver/primo/blob/8ea77220ad0d7b75c6e57370d76dc91297a97fc9/%s"
         - "%s"

@@ -1052,11 +1052,14 @@ conflict derivation. It makes several concrete choices:
   scan. It detects direct contradictory bounds during assertion and builds
   a row-combination conflict when its objective has no flexible variable;
   ordinary row-conflict checking also remains available after fallback.
-- SOI also maintains its objective during bound assertion and SAT rollback.
-  It continues objective maintenance and full assignment/pivot trailing
-  after switching to Bland selection within the same check. The fallback
-  therefore retains SOI's bookkeeping costs.
-  Its extra trail state is described in
+- SOI maintains its objective during bound assertion and restores it on SAT
+  rollback. The archived implementation also continued objective maintenance
+  and individual assignment/pivot trailing after switching to Bland. The
+  candidate [fallback lifecycle](soi.md#bland-fallback-lifecycle) instead takes
+  one owned snapshot, suspends this unused bookkeeping during the suffix,
+  and rebuilds derived SOI state before returning. Its disabling flag retains
+  the eager reference; qualification and timing acceptance are separate.
+  Prefix rollback is described in
   [Incrementality and rollback](#incrementality-and-rollback).
 
 ```{admonition} Starting exactly on a bound
