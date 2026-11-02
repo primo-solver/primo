@@ -151,6 +151,10 @@ criterion leaves the new arms experimental, with the result committed.
 
 ## Full results
 
+The {ref}`overall pivot-policy table <lra-simplex-overall-current>`
+places the combined SOI arm alongside Bland, Dantzig and Sparse, with a common
+1,000-input score and explicit study provenance.
+
 All 84,000 timing rows completed the protocol, with zero solver errors,
 unsupported results, known-label wrong answers or cross-profile disagreements.
 All **54,400 successful SAT rows** were independently replayed with native model

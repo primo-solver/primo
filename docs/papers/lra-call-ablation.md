@@ -477,6 +477,50 @@ conflicts improve later SAT search. Sparse pricing/leaving sweeps, fallback
 threshold sweeps and SOI conflict-minimization comparisons remain subsequent
 experiments; this 16-configuration matrix does not include them.
 
+(lra-simplex-overall-current)=
+## Overall comparison after the SOI improvements
+
+This overview brings the four pivot policies and the new combined SOI arm
+into one table. Gaussian elimination is **on** throughout; fixed elimination
+is shown both ways. Stable solves require success in all three repetitions at
+the 15-second process limit. Scores cover all **1,000 frozen inputs**.
+
+| Policy | Fixed off: stable / 1,000 | Fixed off: PAR2 s | Fixed on: stable / 1,000 | Fixed on: PAR2 s |
+| --- | ---: | ---: | ---: | ---: |
+| Bland (earlier) | 954 | 2122.172 | 970 | 1433.664 |
+| Dantzig (earlier) | 968 | 1529.654 | 991 | 865.958 |
+| Sparse (solver default) | 996 | 528.312 | 996 | 524.092 |
+| SOI, archived baseline | 915 | 4216.876 | 913 | 3858.308 |
+| SOI, historical profile | 913 | 4314.293 | 913 | 3879.773 |
+| SOI, combined experimental | 948 | 2447.731 | 978 | 1390.515 |
+
+Bland and Dantzig retain the earlier qualified `d4944eb` measurements. The other
+rows come from the later paired SOI study: the archived SOI control uses
+`d4944eb`, while Sparse, the historical profile and the combined arm use
+`9a1efcf`. These are separate studies, not a fresh joint randomized comparison
+of every row. For a common denominator, the earlier Bland/Dantzig scores add
+the separately recorded **30-second penalty** for the unknown-label input to
+their 999-labelled-input totals. That input timed out in every repetition of
+both studies; stable counts are unchanged. The original factorial table below
+retains its original 999-input scores. The
+[portable overall table](../coverage/lra-simplex-overall-20261102.json) records
+this conversion and each row's source.
+
+The combined arm includes paper selection, short-column pricing with frozen
+64/8 parameters, cached conflict preference, linear objective/crossing
+maintenance and row-growing explanations. Its [full SOI report](soi-experiments.md#full-results)
+contains the intermediate and leave-one-out arms. Gaussian-off results for the
+other policies remain in the original factorial table; the new combined arm
+has not been evaluated with Gaussian off.
+
+**The combined arm has not replaced the historical SOI default.** It improves
+aggregate PAR2 but loses two archived-SOI stable inputs in each fixed-elimination
+setting, failing the prescribed zero-loss replacement rule. `--lra-pivoting-rule=soi`
+therefore still selects the historical profile unless the experimental options
+are supplied. Sparse remains the solver default and the strongest measured
+policy in this overview. Selecting a new default is a separate decision from
+showing the new arm beside its baseline.
+
 (lra-simplex-factorial-results)=
 ## Simplex factorial results on the 1,000 conjunctions
 

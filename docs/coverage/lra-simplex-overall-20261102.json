@@ -1,0 +1,139 @@
+{
+  "inputs": 1000,
+  "labelled_inputs": 999,
+  "repetitions": 3,
+  "timeout_seconds": 15,
+  "unknown_input": "cubes/f9c4f0cde5245b21ead3c5188eb9251861fe65a4677d6fc6c33b5fc1459c7940.smt2",
+  "unknown_mean_repeat_penalty_seconds": 30,
+  "normalization": "Earlier factorial PAR2 scores999 labelled inputs. Add the separately recorded30-second unknown-input penalty to place them on the same1000-input basis as the follow-up. Stable counts do not change.",
+  "sources": {
+    "docs/coverage/lra-simplex-factorial-20261031.json": "2cd50e45097beb523acd09b6e6aba44dc1c7cd6377c9505ebfcd7cd2fbf5d2cc",
+    "docs/coverage/soi-results-20261102.json": "1bb063d2f1e27bbffa9b170467923dfa79f7b54cc72d8d5e66c5e0d0c443fc6d"
+  },
+  "limitations": [
+    "Bland and Dantzig were not rerun in the later paired study. This overview is not a new joint randomized benchmark or a paired cross-study comparison.",
+    "Gaussian elimination is enabled for every row. Combined SOI with Gaussian disabled was not evaluated."
+  ],
+  "rows": [
+    {
+      "label": "Bland (earlier)",
+      "configuration": "bland-g1-f0",
+      "study": "earlier",
+      "gaussian": true,
+      "fixed_elimination": false,
+      "stable_solves": 954,
+      "process_par2_1000": 2122.1717773333344,
+      "added_unknown_penalty_seconds": 30
+    },
+    {
+      "label": "Bland (earlier)",
+      "configuration": "bland-g1-f1",
+      "study": "earlier",
+      "gaussian": true,
+      "fixed_elimination": true,
+      "stable_solves": 970,
+      "process_par2_1000": 1433.6640279999995,
+      "added_unknown_penalty_seconds": 30
+    },
+    {
+      "label": "Dantzig (earlier)",
+      "configuration": "dantzig-g1-f0",
+      "study": "earlier",
+      "gaussian": true,
+      "fixed_elimination": false,
+      "stable_solves": 968,
+      "process_par2_1000": 1529.653717666664,
+      "added_unknown_penalty_seconds": 30
+    },
+    {
+      "label": "Dantzig (earlier)",
+      "configuration": "dantzig-g1-f1",
+      "study": "earlier",
+      "gaussian": true,
+      "fixed_elimination": true,
+      "stable_solves": 991,
+      "process_par2_1000": 865.9583519999992,
+      "added_unknown_penalty_seconds": 30
+    },
+    {
+      "label": "Sparse (solver default)",
+      "configuration": "sparse-g1-f0",
+      "study": "followup",
+      "gaussian": true,
+      "fixed_elimination": false,
+      "stable_solves": 996,
+      "process_par2_1000": 528.3117583333332,
+      "added_unknown_penalty_seconds": 0
+    },
+    {
+      "label": "Sparse (solver default)",
+      "configuration": "sparse-g1-f1",
+      "study": "followup",
+      "gaussian": true,
+      "fixed_elimination": true,
+      "stable_solves": 996,
+      "process_par2_1000": 524.0924926666669,
+      "added_unknown_penalty_seconds": 0
+    },
+    {
+      "label": "SOI, archived baseline",
+      "configuration": "original-soi-g1-f0",
+      "study": "followup",
+      "gaussian": true,
+      "fixed_elimination": false,
+      "stable_solves": 915,
+      "process_par2_1000": 4216.876057333333,
+      "added_unknown_penalty_seconds": 0
+    },
+    {
+      "label": "SOI, archived baseline",
+      "configuration": "original-soi-g1-f1",
+      "study": "followup",
+      "gaussian": true,
+      "fixed_elimination": true,
+      "stable_solves": 913,
+      "process_par2_1000": 3858.3077280000034,
+      "added_unknown_penalty_seconds": 0
+    },
+    {
+      "label": "SOI, historical profile",
+      "configuration": "historical-g1-f0",
+      "study": "followup",
+      "gaussian": true,
+      "fixed_elimination": false,
+      "stable_solves": 913,
+      "process_par2_1000": 4314.2933353333365,
+      "added_unknown_penalty_seconds": 0
+    },
+    {
+      "label": "SOI, historical profile",
+      "configuration": "historical-g1-f1",
+      "study": "followup",
+      "gaussian": true,
+      "fixed_elimination": true,
+      "stable_solves": 913,
+      "process_par2_1000": 3879.772957333328,
+      "added_unknown_penalty_seconds": 0
+    },
+    {
+      "label": "SOI, combined experimental",
+      "configuration": "final-g1-f0",
+      "study": "followup",
+      "gaussian": true,
+      "fixed_elimination": false,
+      "stable_solves": 948,
+      "process_par2_1000": 2447.7309836666677,
+      "added_unknown_penalty_seconds": 0
+    },
+    {
+      "label": "SOI, combined experimental",
+      "configuration": "final-g1-f1",
+      "study": "followup",
+      "gaussian": true,
+      "fixed_elimination": true,
+      "stable_solves": 978,
+      "process_par2_1000": 1390.5150573333328,
+      "added_unknown_penalty_seconds": 0
+    }
+  ]
+}

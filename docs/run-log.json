@@ -3,6 +3,35 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-11-02-lra-overall-table-soi-followup",
+      "date": "2026-11-02",
+      "kind": "documentation-overview-of-qualified-prior-evidence",
+      "scope": "Overall Gaussian-enabled comparison across Bland, Dantzig, Sparse, archived SOI, historical SOI and combined experimental SOI; fixed elimination both ways. No new solver runs or default changes.",
+      "report": "docs/coverage/lra-simplex-overall-20261102.json",
+      "normalization": "Earlier Bland/Dantzig PAR2 totals cover 999 labelled inputs. Add the separately recorded 30-second mean-repeat penalty for the unknown input. Later results already score 1,000 inputs. That input timed out in every repetition of both studies.",
+      "sources": [
+        "docs/coverage/lra-simplex-factorial-20261031.json",
+        "docs/coverage/soi-results-20261102.json"
+      ],
+      "documentation_review": {
+        "reviewer": "/root/soi_documentation_review",
+        "baseline": "278df32",
+        "verdict": "ready; no required findings",
+        "scope": "12 configuration rows, normalization, source hashes, cross-study limits, combined-profile description and code-grounded replacement status",
+        "accepted_sha256": {
+          "docs/papers/lra-call-ablation.md": "10c422f5e84fa95e5d814b098c5c7a9e48379e59bda4f9846a55e2dd246a01a9",
+          "docs/papers/soi-experiments.md": "5b7f6af1f0927be9983895fafb95bd88c918296870c8ede34b9b293ff90d04b2",
+          "docs/coverage/lra-simplex-overall-20261102.json": "04bbb7cf8c93b3d493199e743c6c6cfc037f16dea903b73f676c7c68134b57c0"
+        }
+      },
+      "verification": {
+        "docs": "make docs passed after changing the custom-label backlink to a MyST ref",
+        "links": "269 pages; 34918 local links; 1161 unique Git links; 0 failures; 418 other external URLs deferred",
+        "rendering": "Overall table rendered and visually inspected: results/soi-improvements-20261102/soi-overall-table-cdp.png",
+        "population": "Both frozen plans have identical manifest/expected-status hashes, 1000 inputs, 3 repetitions and a 15-second limit. Unknown-input contribution checked in original unknown records and all 28 follow-up per-input outcomes."
+      }
+    },
+    {
       "id": "2026-11-02-soi-full-mechanisms-results",
       "date": "2026-11-02",
       "kind": "frozen-full-corpus-mechanism-evaluation-with-independent-model-validation",
