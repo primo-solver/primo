@@ -1,5 +1,12 @@
 # Audit of Primo's SOI simplex
 
+Reader: solver implementers investigating the historical SOI cost. This page
+answers what the dated binary implemented and which evidence justified repair.
+Prerequisites: [LRA operations](../implementation/lra.md) and the
+[SOI algorithm](../implementation/soi.md). Read the
+[follow-up experiments](soi-experiments.md) next; the findings below describe
+the preserved baseline, with resolutions recorded at the end.
+
 Primo implements the sum-of-infeasibilities objective, breakpoint integration
 and row-combination conflicts from King, Barrett and Dutertre, but its SOI
 profile differs substantially from the implementation evaluated in their
@@ -275,3 +282,22 @@ run log and diagnostic artifacts. No native implementation changed, so a new
 full solver gate, ASAN rebuild or whole-tree clang-tidy/include-cleaner run was
 not performed. The review covers the SOI source/caller/test chain above;
 it does not certify unrelated theories or every client of the tableau.
+
+## Follow-up resolution ledger
+
+The dated findings and their original evidence above remain unchanged. The
+following work addresses them in opt-in profiles at source `9a1efcf`; it does not
+retroactively qualify the audited binary. The [experiments](soi-experiments.md)
+record separate measurements and the acceptance decision.
+
+| Finding | Implemented response | Evidence and remaining limit |
+| --- | --- | --- |
+| SOI-1 | Short columns, chunked pricing and stop-after-progress | Pilot froze 64/8; full ablations isolate pricing from the selector. |
+| SOI-2 | Selected/zero steps, candidates, crossings, prefix/fallback pivots; stall fallback | Work counters and separate profile clocks expose the prefix. A finite overall guard remains. |
+| SOI-3 | Linear objective merge, support-only incidence changes, coefficient reuse and convex pruning | Exact-selection and occurrence regressions. Full objective/assignment/pivot trailing is retained. |
+| SOI-4 | Error-row scans before/after updates and cached breakpoint conflict preference | Slow recomputation checks cache updates/rollback; selected-premise fixtures independently refute conflicts. Row substitution refreshes counts in a separate pass. |
+| SOI-5 | Paper entering score, smallest-ID zero-progress ties | Focused exact-selection regression; historical arm retained for comparison. |
+| SOI-6 | Complete coincident groups and complete forward crossings | Endpoint/fixed-bound tests; own-bound outward slope included in paper arms. |
+| SOI-7 | Reconstruct original equations and only selected premises for Z3 | Strict, propagated-premise, multi-row and non-monotone fixtures; not a universal online lemma checker. |
+| SOI-8 | Separate coefficient identity from ordinary assignment invariants; corrected rollback comment | Objective identity tests through update/pivot/pop. Artificial assignment remains intentionally unused. |
+| SOI-9 | Independent Figure 3.6 row-growing arm and explicit boundary decisions | All four minimizer arms independently refuted in fixtures. No inclusion-minimality or generic QuickXplain complexity claim. |

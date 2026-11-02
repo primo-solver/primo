@@ -4,8 +4,8 @@ This chapter is for implementers who already understand the
 [tableau and four LRA operations](lra.md). It answers how the optional
 sum-of-infeasibilities objective is represented, selected and explained, and
 which invariants verification must check. Read the
-[dated audit](../papers/soi-implementation-audit.md) next for the gaps in the
-historical selector and the cost evidence. Sparse remains the solver default.
+[paper and thesis guide](../papers/soi-guide.md) next for the mathematical sources,
+and the [experiments](../papers/soi-experiments.md) for qualification and costs. Sparse remains the solver default.
 
 ## Representation
 
@@ -121,7 +121,9 @@ The budget changes sorting cost; stopping at the first progressing column means
 all three budgets visit the same ordered sequence, apart from time limits.
 The stall limit can change the repair path. Pure tableau regressions exercise
 continuing beyond an unproductive chunk and entering the Bland suffix at a
-one-step stall limit. No tuning result or performance acceptance is claimed yet.
+one-step stall limit. The [recorded pilot](../papers/soi-experiments.md#parameter-pilot) froze 64 and 8
+for the evaluated candidate. Public option defaults remain 16 and 16; a full
+profile must pass the separate acceptance rule before promotion.
 
 ## Experimental objective and crossing maintenance
 
@@ -182,8 +184,8 @@ conflict and needs both bound reasons.
 The predicate “$S$ is nonempty and $f_S$ is blocked” is not monotone: at
 $x=0$, $x\ge0$, $b=-x\ge1$, $c=2x\ge1$, the singleton $\{b\}$ is blocked,
 but $\{b,c\}$ is flexible. The {soiworksource}`historical recursive and deletion reducers <src/theory/arithmetic/lra_tableau.cpp#L810>` preserve a
-certificate; neither is claimed inclusion-minimal. Figure 3.6's sign-driven
-row-growing minimizer remains a separate planned arm.
+certificate; neither is claimed inclusion-minimal. The separate `row-growing` arm implements Figure 3.6's sign-driven growth,
+with the boundary resolutions below.
 
 {soiselectsource}`Focused explanation fixtures <tests/unit/lra_soi_explanation_tests.cpp>`
 save original equations before pivoting and export **only selected premises**.
@@ -194,6 +196,57 @@ into its original antecedents. The propagation expansion is a fixture-level
 check, not validation of every reason graph in the online SMT engine. Existing
 reason-membership tests are named as membership tests rather than soundness
 proofs.
+
+## Experimental row-growing reduction
+
+`--lra-soi-minimize=row-growing` selects
+{soifinalsource}`row_growing_soi_conflict <src/theory/arithmetic/lra_tableau.cpp>`.
+The historical `quickxplain`, `deletion` and `none` arms remain available. This
+new arm reads tableau bounds, assignments, basis and rows without changing them;
+diagnostic counters increase. Scratch ID vectors, an included-ID set and exact
+sparse coefficient maps have invocation-local lifetime.
+
+The private call takes disjoint sets of violated basics, a fixed background
+$C$ and candidates $D$, whose nonempty union has a blocked signed sum. These are
+caller preconditions, not a general input-validation API. Start $X=C$, or seed
+$X$ with the smallest candidate ID when $C$ is empty. Construct $f_X$. While a
+coefficient is flexible, select the smallest flexible column $j$ whose sign in
+$f_X$ differs from its sign in the full blocked sum $f_{C\cup D}$. Add the
+smallest unused row $i$ whose signed coefficient $d_i a_{ij}$ has the opposite
+sign to $f_{X,j}$. A witness exists: the full sum must cancel or reverse the
+flexible coefficient. Each growth iteration adds a distinct row, so at most
+$|D|$ additions occur in one invocation.
+
+For example, at $x=y=0$, the violated rows $b=x-y\ge1$ and
+$c=y-x>0$ have signed rows $-x+y$ and $x-y$. Starting with $b$ leaves a
+flexible coefficient; adding $c$ cancels both coefficients. The resulting zero
+row is blocked and its violated bounds give a contradiction. This also shows
+why the predicate is about the signed sum, not a new Simplex consistency search.
+
+Once $X$ is blocked, retain $R=C\cup\{i_{last}\}$. Partition the ascending IDs
+of $X\setminus R$ into floor-half $X_1$ and remainder $X_2$. First reduce $X_2$
+with fixed $R\cup X_1$. Keep its returned members outside $X_1$ in $R$, then
+reduce $X_1$ with fixed $R$. Every recursive return includes its fixed
+background. Both recursive unions are certified and their candidate sets
+strictly shrink. Induction preserves a sufficient certificate; this argument
+does not establish inclusion-minimality for the non-monotone predicate.
+
+Figure 3.6 line 15's undefined $C$ is interpreted as $S_1$, following the prose.
+If the initial singleton is already blocked, its seed is the last-added row.
+An already-conflicting nonempty background returns immediately. Empty union
+and missing cancellation witnesses are invariant errors, never permission to
+return an empty explanation. Smallest-ID choices and floor-half partitioning
+are deterministic Primo choices.
+
+`:lra.soi-predicate-calls` includes each growth-loop blocked test,
+including the terminal one. `:lra.soi-growing-rows` counts additions by that loop
+across recursion, excluding seeds and background/full-sum construction.
+Restricted arithmetic terms include sum construction and addition, but exclude
+witness-search comparisons and other bookkeeping. These are neither total
+arithmetic-operation counts nor GMP bit-complexity estimates. Selected rows and
+final reason literals measure the result independently. Focused fixtures cover
+singleton seeds, cancellation, unrelated conflicts, strict bounds and the
+non-monotone example; every emitted selected-premise problem is refuted by Z3.
 
 ## Rollback and measurement
 
@@ -234,10 +287,10 @@ checklist; no other solver implementation is an implementation source.
 | Figure 3.4: entering and leaving score | `SoiSelection`; zero-score entering tie is by ID | Experimental `paper` arm implemented; historical arm retained |
 | Figure 3.3: error-row conflicts before and after updates | `check`, `build_conflict`; sufficient selected bounds must independently refute | Experimental paper-arm early scans and focused external refutation gate implemented |
 | §3.3.2 / §V-C: termination | `check`; finite prefix then Bland | Defensive fallback retained, with prefix/fallback pivot counters |
-| §3.3.3 / §V-D: short columns, stalled progress | `Tuning`, `soi_select`; exhaust remaining candidates before declaring blocked | Experimental short-column arm implemented; chunk/stall constants require pilot qualification |
+| §3.3.3 / §V-D: short columns, stalled progress | `Tuning`, `soi_select`; exhaust remaining candidates before declaring blocked | Experimental short-column arm implemented; pilot froze chunk 64 and stall 8 for evaluation; public defaults remain 16/16 |
 | §3.3.4: constant-time breakpoint conflict preference | Tableau-owned RHS activity counts, status deltas, rewritten-row refresh and rollback rebuild | Experimental flag implemented; crossing predictions and counts compared to slow recomputation |
-| §3.3.5 / §V-B and Figure 3.6 | `restricted_soi_row`, conflict builder and minimizer; nonempty blocked certificate | Builder and historical reducers implemented; row-growing arm planned |
-| Thesis §3.4 / FMCAD §VI | Reproducible process measurements, qualified answers and separate SAT-model validation | Historical audit only; no new performance acceptance yet |
+| §3.3.5 / §V-B and Figure 3.6 | `restricted_soi_row`, conflict builder and minimizer; nonempty blocked certificate | Builder and historical reducers implemented; row-growing arm implemented experimentally with explicit boundary resolutions |
+| Thesis §3.4 / FMCAD §VI | Reproducible process measurements, qualified answers and separate SAT-model validation | Controlled pilot and separate full-corpus qualification; see the experiments chapter for the result and its limits |
 
 ## Complete forward walk
 

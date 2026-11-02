@@ -58,7 +58,9 @@ parts:
       - file: papers/clause-forgetting
       - file: papers/conflict-explanation-minimization
       - file: papers/lra-call-ablation
+      - file: papers/soi-guide
       - file: papers/soi-implementation-audit
+      - file: papers/soi-experiments
       - file: papers/polarity-aware-cnf
       - file: papers/relevance-filtering
   - caption: Open leads
