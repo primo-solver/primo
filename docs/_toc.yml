@@ -42,6 +42,7 @@ parts:
       - file: implementation/theory-interface
       - file: implementation/euf
       - file: implementation/lra
+      - file: implementation/soi
       - file: implementation/lia
       - file: implementation/quantifiers
       - file: implementation/combination

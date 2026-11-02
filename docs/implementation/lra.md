@@ -25,6 +25,11 @@ GCD checks, Gomory cuts and branching. It covers their explanations, budgets
 and incomplete cases; [its preservation map](../coverage/lia.md) retains
 the dated experiments separately.
 
+For implementers of the opt-in alternative, the [SOI implementation chapter](soi.md)
+separates its objective identity, conflict certificates and measurement contract
+from ordinary tableau assignment invariants. The four operations below remain
+the entry points for understanding LRA.
+
 ## Theory responsibilities and defaults
 
 The four main theory operations are collected below. The setup introduces

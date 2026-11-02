@@ -1136,3 +1136,25 @@ bound check first discovers an internal conflict. Repeated availability checks
 for one pending clause do not increment it again. At exhaustion a complete SAT
 candidate may unwind the backend; the runtime must replace that candidate with
 `unknown` before any model or definitive solver answer is accepted.
+
+## SOI work counters
+
+The {soiworksource}`SOI work state <src/theory/arithmetic/lra_tableau.hpp>`
+is published through {soiworksource}`registered keys <src/util/statistics.hpp>`
+and {soiworksource}`printed names <src/util/statistics.cpp>`.
+The opt-in SOI tableau publishes `:lra.soi-selected-steps`,
+`:lra.soi-zero-progress-steps` (zero objective change), `:lra.soi-candidates`
+(eligible entering variables examined), `:lra.soi-crossings` (generated events),
+`:lra.soi-objective-updates` (direction changes), `:lra.soi-prefix-pivots`, and
+`:lra.soi-fallback-pivots`. Reaching an entering variable's own bound can be a
+step without a pivot. `:lra.soi-predicate-calls` counts restricted-objective
+certificate tests; `:lra.soi-arithmetic-terms` counts terms processed by
+restricted-row construction; `:lra.soi-selected-rows` counts rows retained in
+emitted SOI explanations. None counts GMP instructions or proves minimality.
+
+`:lra.soi-selection-ns` and `:lra.soi-objective-ns` read phase clocks only when
+`--lra-call-profile` is enabled. {soiworksource}`Engine reports <src/smt/solver_engines.cpp#L7397>` drain work since the preceding
+report, including assertion-time objective updates. Counters are cumulative
+work, survive rollback, and are zero for other pivot rules. Selection timing
+is nested in check timing; objective maintenance also occurs during assertion.
+See the [SOI implementation](../implementation/soi.md) for invariants and scope.
