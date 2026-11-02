@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import math
 import statistics
 from collections import Counter, defaultdict
 from pathlib import Path
@@ -133,6 +134,7 @@ def summarize(roots, historical, baselines):
         for (host, cpu, size), n in sorted(machines.items())
     ]
     for config, cases in compact.items():
+        elapsed = sorted(r["seconds"] for r in cases.values() if r["stable"])
         by_family = defaultdict(list)
         outcomes = Counter()
         for row in cases.values():
@@ -142,6 +144,13 @@ def summarize(roots, historical, baselines):
             "inputs": len(cases),
             "stable_solves": sum(r["stable"] for r in cases.values()),
             "process_par2": sum(r["par2"] for r in cases.values()),
+            "stable_process_seconds": {
+                "inputs": len(elapsed),
+                "p50": statistics.median(elapsed) if elapsed else None,
+                "p90": elapsed[math.ceil(0.9 * len(elapsed)) - 1] if elapsed else None,
+                "p99": elapsed[math.ceil(0.99 * len(elapsed)) - 1] if elapsed else None,
+                "max": elapsed[-1] if elapsed else None,
+            },
             "outcomes": dict(outcomes),
             "families": {
                 family: {
