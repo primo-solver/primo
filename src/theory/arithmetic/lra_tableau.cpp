@@ -547,6 +547,7 @@ std::optional<LraTableau::SoiSelection> LraTableau::soi_select() const {
   bool have_best = false;
   int best_sign = 0;
   util::Rational best_abs_score(0);
+  util::Rational best_paper_score(0);
   LraVarId best_j = 0;
   SoiSelection best_selection{0, 0, kZero, kZero};
 
@@ -570,15 +571,17 @@ std::optional<LraTableau::SoiSelection> LraTableau::soi_select() const {
     const int walk_sign = delta_positive ? 1 : -1;
 
     std::vector<SoiBreakPoint> points;
-    // j's own bound -- caps how far the walk can go, contributes no beta
-    // update (nonbasic variables are always within bounds, d_j stays 0).
-    if (delta_positive) {
-      if (j_state.upper.has_value()) {
-        points.push_back(SoiBreakPoint{j_state.upper->value - j_state.assignment, j, true});
-      }
-    } else {
-      if (j_state.lower.has_value()) {
-        points.push_back(SoiBreakPoint{j_state.lower->value - j_state.assignment, j, false});
+    // Figure 3.4 includes j itself. Keep both forward own-bound events,
+    // including an inward zero event; the latter changes no violation slope.
+    // Historical replay keeps only the cap in the direction of movement.
+    for (const bool upper : {false, true}) {
+      const auto& bound = upper ? j_state.upper : j_state.lower;
+      if (!bound) continue;
+      if (tuning_.soi_selection == SoiSelectionRule::Historical && upper != delta_positive)
+        continue;
+      const auto delta = bound->value - j_state.assignment;
+      if ((delta_positive && delta >= kZero) || (!delta_positive && delta <= kZero)) {
+        points.push_back(SoiBreakPoint{delta, j, upper});
       }
     }
     // Every row k currently referencing j (excluding f_var_ itself, which
@@ -619,13 +622,16 @@ std::optional<LraTableau::SoiSelection> LraTableau::soi_select() const {
     std::sort(points.begin(), points.end(), [&](const SoiBreakPoint& a, const SoiBreakPoint& b) {
       return delta_positive ? a.delta < b.delta : b.delta < a.delta;
     });
-    // The entering variable's own bound caps the walk -- discard any
-    // breakpoints beyond it (moving j past its own bound isn't a valid
-    // UPDATE at all).
-    for (std::size_t i = 0; i < points.size(); ++i) {
-      if (points[i].k == j) {
-        points.resize(i + 1);
-        break;
+    // Historical replay caps j at its own bound. Figure 3.4's complete
+    // forward walk may move j beyond that bound because j becomes BASIC;
+    // only the leaving variable has to be within bounds after the composed
+    // pivot/update. The own-bound event then changes j's violation slope.
+    if (tuning_.soi_selection == SoiSelectionRule::Historical) {
+      for (std::size_t i = 0; i < points.size(); ++i) {
+        if (points[i].k == j) {
+          points.resize(i + 1);
+          break;
+        }
       }
     }
 
@@ -673,6 +679,10 @@ std::optional<LraTableau::SoiSelection> LraTableau::soi_select() const {
       for (std::size_t g = index; g < group_end; ++g) {
         const LraVarId k = points[g].k;
         if (k == j) {
+          if (tuning_.soi_selection != SoiSelectionRule::Historical &&
+              (this_delta != kZero || delta_positive == points[g].is_upper)) {
+            beta += util::Rational(walk_sign);
+          }
           continue;
         }
         util::Rational coeff(0);
@@ -697,16 +707,25 @@ std::optional<LraTableau::SoiSelection> LraTableau::soi_select() const {
 
     const int sign = best_delta_vio_for_j == kZero ? 0 : (best_delta_vio_for_j < kZero ? -1 : 1);
     const util::Rational abs_score = t0j.sign() < 0 ? -t0j : t0j;
+    // Figure 3.4 line 10: multiply by sign BEFORE comparing. In
+    // particular all zero-progress scores are zero, irrespective of |c_j|.
+    const util::Rational paper_score = abs_score * util::Rational(sign);
+    const bool prefer =
+        tuning_.soi_selection == SoiSelectionRule::Historical
+            ? (sign < best_sign || (sign == best_sign && abs_score > best_abs_score) ||
+               (sign == best_sign && abs_score == best_abs_score && j < best_j))
+            : (paper_score < best_paper_score || (paper_score == best_paper_score && j < best_j));
     if (!have_best) {
       have_best = true;
       best_sign = sign;
       best_abs_score = abs_score;
+      best_paper_score = paper_score;
       best_j = j;
       best_selection = SoiSelection{j, best_k_for_j, best_delta_for_j, best_delta_vio_for_j};
-    } else if (sign < best_sign || (sign == best_sign && abs_score > best_abs_score) ||
-               (sign == best_sign && abs_score == best_abs_score && j < best_j)) {
+    } else if (prefer) {
       best_sign = sign;
       best_abs_score = abs_score;
+      best_paper_score = paper_score;
       best_j = j;
       best_selection = SoiSelection{j, best_k_for_j, best_delta_for_j, best_delta_vio_for_j};
     }
@@ -1743,6 +1762,22 @@ LraTableau::ModelMutationResult LraTableau::diversify_shared_model(
   return result;
 }
 
+// King 2014 Figure 3.3: check initial error rows, then only rows affected
+// by the selected column update. A single blocked row suffices regardless of
+// the global objective's flexibility. This reference arm uses slow scans;
+// activity-count acceleration is a separate mechanism.
+std::optional<std::vector<sat::Lit>> LraTableau::soi_row_conflict(
+    const std::vector<LraVarId>& candidates) {
+  for (const auto var : candidates) {
+    if (!vars_[var].is_basic || !violated_vars_.contains(var)) continue;
+    const bool too_low = soi_direction(var) < 0;
+    if (select_entering_variable(var, too_low, true) == vars_.size()) {
+      return build_conflict(var, too_low);
+    }
+  }
+  return std::nullopt;
+}
+
 std::optional<std::vector<sat::Lit>> LraTableau::check() {
   // Anti-cycling fallback for every non-Bland rule (see the PivotingRule class
   // comment): once more than this many pivots have happened within
@@ -1763,6 +1798,11 @@ std::optional<std::vector<sat::Lit>> LraTableau::check() {
     // is unconditionally already an invariant here -- assert_upper/
     // assert_lower always sync a nonbasic variable's assignment
     // immediately, so N∩E is always empty by construction; nothing to do.
+    const bool paper = tuning_.soi_selection != SoiSelectionRule::Historical;
+    if (paper) {
+      const std::vector<LraVarId> initial(violated_vars_.begin(), violated_vars_.end());
+      if (auto conflict = soi_row_conflict(initial)) return conflict;
+    }
     while (pivot_count <= bland_fallback_threshold) {
       const auto selection = soi_select();
       if (!selection.has_value()) {
@@ -1786,6 +1826,11 @@ std::optional<std::vector<sat::Lit>> LraTableau::check() {
           }
         }
         return build_soi_conflict(minimized);
+      }
+      std::vector<LraVarId> affected;
+      if (paper) {
+        affected = occurs_in(selection->entering);
+        affected.push_back(selection->entering);
       }
       ++soi_work_.selected_steps;
       if (selection->objective_delta == DeltaRational{}) ++soi_work_.zero_progress_steps;
@@ -1815,6 +1860,9 @@ std::optional<std::vector<sat::Lit>> LraTableau::check() {
         update(selection->leaving, target);
       }
       ++pivot_count;
+      if (paper) {
+        if (auto conflict = soi_row_conflict(affected)) return conflict;
+      }
     }
     // Defensive fallback, belt-and-suspenders beyond the paper's own
     // tie-breaking-reduces-to-Bland termination argument (Section V-C):

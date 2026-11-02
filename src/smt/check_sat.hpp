@@ -161,6 +161,7 @@ enum class LraPivotingRule {
 // Mirrors theory::arithmetic::LraTableau::SoiMinimization /
 // ::SoiMinimizationOrder, translated at the wiring point the same way
 // LraPivotingRule is -- keeps this header free of theory-layer includes.
+enum class LraSoiSelectionRule { Historical, Paper };
 enum class LraSoiMinimization { QuickXplain, Deletion, None };
 enum class LraSoiMinimizationOrder { Id, RowSupport, Violation };
 
@@ -168,6 +169,7 @@ struct LraTuning {
   std::size_t sparse_pricing_candidates = 16;
   std::size_t bland_fallback_factor = 4;
   std::size_t bland_fallback_offset = 64;
+  LraSoiSelectionRule soi_selection = LraSoiSelectionRule::Historical;
   LraSoiMinimization soi_minimization = LraSoiMinimization::QuickXplain;
   LraSoiMinimizationOrder soi_minimization_order = LraSoiMinimizationOrder::Id;
 };

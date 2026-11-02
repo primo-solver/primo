@@ -19,6 +19,12 @@ using primo::theory::arithmetic::LraTableau;
 using primo::theory::arithmetic::LraVarId;
 using primo::util::Rational;
 
+namespace primo::theory::arithmetic {
+struct LraTableauTestAccess {
+  static auto selection(const LraTableau& tableau) { return tableau.soi_select(); }
+};
+}  // namespace primo::theory::arithmetic
+
 namespace {
 
 DeltaRational rat(long value) { return DeltaRational::from_rational(Rational(value)); }
@@ -815,6 +821,85 @@ void assert_soi_objective_identity(const LraTableau& tableau) {
   for (const auto& entry : tableau.row(*objective)) expected[entry.var] -= entry.coeff;
   for (const auto& coefficient : expected) assert(coefficient.is_zero());
   assert_tableau_invariants(tableau);
+}
+
+void soi_paper_zero_progress_uses_smallest_entering_id() {
+  LraTableau tableau(LraTableau::PivotingRule::Soi);
+  const auto x = tableau.add_variable();
+  const auto y = tableau.add_variable();
+  const auto b = tableau.add_variable();
+  const auto c = tableau.add_variable();
+  const auto d = tableau.add_variable();
+  tableau.add_row(b, {{x, Rational(1)}, {y, Rational(2)}});
+  tableau.add_row(c, {{x, Rational(1)}});
+  tableau.add_row(d, {{y, Rational(2)}});
+  assert(!tableau.assert_lower(b, rat(1), Lit{1}));
+  assert(!tableau.assert_upper(c, rat(0), Lit{2}));
+  assert(!tableau.assert_upper(d, rat(0), Lit{3}));
+  const auto historical = primo::theory::arithmetic::LraTableauTestAccess::selection(tableau);
+  assert(historical && historical->entering == y && historical->objective_delta == rat(0));
+  auto tuning = tableau.tuning();
+  tuning.soi_selection = LraTableau::SoiSelectionRule::Paper;
+  tableau.set_tuning(tuning);
+  const auto paper = primo::theory::arithmetic::LraTableauTestAccess::selection(tableau);
+  assert(paper && paper->entering == x && paper->leaving == c && paper->delta == rat(0));
+  assert(tableau.check());
+}
+
+void soi_paper_retains_all_events_at_entering_bound() {
+  LraTableau tableau(LraTableau::PivotingRule::Soi);
+  // The leaving variable has a smaller ID than the entering variable.
+  const auto b = tableau.add_variable();
+  const auto x = tableau.add_variable();
+  tableau.add_row(b, {{x, Rational(1)}});
+  assert(!tableau.assert_upper(x, rat(1), Lit{1}));
+  assert(!tableau.assert_lower(b, rat(1), Lit{2}));
+  auto tuning = tableau.tuning();
+  tuning.soi_selection = LraTableau::SoiSelectionRule::Paper;
+  tableau.set_tuning(tuning);
+  const auto selected = primo::theory::arithmetic::LraTableauTestAccess::selection(tableau);
+  assert(selected && selected->entering == x && selected->leaving == b &&
+         selected->delta == rat(1));
+  assert(!tableau.check());
+  assert(tableau.is_basic(x));
+  assert_soi_objective_identity(tableau);
+}
+
+void soi_paper_can_pivot_entering_variable_past_its_own_bound() {
+  LraTableau tableau(LraTableau::PivotingRule::Soi);
+  const auto x = tableau.add_variable();
+  const auto b = tableau.add_variable();
+  tableau.add_row(b, {{x, Rational(2)}});
+  assert(!tableau.assert_upper(x, rat(1), Lit{1}));
+  assert(!tableau.assert_lower(b, rat(6), Lit{2}));
+  auto tuning = tableau.tuning();
+  tuning.soi_selection = LraTableau::SoiSelectionRule::Paper;
+  tableau.set_tuning(tuning);
+  const auto selected = primo::theory::arithmetic::LraTableauTestAccess::selection(tableau);
+  assert(selected && selected->entering == x && selected->leaving == b);
+  assert(selected->delta == rat(3) && selected->objective_delta == rat(-4));
+  const auto conflict = tableau.check();
+  assert(conflict && has_reason(*conflict, Lit{1}) && has_reason(*conflict, Lit{2}));
+  assert_soi_objective_identity(tableau);
+}
+
+void soi_paper_checks_row_conflicts_before_global_selection() {
+  LraTableau tableau(LraTableau::PivotingRule::Soi);
+  const auto x = tableau.add_variable();
+  const auto b = tableau.add_variable();
+  const auto c = tableau.add_variable();
+  tableau.add_row(b, {{x, Rational(-1)}});
+  tableau.add_row(c, {{x, Rational(2)}});
+  assert(!tableau.assert_lower(x, rat(0), Lit{1}));
+  assert(!tableau.assert_lower(b, rat(1), Lit{2}));
+  assert(!tableau.assert_lower(c, rat(1), Lit{3}));
+  auto tuning = tableau.tuning();
+  tuning.soi_selection = LraTableau::SoiSelectionRule::Paper;
+  tableau.set_tuning(tuning);
+  const auto conflict = tableau.check();
+  assert(conflict && conflict->size() == 2);
+  assert(has_reason(*conflict, Lit{1}) && has_reason(*conflict, Lit{2}));
+  assert(tableau.soi_work().selected_steps == 0 && tableau.soi_work().candidates == 0);
 }
 
 void soi_objective_identity_survives_bound_changes_pivots_and_rollback() {
@@ -2766,6 +2851,10 @@ int main() {
   sparse_matches_bland_on_multi_pivot_scenarios();
   least_violated_leaving_matches_bland_on_multi_pivot_scenarios();
   least_violated_leaving_selects_differently_from_most_violated();
+  soi_paper_zero_progress_uses_smallest_entering_id();
+  soi_paper_retains_all_events_at_entering_bound();
+  soi_paper_checks_row_conflicts_before_global_selection();
+  soi_paper_can_pivot_entering_variable_past_its_own_bound();
   soi_objective_identity_survives_bound_changes_pivots_and_rollback();
   soi_reproduces_paper_fig6_worked_example();
   soi_zero_breakpoints_moving_inward_do_not_change_the_slope();

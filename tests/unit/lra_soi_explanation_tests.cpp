@@ -68,10 +68,12 @@ struct Fixture {
 };
 
 void cases(const std::filesystem::path& directory, LraTableau::SoiMinimization arm,
-           const std::string& suffix) {
-  const auto configure = [arm](Fixture& fixture) {
+           const std::string& suffix, bool paper) {
+  const auto configure = [arm, paper](Fixture& fixture) {
     auto tuning = fixture.tableau.tuning();
     tuning.soi_minimization = arm;
+    tuning.soi_selection =
+        paper ? LraTableau::SoiSelectionRule::Paper : LraTableau::SoiSelectionRule::Historical;
     fixture.tableau.set_tuning(tuning);
   };
   {
@@ -140,7 +142,10 @@ int main(int argc, char** argv) {
   assert(argc == 2);
   const std::filesystem::path directory(argv[1]);
   std::filesystem::create_directories(directory);
-  cases(directory, LraTableau::SoiMinimization::QuickXplain, "recursive");
-  cases(directory, LraTableau::SoiMinimization::Deletion, "deletion");
-  cases(directory, LraTableau::SoiMinimization::None, "none");
+  for (const bool paper : {false, true}) {
+    const std::string prefix = paper ? "paper-" : "historical-";
+    cases(directory, LraTableau::SoiMinimization::QuickXplain, prefix + "recursive", paper);
+    cases(directory, LraTableau::SoiMinimization::Deletion, prefix + "deletion", paper);
+    cases(directory, LraTableau::SoiMinimization::None, prefix + "none", paper);
+  }
 }

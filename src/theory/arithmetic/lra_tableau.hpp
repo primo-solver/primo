@@ -205,6 +205,10 @@ class LraTableau {
     Violation,   // largest bound violation first: the "most responsible row" reading
   };
 
+  // Historical is retained for immutable-baseline replay. Paper implements
+  // Figure 3.4 selection with Figure 3.3 row-conflict checks.
+  enum class SoiSelectionRule { Historical, Paper };
+
   struct Tuning {
     // How many *eligible* entering candidates PivotingRule::Sparse scores
     // before settling for the best seen so far; 0 means unbounded (score
@@ -220,6 +224,7 @@ class LraTableau {
     // heuristic, so this is the knob that decides how hard mutation tries.
     std::size_t model_mutation_candidates = 4;
     // SOI-only; inert under every other pivoting rule.
+    SoiSelectionRule soi_selection = SoiSelectionRule::Historical;
     SoiMinimization soi_minimization = SoiMinimization::QuickXplain;
     SoiMinimizationOrder soi_minimization_order = SoiMinimizationOrder::Id;
   };
@@ -766,6 +771,7 @@ class LraTableau {
   bool occurs_in_index_matches_full_rebuild() const;
 
  private:
+  friend struct LraTableauTestAccess;
   struct Bound {
     DeltaRational value;
     sat::Lit reason;
@@ -910,6 +916,7 @@ class LraTableau {
     DeltaRational objective_delta;
   };
   std::optional<SoiSelection> soi_select() const;
+  std::optional<std::vector<sat::Lit>> soi_row_conflict(const std::vector<LraVarId>& candidates);
 
   // f_S = sum of d_i*row_i over only `subset` -- shared by
   // build_soi_conflict and soi_subset_still_conflicts.

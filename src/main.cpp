@@ -443,6 +443,11 @@ int run_main(int argc, char** argv) {
                  "eligible candidate). 1 is the cheapest possible pricing. Never cuts short "
                  "the search for whether an eligible candidate exists, so any value is sound")
       ->check(CLI::Range(0, 1000000));
+  add_enum_option(app, "--lra-soi-selection", solver_options.lra_tuning.soi_selection,
+                  primo::cli::kLraSoiSelectionNames,
+                  "SOI selection: historical (default) or paper (Figure 3.4 scores, "
+                  "coincident endpoint ties and Figure 3.3 row-conflict scans)");
+
   add_enum_option(app, "--lra-soi-minimize", solver_options.lra_tuning.soi_minimization,
                   primo::cli::kLraSoiMinimizationNames,
                   "How --lra-pivoting-rule soi shrinks a multi-row conflict before turning "

@@ -367,6 +367,9 @@ theory::arithmetic::LraTableau::Tuning lra_tuning_from_options(const LraTuning& 
   result.sparse_pricing_candidates = tuning.sparse_pricing_candidates;
   result.bland_fallback_factor = tuning.bland_fallback_factor;
   result.bland_fallback_offset = tuning.bland_fallback_offset;
+  result.soi_selection = tuning.soi_selection == LraSoiSelectionRule::Paper
+                             ? theory::arithmetic::LraTableau::SoiSelectionRule::Paper
+                             : theory::arithmetic::LraTableau::SoiSelectionRule::Historical;
   result.soi_minimization = lra_soi_minimization_from_options(tuning.soi_minimization);
   result.soi_minimization_order =
       lra_soi_minimization_order_from_options(tuning.soi_minimization_order);
