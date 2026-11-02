@@ -6999,6 +6999,7 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
         count_query_conflicts_(count_query_conflicts),
         conflict_limit_(conflict_limit),
         call_profiler_(std::move(call_profiler)) {
+    tableau_.set_soi_profiling(call_profiler_ != nullptr);
     if (call_profiler_) call_checker_ = call_profiler_->register_checker(prepared.base_tableau);
     int max_theory_var = 0;
     for (const BooleanClausifier::TheoryAtom& atom : theory_atoms_) {
@@ -7394,6 +7395,7 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
     if (conflict_.has_value()) {
       return;
     }
+    const auto soi_before = reported_soi_work_;
     const std::size_t fallbacks_before = tableau_.bland_fallback_count();
     const std::size_t multi_row_conflicts_before = tableau_.soi_multi_row_conflict_count();
     const std::size_t minimize_calls_before = tableau_.soi_minimize_call_count();
@@ -7403,6 +7405,7 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
     const std::size_t row_updates_before = tableau_.row_update_count();
     const std::size_t term_ops_before = tableau_.row_term_op_count();
     statistics_.increment(kStatLraOnlineCheckCalls);
+    tableau_.set_soi_profiling(call_profiler_ != nullptr);
     if (call_profiler_) call_profiler_->capture_before_check(*call_checker_, tableau_);
     const auto started =
         call_profiler_ ? std::chrono::steady_clock::now() : std::chrono::steady_clock::time_point{};
@@ -7415,6 +7418,35 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
                              tableau_.row_update_count() - row_updates_before,
                              tableau_.row_term_op_count() - term_ops_before, conflict_.has_value());
     }
+    if (tableau_.soi_objective_variable()) {
+      statistics_.increment(util::StatKey::LraSoiSelectedSteps,
+                            tableau_.soi_work().selected_steps - soi_before.selected_steps);
+      statistics_.increment(
+          util::StatKey::LraSoiZeroProgressSteps,
+          tableau_.soi_work().zero_progress_steps - soi_before.zero_progress_steps);
+      statistics_.increment(util::StatKey::LraSoiCandidates,
+                            tableau_.soi_work().candidates - soi_before.candidates);
+      statistics_.increment(util::StatKey::LraSoiCrossings,
+                            tableau_.soi_work().crossings - soi_before.crossings);
+      statistics_.increment(util::StatKey::LraSoiObjectiveUpdates,
+                            tableau_.soi_work().objective_updates - soi_before.objective_updates);
+      statistics_.increment(util::StatKey::LraSoiPrefixPivots,
+                            tableau_.soi_work().prefix_pivots - soi_before.prefix_pivots);
+      statistics_.increment(util::StatKey::LraSoiFallbackPivots,
+                            tableau_.soi_work().fallback_pivots - soi_before.fallback_pivots);
+      statistics_.increment(util::StatKey::LraSoiPredicateCalls,
+                            tableau_.soi_work().predicate_calls - soi_before.predicate_calls);
+      statistics_.increment(util::StatKey::LraSoiArithmeticTerms,
+                            tableau_.soi_work().arithmetic_terms - soi_before.arithmetic_terms);
+      statistics_.increment(util::StatKey::LraSoiSelectedRows,
+                            tableau_.soi_work().selected_rows - soi_before.selected_rows);
+      statistics_.increment(util::StatKey::LraSoiSelectionNs,
+                            tableau_.soi_work().selection_ns - soi_before.selection_ns);
+      statistics_.increment(util::StatKey::LraSoiObjectiveNs,
+                            tableau_.soi_work().objective_ns - soi_before.objective_ns);
+      reported_soi_work_ = tableau_.soi_work();
+    }
+
     if (conflict_) record_query_conflict();
     const std::size_t pivot_delta = tableau_.pivot_count() - pivots_before;
     statistics_.increment(kStatLraBlandFallbacks,
@@ -7772,6 +7804,7 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
   const std::vector<BooleanClausifier::TheoryAtom>& theory_atoms_;
   const PreparedLraTheory& prepared_;
   theory::arithmetic::LraTableau tableau_;
+  theory::arithmetic::LraTableau::SoiWork reported_soi_work_;
   bool propagation_enabled_;
   bool row_propagation_enabled_;
   bool bidirectional_row_propagation_enabled_;
@@ -8972,6 +9005,7 @@ class ComponentLraExecution final {
     if (conflict_.has_value()) {
       return;
     }
+    const auto soi_before = reported_soi_work_;
     const std::size_t fallbacks_before = tableau_.bland_fallback_count();
     const std::size_t multi_row_conflicts_before = tableau_.soi_multi_row_conflict_count();
     const std::size_t minimize_calls_before = tableau_.soi_minimize_call_count();
@@ -8982,6 +9016,35 @@ class ComponentLraExecution final {
     const std::size_t term_ops_before = tableau_.row_term_op_count();
     statistics_.increment(kStatLraOnlineCheckCalls);
     conflict_ = tableau_.check();
+    if (tableau_.soi_objective_variable()) {
+      statistics_.increment(util::StatKey::LraSoiSelectedSteps,
+                            tableau_.soi_work().selected_steps - soi_before.selected_steps);
+      statistics_.increment(
+          util::StatKey::LraSoiZeroProgressSteps,
+          tableau_.soi_work().zero_progress_steps - soi_before.zero_progress_steps);
+      statistics_.increment(util::StatKey::LraSoiCandidates,
+                            tableau_.soi_work().candidates - soi_before.candidates);
+      statistics_.increment(util::StatKey::LraSoiCrossings,
+                            tableau_.soi_work().crossings - soi_before.crossings);
+      statistics_.increment(util::StatKey::LraSoiObjectiveUpdates,
+                            tableau_.soi_work().objective_updates - soi_before.objective_updates);
+      statistics_.increment(util::StatKey::LraSoiPrefixPivots,
+                            tableau_.soi_work().prefix_pivots - soi_before.prefix_pivots);
+      statistics_.increment(util::StatKey::LraSoiFallbackPivots,
+                            tableau_.soi_work().fallback_pivots - soi_before.fallback_pivots);
+      statistics_.increment(util::StatKey::LraSoiPredicateCalls,
+                            tableau_.soi_work().predicate_calls - soi_before.predicate_calls);
+      statistics_.increment(util::StatKey::LraSoiArithmeticTerms,
+                            tableau_.soi_work().arithmetic_terms - soi_before.arithmetic_terms);
+      statistics_.increment(util::StatKey::LraSoiSelectedRows,
+                            tableau_.soi_work().selected_rows - soi_before.selected_rows);
+      statistics_.increment(util::StatKey::LraSoiSelectionNs,
+                            tableau_.soi_work().selection_ns - soi_before.selection_ns);
+      statistics_.increment(util::StatKey::LraSoiObjectiveNs,
+                            tableau_.soi_work().objective_ns - soi_before.objective_ns);
+      reported_soi_work_ = tableau_.soi_work();
+    }
+
     const std::size_t pivot_delta = tableau_.pivot_count() - pivots_before;
     statistics_.increment(kStatLraBlandFallbacks,
                           tableau_.bland_fallback_count() - fallbacks_before);
@@ -9338,6 +9401,7 @@ class ComponentLraExecution final {
   const std::vector<BooleanClausifier::TheoryAtom>& theory_atoms_;
   const PreparedLraTheory& prepared_;
   theory::arithmetic::LraTableau tableau_;
+  theory::arithmetic::LraTableau::SoiWork reported_soi_work_;
   bool propagation_enabled_;
   bool row_propagation_enabled_;
   bool bidirectional_row_propagation_enabled_;

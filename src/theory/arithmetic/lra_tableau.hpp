@@ -185,25 +185,12 @@ class LraTableau {
   // it into a clause, and in which order candidates are offered up for
   // removal. PivotingRule::Soi only; inert under every other rule.
   //
-  // Measured on this code (25 instances, SOI forced, 2253 minimization
-  // calls): the error set averages 2.83 variables when it has more than one,
-  // never exceeded 9, and minimization reduces it to 1.23. So the *algorithm*
-  // is irrelevant here -- QuickXplain's O(k + k log(m/k)) against deletion's
-  // O(m) is about one predicate test at m = 3. What matters is that at
-  // k ~= 1.23 there are usually several equally minimal answers, and which
-  // one survives decides the clause.
-  //
-  // That choice is currently unspecified: QuickXplain's divide-and-conquer
-  // decides which elements get tested together, so it cannot be steered.
-  // Deletion can, because it drops the elements it visits first -- hence the
-  // ordering below is "worst first".
-  //
-  // Why it is worth steering: build_soi_conflict emits one literal per
-  // nonzero entry of the restricted SOI row PLUS one per error variable.
-  // Minimizing |S| shrinks only the second term, while the first depends on
-  // *which* rows survive and is usually the larger of the two.
+  // These reduce a blocked objective's error set using a certificate test,
+  // not a monotone satisfiability oracle. Neither recursive nor deletion
+  // reduction guarantees inclusion-minimality (King 2014, Section 3.3.5;
+  // docs/papers/soi-implementation-audit.md).
   enum class SoiMinimization {
-    QuickXplain,  // Junker 2001, the historical default
+    QuickXplain,  // historical recursive certificate reduction
     Deletion,     // iterative, steerable by SoiMinimizationOrder
     None,         // ablation baseline and a portfolio arm
   };
@@ -716,6 +703,28 @@ class LraTableau {
   std::size_t soi_minimize_shrunk_count() const { return soi_minimize_shrunk_count_; }
   std::size_t soi_conflict_lit_count() const { return soi_conflict_lit_count_; }
 
+  // Cumulative work, including assertion-time objective maintenance. Not
+  // trailed: rollback is observable work, not a reason to erase measurements.
+  struct SoiWork {
+    std::uint64_t selected_steps = 0;
+    std::uint64_t zero_progress_steps = 0;
+    std::uint64_t candidates = 0;
+    std::uint64_t crossings = 0;
+    std::uint64_t objective_updates = 0;
+    std::uint64_t prefix_pivots = 0;
+    std::uint64_t fallback_pivots = 0;
+    std::uint64_t predicate_calls = 0;
+    std::uint64_t arithmetic_terms = 0;
+    std::uint64_t selected_rows = 0;
+    std::uint64_t selection_ns = 0;
+    std::uint64_t objective_ns = 0;
+  };
+  const SoiWork& soi_work() const { return soi_work_; }
+  // Enabled by the diagnostic call profiler only; ordinary solves never read
+  // the phase clock. Does not affect selection or rollback semantics.
+  void set_soi_profiling(bool enabled) { soi_profiling_ = enabled; }
+  std::optional<LraVarId> soi_objective_variable() const { return f_var_; }
+
   // Total number of tableau variables (problem variables plus slacks, plus
   // f_var_ under PivotingRule::Soi). Only grows during initial construction
   // -- see the class comment -- so this is a structural size, not search
@@ -898,6 +907,7 @@ class LraTableau {
     LraVarId entering;
     LraVarId leaving;
     DeltaRational delta;
+    DeltaRational objective_delta;
   };
   std::optional<SoiSelection> soi_select() const;
 
@@ -912,13 +922,13 @@ class LraTableau {
   // every var in `error_vars`'s own bound reason.
   std::vector<sat::Lit> build_soi_conflict(const std::vector<LraVarId>& error_vars) const;
 
-  // Standard QuickXplain (Junker 2001, cited by the paper as [21]) over
+  // Historical recursive reduction (inspired by QuickXplain) over
   // `error_vars`, using an is-still-a-conflict oracle that computes a
   // *restricted* f_S (sum of d_i*row_i over only a candidate subset) and
   // checks whether any nonbasic variable could still locally reduce it.
   // Returns a subset of `error_vars` sufficient for build_soi_conflict to
   // still produce a sound conflict -- not necessarily globally minimal,
-  // but usually is in practice (paper: "most of the time... |S|=2").
+  // with no claim of inclusion-minimality for this non-monotone predicate.
   std::vector<LraVarId> minimize_soi_conflict(const std::vector<LraVarId>& error_vars) const;
 
   // Deletion-based minimization: visit `error_vars` in soi_minimization_order_
@@ -934,10 +944,9 @@ class LraTableau {
   // `error_vars` reordered worst-first for delete_soi_conflict().
   std::vector<LraVarId> ordered_for_deletion(const std::vector<LraVarId>& error_vars) const;
   bool soi_subset_still_conflicts(const std::vector<LraVarId>& subset) const;
-  // The recursive QuickXplain step: minimal subset of `candidates` that,
-  // combined with `background`, still conflicts. Standard algorithm
-  // (Junker 2001) -- not itself paper-specific, just the well-known
-  // divide-and-conquer minimization technique the paper cites by name.
+  // Recursive certificate reduction. Precondition: background+candidates
+  // certifies a conflict. Returns D with background+D certifying a conflict;
+  // the induction uses that precondition, not monotonicity of the oracle.
   std::vector<LraVarId> quickxplain(const std::vector<LraVarId>& background,
                                     const std::vector<LraVarId>& candidates) const;
 
@@ -972,6 +981,8 @@ class LraTableau {
   std::size_t pivot_count_ = 0;
   std::size_t row_update_count_ = 0;
   std::size_t row_term_op_count_ = 0;
+  mutable SoiWork soi_work_;
+  bool soi_profiling_ = false;
   std::size_t soi_multi_row_conflict_count_ = 0;
   std::size_t soi_minimize_call_count_ = 0;
   std::size_t soi_minimize_shrunk_count_ = 0;

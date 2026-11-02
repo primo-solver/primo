@@ -31,6 +31,7 @@ DeltaRational rat(long value) { return DeltaRational::from_rational(Rational(val
 // check these rather than field-by-field equality with the pre-push state.
 void assert_tableau_invariants(const LraTableau& tableau) {
   for (LraVarId var = 0; var < tableau.variable_count(); ++var) {
+    if (tableau.soi_objective_variable() == var) continue;
     if (tableau.is_basic(var)) {
       DeltaRational sum = rat(0);
       for (const auto& [term_var, coeff, term_slot] : tableau.row(var)) {
@@ -795,6 +796,48 @@ void sparse_matches_bland_on_multi_pivot_scenarios() {
 // upper-bound side here, since f's coefficient for x2 is negative; see
 // the test body), so it's a faithful reproduction, not a different
 // scenario.
+// The artificial objective's assignment is deliberately not a row value.
+// Check its coefficient identity independently from ordinary equations.
+void assert_soi_objective_identity(const LraTableau& tableau) {
+  const auto objective = tableau.soi_objective_variable();
+  assert(objective.has_value());
+  std::vector<Rational> expected(tableau.variable_count(), Rational(0));
+  for (LraVarId var = 0; var < tableau.variable_count(); ++var) {
+    if (!tableau.is_basic(var) || var == *objective) continue;
+    const auto lower = tableau.lower_bound(var);
+    const auto upper = tableau.upper_bound(var);
+    const int direction = lower && tableau.assignment(var) < lower->value   ? -1
+                          : upper && tableau.assignment(var) > upper->value ? 1
+                                                                            : 0;
+    for (const auto& entry : tableau.row(var))
+      expected[entry.var] += entry.coeff * Rational(direction);
+  }
+  for (const auto& entry : tableau.row(*objective)) expected[entry.var] -= entry.coeff;
+  for (const auto& coefficient : expected) assert(coefficient.is_zero());
+  assert_tableau_invariants(tableau);
+}
+
+void soi_objective_identity_survives_bound_changes_pivots_and_rollback() {
+  LraTableau tableau(LraTableau::PivotingRule::Soi);
+  const auto x = tableau.add_variable();
+  const auto s = tableau.add_variable();
+  tableau.add_row(s, {{x, Rational(1)}});
+  const auto initial = tableau.push();
+  assert(!tableau.assert_lower(x, rat(1), Lit{1}));
+  assert(!tableau.assert_lower(s, rat(2), Lit{2}));
+  assert_soi_objective_identity(tableau);
+  assert(!tableau.check());
+  assert_soi_objective_identity(tableau);
+  assert(tableau.soi_work().selected_steps == 1);
+  assert(tableau.soi_work().prefix_pivots == 1);
+  assert(tableau.soi_work().zero_progress_steps == 0);
+  assert(tableau.soi_work().candidates == 1);
+  assert(tableau.soi_work().crossings > 0);
+  assert(tableau.soi_work().selection_ns == 0 && tableau.soi_work().objective_ns == 0);
+  tableau.pop(initial);
+  assert_soi_objective_identity(tableau);
+}
+
 void soi_reproduces_paper_fig6_worked_example() {
   LraTableau tableau(LraTableau::PivotingRule::Soi);
   const LraVarId x2 = tableau.add_variable();
@@ -1028,7 +1071,7 @@ void soi_push_pop_restores_state_across_a_pivot() {
   assert(has_reason(*redone_check_conflict, lower_reason));
 }
 
-void soi_multi_row_conflict_includes_every_violated_row() {
+void soi_conflict_contains_only_asserted_reasons() {
   // s1 = x+y, s2 = y+z, x>=8, z>=8, y>=5 -- both s1<=10 and s2<=10 are
   // simultaneously violated (13>10 each) with y shared between them.
   LraTableau tableau(LraTableau::PivotingRule::Soi);
@@ -2653,7 +2696,7 @@ void soi_deletion_row_support_keeps_the_shorter_row() {
   assert(support_conflict->size() < id_conflict->size());
 }
 
-void soi_minimization_arms_all_produce_a_sound_conflict() {
+void soi_minimization_arms_return_asserted_reasons() {
   // Every literal a conflict names must be a reason we actually asserted --
   // an arm that invented or dropped a literal would be unsound regardless of
   // how short its clause is.
@@ -2723,6 +2766,7 @@ int main() {
   sparse_matches_bland_on_multi_pivot_scenarios();
   least_violated_leaving_matches_bland_on_multi_pivot_scenarios();
   least_violated_leaving_selects_differently_from_most_violated();
+  soi_objective_identity_survives_bound_changes_pivots_and_rollback();
   soi_reproduces_paper_fig6_worked_example();
   soi_zero_breakpoints_moving_inward_do_not_change_the_slope();
   soi_zero_breakpoints_moving_outward_change_the_slope();
@@ -2730,7 +2774,7 @@ int main() {
   soi_fixed_variable_at_nonzero_contributes_both_direction_changes();
   soi_matches_bland_on_multi_pivot_scenarios();
   soi_push_pop_restores_state_across_a_pivot();
-  soi_multi_row_conflict_includes_every_violated_row();
+  soi_conflict_contains_only_asserted_reasons();
   soi_quickxplain_minimizes_independent_conflicts();
   fixed_basic_variable_is_pivoted_out_of_the_basis();
   elimination_is_off_unless_enabled();
@@ -2788,7 +2832,7 @@ int main() {
   diversify_reports_an_unresolved_entailed_forbidden_equality();
   soi_minimization_none_keeps_every_violated_row();
   soi_deletion_row_support_keeps_the_shorter_row();
-  soi_minimization_arms_all_produce_a_sound_conflict();
+  soi_minimization_arms_return_asserted_reasons();
   soi_minimization_is_deterministic();
   return 0;
 }

@@ -2,7 +2,9 @@
 
 #include <algorithm>
 #include <cassert>
+#include <chrono>
 #include <cstddef>
+#include <cstdint>
 #include <set>
 #include <unordered_map>
 #include <unordered_set>
@@ -10,6 +12,27 @@
 #include <vector>
 
 namespace primo::theory::arithmetic {
+namespace {
+// Diagnostic timing only. No clock reads when profiling is disabled.
+class SoiPhaseTimer {
+ public:
+  SoiPhaseTimer(bool enabled, std::uint64_t& total) : enabled_(enabled), total_(total) {
+    if (enabled_) started_ = std::chrono::steady_clock::now();
+  }
+  ~SoiPhaseTimer() {
+    if (enabled_) {
+      total_ += static_cast<std::uint64_t>(std::chrono::duration_cast<std::chrono::nanoseconds>(
+                                               std::chrono::steady_clock::now() - started_)
+                                               .count());
+    }
+  }
+
+ private:
+  bool enabled_;
+  std::uint64_t& total_;
+  std::chrono::steady_clock::time_point started_;
+};
+}  // namespace
 
 LraVarId LraTableau::add_variable() {
   const LraVarId id = vars_.size();
@@ -459,6 +482,8 @@ void LraTableau::set_soi_direction(LraVarId var, int new_direction, const Row& v
   if (new_direction == stored) {
     return;
   }
+  SoiPhaseTimer timer(soi_profiling_, soi_work_.objective_ns);
+  ++soi_work_.objective_updates;
   const int delta = new_direction - stored;
   const int previous = stored;
   stored = new_direction;
@@ -515,6 +540,7 @@ struct SoiBreakPoint {
 }  // namespace
 
 std::optional<LraTableau::SoiSelection> LraTableau::soi_select() const {
+  SoiPhaseTimer timer(soi_profiling_, soi_work_.selection_ns);
   const DeltaRational kZero = DeltaRational::from_rational(util::Rational(0));
   const Row& f_row = rows_.at(*f_var_);
 
@@ -522,7 +548,7 @@ std::optional<LraTableau::SoiSelection> LraTableau::soi_select() const {
   int best_sign = 0;
   util::Rational best_abs_score(0);
   LraVarId best_j = 0;
-  SoiSelection best_selection{0, 0, kZero};
+  SoiSelection best_selection{0, 0, kZero, kZero};
 
   for (const auto& [j, t0j, j_slot] : f_row) {
     if (t0j.is_zero()) {
@@ -539,6 +565,7 @@ std::optional<LraTableau::SoiSelection> LraTableau::soi_select() const {
     if (!eligible) {
       continue;
     }
+    ++soi_work_.candidates;
     const bool delta_positive = !t0j_positive;  // walk direction that reduces f
     const int walk_sign = delta_positive ? 1 : -1;
 
@@ -585,6 +612,7 @@ std::optional<LraTableau::SoiSelection> LraTableau::soi_select() const {
         }
       }
     }
+    soi_work_.crossings += points.size();
     if (points.empty()) {
       continue;
     }
@@ -674,13 +702,13 @@ std::optional<LraTableau::SoiSelection> LraTableau::soi_select() const {
       best_sign = sign;
       best_abs_score = abs_score;
       best_j = j;
-      best_selection = SoiSelection{j, best_k_for_j, best_delta_for_j};
+      best_selection = SoiSelection{j, best_k_for_j, best_delta_for_j, best_delta_vio_for_j};
     } else if (sign < best_sign || (sign == best_sign && abs_score > best_abs_score) ||
                (sign == best_sign && abs_score == best_abs_score && j < best_j)) {
       best_sign = sign;
       best_abs_score = abs_score;
       best_j = j;
-      best_selection = SoiSelection{j, best_k_for_j, best_delta_for_j};
+      best_selection = SoiSelection{j, best_k_for_j, best_delta_for_j, best_delta_vio_for_j};
     }
   }
 
@@ -707,6 +735,7 @@ std::unordered_map<LraVarId, util::Rational> LraTableau::restricted_soi_row(
     }
     const util::Rational d(direction);
     for (const auto& [var, coeff, var_slot] : rows_.at(basic_var)) {
+      ++soi_work_.arithmetic_terms;
       restricted[var] += coeff * d;
     }
   }
@@ -738,6 +767,7 @@ std::vector<sat::Lit> LraTableau::build_soi_conflict(
   // The quantity a minimization strategy is actually trying to move: the
   // clause length, not the size of the error set it was derived from.
   soi_conflict_lit_count_ += reasons.size();
+  soi_work_.selected_rows += error_vars.size();
   return reasons;
 }
 
@@ -746,6 +776,7 @@ bool LraTableau::soi_subset_still_conflicts(const std::vector<LraVarId>& subset)
   // Vio(subset)=0 trivially) -- without this guard, f_empty is the zero
   // row, which vacuously has no eligible candidate and would otherwise
   // be (wrongly) treated as "stuck"/conflicting.
+  ++soi_work_.predicate_calls;
   if (subset.empty()) {
     return false;
   }
@@ -1756,6 +1787,8 @@ std::optional<std::vector<sat::Lit>> LraTableau::check() {
         }
         return build_soi_conflict(minimized);
       }
+      ++soi_work_.selected_steps;
+      if (selection->objective_delta == DeltaRational{}) ++soi_work_.zero_progress_steps;
       if (selection->entering == selection->leaving) {
         // j reaches its own bound directly -- UPDATE without a pivot
         // (PRIMAL's own footnote: k==j collapses UPDATEANDPIVOT to a
@@ -1777,6 +1810,7 @@ std::optional<std::vector<sat::Lit>> LraTableau::check() {
         }
         const DeltaRational target =
             vars_.at(selection->leaving).assignment + selection->delta.scaled(coeff);
+        ++soi_work_.prefix_pivots;
         pivot(selection->leaving, selection->entering);
         update(selection->leaving, target);
       }
@@ -1887,6 +1921,7 @@ std::optional<std::vector<sat::Lit>> LraTableau::check() {
 
     const DeltaRational target =
         too_low ? vars_.at(violated).lower->value : vars_.at(violated).upper->value;
+    if (rule_ == PivotingRule::Soi) ++soi_work_.fallback_pivots;
     pivot(violated, entering);
     update(violated, target);
     ++pivot_count;
