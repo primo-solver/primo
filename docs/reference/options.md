@@ -151,3 +151,13 @@ merging with support-only occurrence changes, crossing-coefficient reuse and
 convex stopping, while retaining full trailing. See
 [objective and crossing maintenance](../implementation/soi.md#experimental-objective-and-crossing-maintenance)
 and {soimaintsource}`the implementation <src/theory/arithmetic/lra_tableau.cpp>`.
+
+## SOI Bland fallback lifecycle
+
+`--lra-soi-suspend-on-fallback` (candidate default on) snapshots the tableau
+once before an SOI check's first Bland suffix pivot, disables the artificial
+objective/activity hooks and individual suffix undo records, then rebuilds SOI
+state before returning. `--no-lra-soi-suspend-on-fallback` retains the eager
+reference; the disabling flag wins if both appear. This option is inert for
+other pivot rules. See [the lifecycle proof](../implementation/soi.md#bland-fallback-lifecycle).
+The selector default remains historical and the solver default remains Sparse.

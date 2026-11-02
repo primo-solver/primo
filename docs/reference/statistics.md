@@ -1176,3 +1176,15 @@ rollback index rebuilds are excluded. Surviving supports retain their slots with
 linear maintenance enabled. Full old-row trail copies remain outside these
 term/link counters. See
 {soimaintsource}`objective maintenance <src/theory/arithmetic/lra_tableau.cpp>`.
+
+## SOI fallback lifecycle work
+
+`:lra.soi-fallback-snapshots` counts coarse pre-suffix rollback records.
+`:lra.soi-fallback-snapshot-terms` sums copied terms across every stored row
+slot, including the objective and any stale nonbasic rows.
+`:lra.soi-fallback-untrailed-pivots` counts suffix pivots executed without
+individual assignment/pivot records. `:lra.soi-fallback-rebuild-terms` counts
+ordinary RHS term visits reconstructing the objective at suffix exit; it excludes
+status scans, sorting and GMP bit complexity. Snapshot/reconstruction phase
+time is included in `:lra.soi-objective-ns` only when profiling is enabled.
+These counters are cumulative and are not erased by rollback.

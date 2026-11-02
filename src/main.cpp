@@ -267,6 +267,7 @@ int run_main(int argc, char** argv) {
   bool no_lra_propagation = false;
   bool no_solved_constant_substitution = false;
   bool no_gaussian_elimination = false;
+  bool no_lra_soi_suspend_on_fallback = false;
   bool no_lia_conflict_generalization = false;
   bool no_qf_uflra_fixed_elimination = false;
   bool qf_uflra_candidate_final_scan = solver_options.qf_uflra_candidate_final_scan;
@@ -461,16 +462,20 @@ int run_main(int argc, char** argv) {
   app.add_flag("--lra-soi-linear-maintenance", solver_options.lra_tuning.soi_linear_maintenance,
                "Experimental linear objective merge, crossing reuse and convex pruning");
 
+  add_flag_with_default(
+      app, "--lra-soi-suspend-on-fallback", solver_options.lra_tuning.soi_suspend_on_fallback,
+      "Suspend SOI objective/cache maintenance and use one rollback snapshot in Bland tails");
+  add_flag_with_default(app, "--no-lra-soi-suspend-on-fallback", no_lra_soi_suspend_on_fallback,
+                        "Retain eager SOI bookkeeping and per-pivot trailing in Bland tails");
+
   add_enum_option(app, "--lra-soi-minimize", solver_options.lra_tuning.soi_minimization,
                   primo::cli::kLraSoiMinimizationNames,
                   "How --lra-pivoting-rule soi shrinks a multi-row conflict before turning "
                   "it into a clause: quickxplain (Junker 2001), deletion "
                   "(iterative, and steerable by --lra-soi-minimize-order), row-growing "
                   "(thesis Figure 3.6), or none "
-                  "(ablation baseline). Inert under every other pivoting rule. Measured, "
-                  "the error set averages 2.83 variables and never exceeded 9, so this "
-                  "changes which minimal conflict is learned rather than how fast it is "
-                  "found");
+                  "(ablation baseline). Inert under every other pivoting rule. Returns a "
+                  "sufficient certificate without an inclusion-minimality guarantee");
   add_enum_option(app, "--lra-soi-minimize-order", solver_options.lra_tuning.soi_minimization_order,
                   primo::cli::kLraSoiMinimizationOrderNames,
                   "Order --lra-soi-minimize deletion offers candidates for removal, worst "
@@ -1005,6 +1010,9 @@ int run_main(int argc, char** argv) {
   }
   if (no_solved_constant_substitution) {
     solver_options.solved_constant_substitution = false;
+  }
+  if (no_lra_soi_suspend_on_fallback) {
+    solver_options.lra_tuning.soi_suspend_on_fallback = false;
   }
   if (no_gaussian_elimination) {
     solver_options.gaussian_elimination = false;

@@ -174,6 +174,7 @@ struct LraTuning {
   std::size_t soi_stall_limit = 16;
   bool soi_cached_conflicts = false;
   bool soi_linear_maintenance = false;
+  bool soi_suspend_on_fallback = true;
   LraSoiMinimization soi_minimization = LraSoiMinimization::QuickXplain;
   LraSoiMinimizationOrder soi_minimization_order = LraSoiMinimizationOrder::Id;
 };

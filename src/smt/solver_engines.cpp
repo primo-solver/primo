@@ -384,6 +384,7 @@ theory::arithmetic::LraTableau::Tuning lra_tuning_from_options(const LraTuning& 
   result.soi_stall_limit = tuning.soi_stall_limit;
   result.soi_cached_conflicts = tuning.soi_cached_conflicts;
   result.soi_linear_maintenance = tuning.soi_linear_maintenance;
+  result.soi_suspend_on_fallback = tuning.soi_suspend_on_fallback;
   result.soi_minimization = lra_soi_minimization_from_options(tuning.soi_minimization);
   result.soi_minimization_order =
       lra_soi_minimization_order_from_options(tuning.soi_minimization_order);
@@ -7475,6 +7476,17 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
                             tableau_.soi_work().growing_rows - soi_before.growing_rows);
       statistics_.increment(util::StatKey::LraSoiCrossingsExamined,
                             tableau_.soi_work().crossings_examined - soi_before.crossings_examined);
+      statistics_.increment(util::StatKey::LraSoiFallbackSnapshots,
+                            tableau_.soi_work().fallback_snapshots - soi_before.fallback_snapshots);
+      statistics_.increment(
+          util::StatKey::LraSoiFallbackUntrailedPivots,
+          tableau_.soi_work().fallback_untrailed_pivots - soi_before.fallback_untrailed_pivots);
+      statistics_.increment(
+          util::StatKey::LraSoiFallbackRebuildTerms,
+          tableau_.soi_work().fallback_rebuild_terms - soi_before.fallback_rebuild_terms);
+      statistics_.increment(
+          util::StatKey::LraSoiFallbackSnapshotTerms,
+          tableau_.soi_work().fallback_snapshot_terms - soi_before.fallback_snapshot_terms);
       reported_soi_work_ = tableau_.soi_work();
     }
 
@@ -9087,6 +9099,17 @@ class ComponentLraExecution final {
                             tableau_.soi_work().growing_rows - soi_before.growing_rows);
       statistics_.increment(util::StatKey::LraSoiCrossingsExamined,
                             tableau_.soi_work().crossings_examined - soi_before.crossings_examined);
+      statistics_.increment(util::StatKey::LraSoiFallbackSnapshots,
+                            tableau_.soi_work().fallback_snapshots - soi_before.fallback_snapshots);
+      statistics_.increment(
+          util::StatKey::LraSoiFallbackUntrailedPivots,
+          tableau_.soi_work().fallback_untrailed_pivots - soi_before.fallback_untrailed_pivots);
+      statistics_.increment(
+          util::StatKey::LraSoiFallbackRebuildTerms,
+          tableau_.soi_work().fallback_rebuild_terms - soi_before.fallback_rebuild_terms);
+      statistics_.increment(
+          util::StatKey::LraSoiFallbackSnapshotTerms,
+          tableau_.soi_work().fallback_snapshot_terms - soi_before.fallback_snapshot_terms);
       reported_soi_work_ = tableau_.soi_work();
     }
 

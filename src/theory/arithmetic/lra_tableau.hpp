@@ -100,13 +100,16 @@ struct DeltaRational {
 // which was circular: reverting the assignments is what forced reverting
 // the pivots.
 //
-// **PivotingRule::Soi is the exception and still trails everything.** Its
+// **PivotingRule::Soi retains full rollback.** Its
 // objective row is explicitly maintained and genuinely basis-dependent --
 // it is a sum over the *currently* violated rows, not a linear combination
 // of A -- so neither half of the earlier feasibility-simplex rollback
 // argument covers objective maintenance. FMCAD 2013 is the source of SOI;
 // this implementation retains full trailing rather than extending that
-// earlier rollback argument to the changing objective.
+// earlier rollback argument to the changing objective. A Bland suffix can
+// instead own one full pre-suffix snapshot and temporarily detach derived SOI
+// state; check() restores that state before returning. See the local lifecycle
+// proof in docs/implementation/soi.md. The SOI prefix still trails each change.
 //
 // Rows must all be added via add_row() before the first push() in the
 // caller's intended usage (build the full tableau once, then push/assert/
@@ -233,6 +236,7 @@ class LraTableau {
     std::size_t soi_stall_limit = 16;
     bool soi_cached_conflicts = false;
     bool soi_linear_maintenance = false;
+    bool soi_suspend_on_fallback = true;
     SoiMinimization soi_minimization = SoiMinimization::QuickXplain;
     SoiMinimizationOrder soi_minimization_order = SoiMinimizationOrder::Id;
   };
@@ -727,6 +731,10 @@ class LraTableau {
     std::uint64_t objective_updates = 0;
     std::uint64_t prefix_pivots = 0;
     std::uint64_t fallback_pivots = 0;
+    std::uint64_t fallback_snapshots = 0;
+    std::uint64_t fallback_snapshot_terms = 0;
+    std::uint64_t fallback_untrailed_pivots = 0;
+    std::uint64_t fallback_rebuild_terms = 0;
     std::uint64_t predicate_calls = 0;
     std::uint64_t arithmetic_terms = 0;
     std::uint64_t selected_rows = 0;
@@ -824,8 +832,16 @@ class LraTableau {
     LraVarId var;
     int previous_direction;
   };
-  using TrailEntry =
-      std::variant<BoundTrailEntry, AssignmentTrailEntry, PivotTrailEntry, FRowTrailEntry>;
+  // A whole SOI suffix is one transaction: its ordinary Bland pivots do
+  // not keep individual undo records. Derived indices rebuild after undo.
+  // Basis/assignment/bounds are owned values, never borrowed live storage.
+  struct SoiFallbackTrailEntry {
+    std::vector<VarState> previous_vars;
+    std::vector<Row> previous_rows;
+    std::vector<int> previous_directions;
+  };
+  using TrailEntry = std::variant<BoundTrailEntry, AssignmentTrailEntry, PivotTrailEntry,
+                                  FRowTrailEntry, SoiFallbackTrailEntry>;
 
   void update(LraVarId nonbasic_var, const DeltaRational& new_value);
 
@@ -867,9 +883,11 @@ class LraTableau {
 
   // Whether assignment changes and pivots go on the trail at all. False for
   // the paper's own scheme (bounds only, see the class comment); true only
-  // under PivotingRule::Soi, whose explicitly-maintained objective row is
-  // basis-dependent and so has to be restored.
-  bool trails_assignments_and_pivots() const { return rule_ == PivotingRule::Soi; }
+  // under an active SOI prefix. A suspended Bland suffix owns a full
+  // pre-suffix snapshot instead of individual assignment/pivot records.
+  bool trails_assignments_and_pivots() const {
+    return rule_ == PivotingRule::Soi && !soi_suspended_;
+  }
 
   std::vector<sat::Lit> build_conflict(LraVarId violated, bool too_low) const;
   void undo(const TrailEntry& entry);
@@ -916,6 +934,11 @@ class LraTableau {
   // reset call in pivot() must run *before* that row is erased from
   // rows_ -- see pivot()'s call site.
   void set_soi_direction(LraVarId var, int new_direction, const Row& var_row);
+  // Local design/proof: docs/implementation/soi.md, Bland fallback lifecycle.
+  // Call only inside check(), before its first actual Bland suffix pivot.
+  void suspend_soi_for_fallback();
+  // Restore the objective identity and activity before normal check returns.
+  void resume_soi_after_fallback();
 
   // One SOISELECT call (Fig 5, Section V-A): picks the entering variable,
   // leaving row and step using each column's best (DeltaV,distance,leaving)
@@ -943,7 +966,7 @@ class LraTableau {
     bool operator==(const BoundStatus&) const = default;
   };
   bool activity_enabled() const {
-    return rule_ == PivotingRule::Soi && tuning_.soi_cached_conflicts;
+    return rule_ == PivotingRule::Soi && tuning_.soi_cached_conflicts && !soi_suspended_;
   }
   BoundStatus bound_status(LraVarId var) const;
   void sync_activity_status(LraVarId var);
@@ -1030,6 +1053,7 @@ class LraTableau {
   std::size_t row_term_op_count_ = 0;
   mutable SoiWork soi_work_;
   bool soi_profiling_ = false;
+  bool soi_suspended_ = false;
   std::size_t soi_multi_row_conflict_count_ = 0;
   std::size_t soi_minimize_call_count_ = 0;
   std::size_t soi_minimize_shrunk_count_ = 0;

@@ -28,7 +28,7 @@ $$
 
 An absent bound contributes no violation. Arithmetic is exact in the ordered
 pair $q+k\delta$, with lexicographic comparison and symbolic $\delta>0$.
-Every nonbasic variable stays inside its bounds. The objective row maintains
+Every nonbasic variable stays inside its bounds. At public operation boundaries, the objective row maintains
 
 $$ f=\sum_{i\in E}d_i b_i=\sum_j c_jx_j,
    \qquad c_j=\sum_{i\in E}d_i a_{ij}, $$
@@ -248,13 +248,82 @@ final reason literals measure the result independently. Focused fixtures cover
 singleton seeds, cancellation, unrelated conflicts, strict bounds and the
 non-monotone example; every emitted selected-premise problem is refuted by Z3.
 
+## Bland fallback lifecycle
+
+Reader: implementers reviewing heuristic shutdown and rollback. Prerequisites:
+ordinary tableau equations, nonbasic feasibility and the SOI coefficient
+identity above. This section answers which state can stop being maintained
+when the active repair policy changes to Bland, and how later checks/pop remain
+valid. Next: the fallback experiment in the experiments chapter.
+
+This is a Primo lifecycle design, motivated by the observed SOI tail costs;
+it is not a mechanism claimed from FMCAD or the thesis. Bland selection still
+uses the existing smallest eligible IDs. Sparse/Dantzig already bypass their
+pricing when Bland is selected. The common leaving scan should also skip
+violation-magnitude arithmetic once ID selection is sufficient.
+
+Implementation under qualification: `LraTableau::suspend_soi_for_fallback`,
+immediately before the
+first actual Bland pivot in an SOI check. A suffix ending without a pivot needs
+no snapshot. `SoiFallbackTrailEntry` owns one copy of all `VarState`, `Row` and
+directional-multiplier vectors at that boundary. This costs O(n + nnz_stored) storage, where nnz_stored counts terms in every
+copied row slot, including stale nonbasic rows,
+plus copying exact values. Occurrences, violations and activity are derived and
+are rebuilt rather than copied. Prefix rollback records remain untouched.
+
+After saving the snapshot, detach the artificial objective from all occurrence
+lists and clear its live row. Set a private suspension flag. While suspended,
+`set_soi_direction` and activity hooks do no work, and
+`trails_assignments_and_pivots` returns false. Ordinary equation updates,
+nonbasic feasibility, violated-basic membership and Bland conflict explanations
+remain mandatory. Neither ordinary rows nor bounds depend on the artificial
+objective: its variable is always basic, has no bounds, occurs in no ordinary
+RHS and is excluded from model bindings. Thus detaching it cannot change an
+ordinary Bland choice. Occurrence-list order may change, but Bland's ID choices
+and exact ordinary row algebra do not depend on that order.
+
+At either normal suffix return (feasible or explained conflict),
+`resume_soi_after_fallback` reconstructs all multipliers from current ordinary
+bounds/assignments, sums the signed violated rows, sorts the surviving objective
+support, reattaches its occurrences and rebuilds activity once. The artificial
+assignment remains intentionally unused. The coefficient identity is restored
+before the caller can assert bounds, request a checkpoint or start another
+check. No re-entrant calls or new checkpoints occur inside `check`. Structural
+extensions must precede the checkpoint being restored: `pop` must never cross
+variable/row creation. Equality probes may extend a checked copy, but install
+the temporary row before taking their checkpoint and never pop across it.
+
+Rollback proof: every public checkpoint predates the suffix snapshot or follows
+its completed check. Popping a later checkpoint first undoes any subsequent
+operations using the usual prefix records. If pop crosses a suffix snapshot,
+restoring its owned variables/rows/directions reinstates the exact pre-suffix
+state; earlier prefix records can then be undone normally. Occurrences,
+violations and activity rebuild once after the undo loop. No intermediate
+suspended position can be a caller-created checkpoint. This is one coarse
+rollback record for the suffix, not an unproved omission of rollback. Existing
+methods do not promise a strong allocation-exception guarantee; normal
+feasible/conflict exits must restore the active-state invariants.
+
+Focused tests compare eager and suspended suffixes on multi-pivot SAT and UNSAT
+systems, ordinary basis/assignments/rows, strict bounds, nested checkpoints,
+repeated checks and cache recomputation. A direct private-state probe requires
+zero incremental objective/activity work and zero per-pivot trail growth while
+suspended. Selected-premise strict conflicts from eager and suspended suffixes are
+exported for independent refutation. Counters expose snapshots, copied stored
+row terms, untrailed suffix pivots and objective rebuild terms; profiling clocks include boundary rebuild work. `--lra-soi-suspend-on-fallback` enables the lifecycle (default on in this
+qualification candidate); its `--no-` counterpart retains the eager reference.
+This does not select the experimental paper/short-column selector as default.
+This design does not remove the remaining full prefix trail or promise a speedup before SLURM
+comparison, fuzzing and independent SAT-model validation.
+
 ## Rollback and measurement
 
-SOI continues to trail bounds, assignments, basis changes, directions and full
-objective rows, including during its Bland suffix.
+SOI retains per-operation bounds, assignment, basis and objective records in
+its prefix. A suspended suffix instead owns the full pre-suffix snapshot above;
+`--no-lra-soi-suspend-on-fallback` retains eager per-operation suffix records.
 {soiworksource}`pop <src/theory/arithmetic/lra_tableau.cpp#L1931>` restores those
-records in reverse order and rebuilds occurrences and violations once. No
-rollback optimization is included here.
+records in reverse order and rebuilds occurrences and violations once. The
+suffix snapshot preserves rollback without individual suffix records.
 
 {soiworksource}`SoiWork <src/theory/arithmetic/lra_tableau.hpp>` counts selected steps, zero objective changes, eligible entering
 candidates examined, crossings generated before truncation, objective direction

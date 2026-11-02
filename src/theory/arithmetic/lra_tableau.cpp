@@ -245,7 +245,8 @@ void LraTableau::update(LraVarId nonbasic_var, const DeltaRational& new_value) {
         update_violation_status(basic_var);
         // f_var_ itself is excluded: it has no bounds, so soi_direction()
         // is always 0 for it and the hook would be a no-op.
-        if (rule_ == PivotingRule::Soi && (!f_var_.has_value() || basic_var != *f_var_)) {
+        if (rule_ == PivotingRule::Soi && !soi_suspended_ &&
+            (!f_var_.has_value() || basic_var != *f_var_)) {
           set_soi_direction(basic_var, soi_direction(basic_var), rows_.at(basic_var));
         }
         break;
@@ -286,7 +287,7 @@ void LraTableau::pivot(LraVarId basic_var, LraVarId entering_var) {
   // direction instead of the correct nonbasic baseline. f_var_ can never
   // be basic_var here (it's never selected as a violated variable, having
   // no bounds), so no exclusion is needed.
-  if (rule_ == PivotingRule::Soi) {
+  if (rule_ == PivotingRule::Soi && !soi_suspended_) {
     set_soi_direction(basic_var, 0, trail_entry.old_basic_row);
   }
 
@@ -571,6 +572,7 @@ int LraTableau::soi_direction(LraVarId var) const {
 }
 
 void LraTableau::set_soi_direction(LraVarId var, int new_direction, const Row& var_row) {
+  if (soi_suspended_) return;
   int& stored = soi_directions_[var];
   if (new_direction == stored) {
     return;
@@ -656,6 +658,51 @@ void LraTableau::set_soi_direction(LraVarId var, int new_direction, const Row& v
     ++soi_work_.objective_occurrence_changes;
   }
   f_row = std::move(rebuilt);
+}
+
+// Primo lifecycle design: docs/implementation/soi.md, Bland fallback
+// lifecycle. Preserve the SOI prefix exactly; isolate the ordinary suffix in
+// one owned snapshot so its pivots need no heuristic or per-step undo state.
+void LraTableau::suspend_soi_for_fallback() {
+  assert(rule_ == PivotingRule::Soi && !soi_suspended_);
+  SoiPhaseTimer timer(soi_profiling_, soi_work_.objective_ns);
+  trail_.push_back(SoiFallbackTrailEntry{vars_, rows_, soi_directions_});
+  for (const auto& row : rows_) soi_work_.fallback_snapshot_terms += row.size();
+  // Each column has at most one f occurrence. Removing it can repair another
+  // row's back-slot, but cannot invalidate the objective row being traversed.
+  for (const auto& term : rows_[*f_var_]) unlink_occurrence(term.var, term.occ_slot);
+  rows_[*f_var_].clear();
+  soi_suspended_ = true;
+  ++soi_work_.fallback_snapshots;
+}
+
+void LraTableau::resume_soi_after_fallback() {
+  if (!soi_suspended_) return;
+  SoiPhaseTimer timer(soi_profiling_, soi_work_.objective_ns);
+  std::fill(soi_directions_.begin(), soi_directions_.end(), 0);
+  std::unordered_map<LraVarId, util::Rational> coefficients;
+  for (const auto basic : violated_vars_) {
+    const int direction = soi_direction(basic);
+    soi_directions_[basic] = direction;
+    for (const auto& term : rows_[basic]) {
+      coefficients[term.var] += term.coeff * util::Rational(direction);
+      ++soi_work_.fallback_rebuild_terms;
+    }
+  }
+  Row objective;
+  objective.reserve(coefficients.size());
+  for (auto& [var, coefficient] : coefficients) {
+    if (!coefficient.is_zero()) objective.emplace_back(var, std::move(coefficient));
+  }
+  std::sort(objective.begin(), objective.end(),
+            [](const RowEntry& left, const RowEntry& right) { return left.var < right.var; });
+  for (auto& term : objective) {
+    term.occ_slot = static_cast<std::uint32_t>(occurs_in_[term.var].size());
+    occurs_in_[term.var].push_back(*f_var_);
+  }
+  rows_[*f_var_] = std::move(objective);
+  soi_suspended_ = false;
+  if (activity_enabled()) rebuild_activity();
 }
 
 namespace {
@@ -2249,20 +2296,14 @@ std::optional<std::vector<sat::Lit>> LraTableau::check() {
     // is_basic/is_violated guard to re-check here -- just which bound.
     for (const LraVarId id : violated_vars_) {
       const VarState& state = vars_[id];
-      bool candidate_too_low = false;
-      DeltaRational violation;
-      if (state.lower.has_value() && state.assignment < state.lower->value) {
-        candidate_too_low = true;
-        violation = state.lower->value - state.assignment;
-      } else {
-        candidate_too_low = false;
-        violation = state.assignment - state.upper->value;
-      }
+      const bool candidate_too_low = state.lower && state.assignment < state.lower->value;
       if (use_bland) {
         violated = id;
         too_low = candidate_too_low;
         break;
       }
+      const DeltaRational violation = candidate_too_low ? state.lower->value - state.assignment
+                                                        : state.assignment - state.upper->value;
       // PivotingRule::Sparse with its default-on leaving-side policy (see
       // set_sparse_leaving): repair a *short* row first, since the row being
       // pivoted out becomes the substituted-in row and its length is the
@@ -2305,17 +2346,24 @@ std::optional<std::vector<sat::Lit>> LraTableau::check() {
       }
     }
     if (violated == vars_.size()) {
+      resume_soi_after_fallback();
       return std::nullopt;
     }
 
     const LraVarId entering = select_entering_variable(violated, too_low, use_bland);
     if (entering == vars_.size()) {
-      return build_conflict(violated, too_low);
+      auto conflict = build_conflict(violated, too_low);
+      resume_soi_after_fallback();
+      return conflict;
     }
 
     const DeltaRational target =
         too_low ? vars_.at(violated).lower->value : vars_.at(violated).upper->value;
-    if (rule_ == PivotingRule::Soi) ++soi_work_.fallback_pivots;
+    if (rule_ == PivotingRule::Soi) {
+      if (tuning_.soi_suspend_on_fallback && !soi_suspended_) suspend_soi_for_fallback();
+      ++soi_work_.fallback_pivots;
+      if (soi_suspended_) ++soi_work_.fallback_untrailed_pivots;
+    }
     pivot(violated, entering);
     update(violated, target);
     ++pivot_count;
@@ -2338,7 +2386,8 @@ void LraTableau::pop(std::size_t checkpoint) {
   while (trail_.size() > checkpoint) {
     const TrailEntry& entry = trail_.back();
     if (std::holds_alternative<PivotTrailEntry>(entry) ||
-        std::holds_alternative<FRowTrailEntry>(entry)) {
+        std::holds_alternative<FRowTrailEntry>(entry) ||
+        std::holds_alternative<SoiFallbackTrailEntry>(entry)) {
       occurs_in_index_stale = true;
     }
     undo(entry);
@@ -2389,9 +2438,16 @@ void LraTableau::undo(const TrailEntry& entry) {
   // restoring both f_var_'s row and the affected variable's tracked
   // direction atomically (see FRowTrailEntry's comment). Same deferred-
   // rebuild reasoning as the PivotTrailEntry branch above.
-  const auto& f_row_entry = std::get<FRowTrailEntry>(entry);
-  rows_[*f_var_] = f_row_entry.previous_f_row;
-  soi_directions_[f_row_entry.var] = f_row_entry.previous_direction;
+  if (const auto* f_row_entry = std::get_if<FRowTrailEntry>(&entry)) {
+    rows_[*f_var_] = f_row_entry->previous_f_row;
+    soi_directions_[f_row_entry->var] = f_row_entry->previous_direction;
+    return;
+  }
+  const auto& suffix = std::get<SoiFallbackTrailEntry>(entry);
+  vars_ = suffix.previous_vars;
+  rows_ = suffix.previous_rows;
+  soi_directions_ = suffix.previous_directions;
+  soi_suspended_ = false;
 }
 
 bool LraTableau::occurs_in_index_matches_full_rebuild() const {

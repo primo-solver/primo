@@ -22,6 +22,13 @@ using primo::util::Rational;
 namespace primo::theory::arithmetic {
 struct LraTableauTestAccess {
   static auto selection(const LraTableau& tableau) { return tableau.soi_select(); }
+  static void suspend(LraTableau& t) { t.suspend_soi_for_fallback(); }
+  static void resume(LraTableau& t) { t.resume_soi_after_fallback(); }
+  static void pivot(LraTableau& t, LraVarId basic, LraVarId entering) { t.pivot(basic, entering); }
+  static void update(LraTableau& t, LraVarId var, DeltaRational value) { t.update(var, value); }
+  static bool suspended(const LraTableau& t) { return t.soi_suspended_; }
+  static bool trails(const LraTableau& t) { return t.trails_assignments_and_pivots(); }
+
   static auto growing(const LraTableau& t, const std::vector<LraVarId>& fixed,
                       const std::vector<LraVarId>& candidates) {
     return t.row_growing_soi_conflict(fixed, candidates);
@@ -865,6 +872,131 @@ void assert_soi_objective_identity(const LraTableau& tableau) {
   for (const auto& entry : tableau.row(*objective)) expected[entry.var] -= entry.coeff;
   for (const auto& coefficient : expected) assert(coefficient.is_zero());
   assert_tableau_invariants(tableau);
+}
+
+void soi_suspended_suffix_has_no_incremental_objective_cache_or_trail_work() {
+  using Access = primo::theory::arithmetic::LraTableauTestAccess;
+  LraTableau t(LraTableau::PivotingRule::Soi);
+  auto tuning = t.tuning();
+  tuning.soi_cached_conflicts = true;
+  t.set_tuning(tuning);
+  const auto x = t.add_variable();
+  const auto y = t.add_variable();
+  const auto b = t.add_variable();
+  const auto c = t.add_variable();
+  t.add_row(b, {{x, Rational(1)}, {y, Rational(1)}});
+  t.add_row(c, {{x, Rational(1)}, {y, Rational(-1)}});
+  assert(!t.assert_lower(b, DeltaRational{Rational(2), Rational(1)}, Lit{1}));
+  assert(!t.assert_lower(c, rat(1), Lit{2}));
+  const auto before = t.push();
+  Access::suspend(t);
+  assert(Access::suspended(t) && !Access::trails(t));
+  assert(t.row(*t.soi_objective_variable()).empty());
+  assert(t.occurs_in_index_matches_full_rebuild());
+  const auto work = t.soi_work();
+  const auto suffix_trail = t.push();
+  Access::pivot(t, b, x);
+  Access::update(t, b, DeltaRational{Rational(2), Rational(1)});
+  Access::pivot(t, c, y);
+  Access::update(t, c, rat(1));
+  assert(t.push() == suffix_trail);
+  assert(t.soi_work().objective_updates == work.objective_updates);
+  assert(t.soi_work().objective_terms == work.objective_terms);
+  assert(t.soi_work().activity_updates == work.activity_updates);
+  assert_tableau_invariants(t);
+  Access::resume(t);
+  assert(!Access::suspended(t) && Access::trails(t));
+  assert(t.push() == suffix_trail);
+  assert_soi_objective_identity(t);
+  Access::verify_activity(t);
+  t.pop(before);
+  assert(t.is_basic(b) && t.is_basic(c));
+  assert(t.assignment(x) == rat(0) && t.assignment(y) == rat(0));
+  assert_soi_objective_identity(t);
+  Access::verify_activity(t);
+}
+
+void soi_suffix_snapshot_restores_nested_checkpoints_and_checked_copies() {
+  using Access = primo::theory::arithmetic::LraTableauTestAccess;
+  for (const bool cache : {false, true}) {
+    for (const bool paper : {false, true}) {
+      std::size_t eager_trail = 0;
+      for (const bool suspend : {false, true}) {
+        LraTableau t(LraTableau::PivotingRule::Soi);
+        auto tuning = t.tuning();
+        tuning.soi_cached_conflicts = cache;
+        tuning.soi_suspend_on_fallback = suspend;
+        tuning.soi_selection = paper ? LraTableau::SoiSelectionRule::ShortColumn
+                                     : LraTableau::SoiSelectionRule::Historical;
+        tuning.bland_fallback_factor = 0;
+        tuning.bland_fallback_offset = 0;
+        t.set_tuning(tuning);
+        constexpr std::size_t count = 16;
+        std::vector<LraVarId> xs, bs;
+        for (std::size_t i = 0; i < count; ++i) xs.push_back(t.add_variable());
+        for (std::size_t i = 0; i < count; ++i) {
+          bs.push_back(t.add_variable());
+          t.add_row(bs.back(), {{xs[i], Rational(1)}});
+        }
+        const auto outer = t.push();
+        for (std::size_t i = 0; i < count; ++i)
+          assert(!t.assert_lower(bs[i], rat(1), Lit{static_cast<int>(i + 1)}));
+        const auto inner = t.push();
+        assert(!t.check());
+        assert(t.soi_work().fallback_pivots == count - 1);
+        assert(t.soi_work().fallback_untrailed_pivots == (suspend ? count - 1 : 0));
+        assert(t.soi_work().fallback_snapshots == (suspend ? 1 : 0));
+        assert(!Access::suspended(t));
+        assert_soi_objective_identity(t);
+        if (cache) Access::verify_activity(t);
+        const auto checked = t.push();
+        if (!suspend)
+          eager_trail = checked - inner;
+        else
+          assert(checked - inner < eager_trail);
+        for (const auto var : xs) assert(t.assignment(var) == rat(1));
+
+        // Equality probes extend a checked COPY, then checkpoint. Never pop
+        // across structural additions; a suffix snapshot has a fixed universe.
+        if (suspend) {
+          auto probe = t;
+          const auto z = probe.add_variable();
+          const auto row = probe.add_variable();
+          probe.add_row(row, {{bs[0], Rational(1)}, {z, Rational(-1)}});
+          const auto probe_checkpoint = probe.push();
+          for (std::size_t i = 0; i < count; ++i)
+            assert(!probe.assert_lower(xs[i], rat(3), Lit{static_cast<int>(i + 40)}));
+          assert(!probe.assert_lower(row, rat(2), Lit{100}));
+          assert(!probe.check());
+          probe.pop(probe_checkpoint);
+          assert(probe.variable_count() == t.variable_count() + 2);
+          assert(probe.assignment(row) == rat(1));
+          assert_soi_objective_identity(probe);
+          if (cache) Access::verify_activity(probe);
+        }
+        for (std::size_t i = 0; i < count; ++i)
+          assert(!t.assert_lower(xs[i], rat(3), Lit{static_cast<int>(i + 40)}));
+        assert(!t.check());
+        assert_soi_objective_identity(t);
+        t.pop(checked);
+        for (const auto var : xs) assert(t.assignment(var) == rat(1));
+        assert_soi_objective_identity(t);
+        if (cache) Access::verify_activity(t);
+        t.pop(inner);
+        for (std::size_t i = 0; i < count; ++i) {
+          assert(t.is_basic(bs[i]) && !t.is_basic(xs[i]));
+          assert(t.assignment(xs[i]) == rat(0));
+        }
+        assert_soi_objective_identity(t);
+        if (cache) Access::verify_activity(t);
+        assert(!t.check());
+        t.pop(outer);
+        for (const auto var : bs) assert(!t.lower_bound(var));
+        assert_soi_objective_identity(t);
+        if (cache) Access::verify_activity(t);
+      }
+    }
+  }
 }
 
 void soi_row_growing_handles_seed_background_and_sign_cancellation() {
@@ -3105,6 +3237,8 @@ int main() {
   sparse_matches_bland_on_multi_pivot_scenarios();
   least_violated_leaving_matches_bland_on_multi_pivot_scenarios();
   least_violated_leaving_selects_differently_from_most_violated();
+  soi_suspended_suffix_has_no_incremental_objective_cache_or_trail_work();
+  soi_suffix_snapshot_restores_nested_checkpoints_and_checked_copies();
   soi_row_growing_handles_seed_background_and_sign_cancellation();
   soi_linear_objective_merge_preserves_support_and_rollback();
   soi_convex_pruning_preserves_exact_selection();

@@ -155,6 +155,26 @@ int main(int argc, char** argv) {
   assert(argc == 2);
   const std::filesystem::path directory(argv[1]);
   std::filesystem::create_directories(directory);
+  for (const bool suspend : {false, true}) {
+    Fixture f;
+    auto tuning = f.tableau.tuning();
+    tuning.soi_suspend_on_fallback = suspend;
+    tuning.soi_cached_conflicts = true;
+    tuning.bland_fallback_factor = 0;
+    tuning.bland_fallback_offset = 0;
+    f.tableau.set_tuning(tuning);
+    std::vector<LraVarId> xs;
+    for (int i = 0; i < 8; ++i) xs.push_back(f.variable());
+    for (int i = 0; i < 8; ++i) {
+      const auto b = f.variable();
+      f.row(b, {{xs[static_cast<std::size_t>(i)], Rational(1)}});
+      f.bound(b, false, i == 7 ? 0 : 1, i + 1, i == 7);
+    }
+    f.bound(xs.back(), true, 0, 20);
+    f.export_conflict(directory, suspend ? "fallback-snapshot-strict" : "fallback-eager-strict");
+    assert(f.tableau.soi_work().fallback_pivots >= 6);
+    assert(f.tableau.soi_work().fallback_snapshots == (suspend ? 1 : 0));
+  }
   for (const bool paper : {false, true}) {
     for (const bool cache : {false, true}) {
       if (!paper && cache) continue;
