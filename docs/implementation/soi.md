@@ -74,7 +74,7 @@ variables. In particular, zero progress must select the smallest entering ID.
 the opt-in SOI default. The new experimental `paper` arm implements the stated
 score, retains equal endpoint events, and checks error rows before selection
 and after the selected column update (thesis Figure 3.3). Those checks use
-ordinary row scans; cached activity is still a separate planned mechanism.
+ordinary row scans unless the separate experimental cached-activity flag is enabled.
 
 The paper arm also retains crossings beyond the entering variable's own bound.
 The variable becomes basic after a pivot and may then be violated. Its own
@@ -99,8 +99,8 @@ unrestricted execution of the paper's algorithm.
 
 `--lra-soi-selection=short-column` retains the reference arm's complete crossing
 walk and row-conflict checks, but considers columns in increasing occurrence
-count, breaking ties by variable ID. It stops at the first candidate with
-negative objective change. A zero-progress candidate cannot stop the search:
+count, breaking ties by variable ID. With cached conflict preference disabled,
+it stops at the first candidate with negative objective change. A zero-progress candidate cannot stop the search:
 the selector examines the remaining columns before selecting a zero-progress
 step or concluding that the objective is blocked.
 
@@ -195,7 +195,7 @@ checklist; no other solver implementation is an implementation source.
 | Figure 3.3: error-row conflicts before and after updates | `check`, `build_conflict`; sufficient selected bounds must independently refute | Experimental paper-arm early scans and focused external refutation gate implemented |
 | §3.3.2 / §V-C: termination | `check`; finite prefix then Bland | Defensive fallback retained, with prefix/fallback pivot counters |
 | §3.3.3 / §V-D: short columns, stalled progress | `Tuning`, `soi_select`; exhaust remaining candidates before declaring blocked | Experimental short-column arm implemented; chunk/stall constants require pilot qualification |
-| §3.3.4: constant-time breakpoint conflict preference | Tableau-owned activity counts, updated by status/sign changes | Planned; cache must match slow recomputation after rollback |
+| §3.3.4: constant-time breakpoint conflict preference | Tableau-owned RHS activity counts, status deltas, rewritten-row refresh and rollback rebuild | Experimental flag implemented; crossing predictions and counts compared to slow recomputation |
 | §3.3.5 / §V-B and Figure 3.6 | `restricted_soi_row`, conflict builder and minimizer; nonempty blocked certificate | Builder and historical reducers implemented; row-growing arm planned |
 | Thesis §3.4 / FMCAD §VI | Reproducible process measurements, qualified answers and separate SAT-model validation | Historical audit only; no new performance acceptance yet |
 
@@ -244,25 +244,47 @@ out and x in, and detects x=b/2<=1 as a blocked row with b>=6 in its
 post-update scan. This reaches the geometry needed for §3.3.4's proposed
 candidate preference; the current reference arm detects it after execution.
 
-### Planned cached conflict-preference design
+### Experimental cached conflict preference
 
-The following mechanism is a proposed next stage and is **not implemented in
-the reference-selector snapshot**.
+`--lra-soi-cached-conflicts` enables this separate experimental mechanism with
+the paper and short-column selectors. It is off by default. The historical
+selector does not use candidate conflict preference, even if the cache is enabled.
+{soicachesource}`LraTableau <src/theory/arithmetic/lra_tableau.hpp>` owns the
+per-variable `BoundStatus` vector and per-basic-row `RowActivity` vector. These
+vectors are allocated only when caching is enabled. `set_tuning` rebuilds them
+when enabling the option; tuning must be configured before search and is not
+trailed.
 
 A proven row-conflict candidate has priority over both ordinary tuples.
-Among examined candidates use (entering ID, distance, leaving ID, bound kind)
-for deterministic conflict ties (an engineering choice). Execute that operation,
-check the resulting row conflict, and immediately return its explanation.
+The paper selector examines every eligible column. Short-column pricing instead
+stops at the first priced column offering either a proven conflict or ordinary
+negative objective change. It does not inspect later columns for conflicts once
+an earlier column supplies progress. Within a priced column, a proven conflict
+has priority; it can have positive $\Delta V$ because execution then checks and
+returns the conflict immediately. Non-conflict selections retain the ordinary
+nonpositive-progress obligation.
+Among examined candidates, ties use entering ID, then distance, then leaving
+ID (an engineering choice). Coincident lower/upper events of a fixed variable
+produce the same operation; the resulting row selects the required reason side.
+`check` executes the selected operation, checks the resulting entering-row
+conflict and immediately returns its explanation. A failed prediction raises an
+invariant error rather than emitting an unchecked explanation.
 Otherwise select by the ordinary tuples and require nonpositive DeltaV.
 
-For activity counts, maintain h_+,h_-,g_+,g_- per ordinary basic row, adapting
-thesis §2.2.8 / Figures 2.11–2.12. The proposed Primo cache will count only stored RHS nonbasic
+{soicachesource}`Activity maintenance <src/theory/arithmetic/lra_tableau.cpp>` maintains h_+,h_-,g_+,g_- per ordinary basic row, adapting
+thesis §2.2.8 / Figures 2.11–2.12. The Primo cache counts only stored RHS nonbasic
 terms, EXCLUDING the thesis full equation row's implicit basic diagonal -1: h_+ counts positive coefficients at a lower
 bound, h_- negative coefficients at a lower bound; g_+ negative coefficients at
 an upper bound, g_- positive coefficients at an upper bound. A fixed variable
 contributes to both its relevant lower and upper counts. Track nonbasic bound
 status on assertion/update, adjust column rows on status transitions, refresh
 rewritten row counts through substitution, and rebuild counts after pop.
+`sync_activity_status` applies old/new lower/upper status contributions to
+column rows. After substitution, `rebuild_row_activity` scans the rewritten RHS
+once; this is an additional linear pass, rather than the thesis's per-entry sign
+callbacks fused into substitution. `pop` restores the fully trailed tableau and
+then rebuilds all cache state from live assignments, bounds and rows. Counts
+exclude the artificial objective. No alternative rollback semantics is used.
 
 For a crossing on row k with a=a_kj, suppose the new value of j is violated
 with direction lambda_j. Solve the row as j=k/a-sum_{i!=j}(a_ki/a)i. Put
@@ -270,12 +292,20 @@ sigma=-lambda_j*sign(a). All unchanged nonbasics except j must block sigma
 row(k); the new nonbasic k must be at its lower bound if lambda_j*sign(a)>0,
 and its upper bound otherwise. Write A_sigma=h_sigma+g_sigma. Then A_sigma minus the indicator that j's
 relevant bound is currently active must equal support(row(k))-1, where
-support is the number of stored nonzero RHS terms. This is an O(1)
-candidate predicate once crossing coefficient and counts are available.
+support is the number of stored nonzero RHS terms. {soicachesource}`soi_crossing_conflicts <src/theory/arithmetic/lra_tableau.cpp>`
+implements this predicate in a constant number of arithmetic operations once
+the coefficient and counts are available; this is not a bit-complexity claim.
+A fixed leaving variable can supply either coincident event because both bounds
+are active at the same value.
 
-Proof obligations/tests: independently recompute all four cached counts after
-every bound/assignment/substitution/rollback operation; compare each predicted
-candidate conflict against an explicit solved-row/blocking-bound recomputation;
-exercise both coefficient signs, movement directions, fixed bounds and strict
-bounds; independently refute the emitted selected-premise explanation. Record
-cache updates and successful preference selections separately from runtime.
+{soicachetests}`Focused tests <tests/unit/lra_tableau_tests.cpp>` independently
+recompute all four counts and compare every available crossing prediction to
+an explicitly solved-row/blocking-bound computation after bound changes,
+assignment updates, pivoting and rollback. They cover both coefficient signs,
+fixed and strict bounds. The
+{soicachetests}`explanation fixtures <tests/unit/lra_soi_explanation_tests.cpp>`
+exercise cached candidate preference past an entering bound and export only
+selected premises for reference refutation. `:lra.soi-activity-updates` counts
+status/row term contributions processed; `:lra.soi-conflict-preferences` counts
+selected predictions that ended the check with the resulting row conflict.
+These measure work and use, not a performance acceptance result.

@@ -73,6 +73,7 @@ void cases(const std::filesystem::path& directory, LraTableau::SoiMinimization a
     auto tuning = fixture.tableau.tuning();
     tuning.soi_minimization = arm;
     tuning.soi_cached_conflicts = cache;
+    tuning.soi_linear_maintenance = true;
     tuning.soi_selection =
         paper ? LraTableau::SoiSelectionRule::Paper : LraTableau::SoiSelectionRule::Historical;
     fixture.tableau.set_tuning(tuning);

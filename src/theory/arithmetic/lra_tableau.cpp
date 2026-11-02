@@ -582,6 +582,42 @@ void LraTableau::set_soi_direction(LraVarId var, int new_direction, const Row& v
   stored = new_direction;
 
   trail_.push_back(FRowTrailEntry{rows_.at(*f_var_), var, previous});
+  soi_work_.objective_terms += rows_[*f_var_].size() + var_row.size();
+  if (tuning_.soi_linear_maintenance) {
+    // Two already sorted rows: linear merge, preserving each surviving
+    // occurrence slot. Full FRowTrailEntry is intentionally retained.
+    const Row& old = rows_[*f_var_];
+    Row rebuilt;
+    rebuilt.reserve(old.size() + var_row.size());
+    const util::Rational factor(delta);
+    std::size_t left = 0;
+    std::size_t right = 0;
+    while (left < old.size() || right < var_row.size()) {
+      if (right == var_row.size() || (left < old.size() && old[left].var < var_row[right].var)) {
+        rebuilt.push_back(old[left++]);
+      } else if (left == old.size() || var_row[right].var < old[left].var) {
+        const auto id = var_row[right].var;
+        rebuilt.emplace_back(id, factor * var_row[right].coeff,
+                             static_cast<std::uint32_t>(occurs_in_[id].size()));
+        occurs_in_[id].push_back(*f_var_);
+        ++soi_work_.objective_occurrence_changes;
+        ++right;
+      } else {
+        const auto id = old[left].var;
+        auto coefficient = old[left].coeff + factor * var_row[right].coeff;
+        if (coefficient.is_zero()) {
+          unlink_occurrence(id, old[left].occ_slot);
+          ++soi_work_.objective_occurrence_changes;
+        } else {
+          rebuilt.emplace_back(id, std::move(coefficient), old[left].occ_slot);
+        }
+        ++left;
+        ++right;
+      }
+    }
+    rows_[*f_var_] = std::move(rebuilt);
+    return;
+  }
 
   // Reused member -- see combine_scratch_'s own comment.
   combine_scratch_.clear();
@@ -598,6 +634,7 @@ void LraTableau::set_soi_direction(LraVarId var, int new_direction, const Row& v
   Row& f_row = rows_.at(*f_var_);
   for (const auto& [term_var, coeff, term_var_slot] : f_row) {
     unlink_occurrence(term_var, term_var_slot);
+    ++soi_work_.objective_occurrence_changes;
   }
   Row rebuilt;
   rebuilt.reserve(combine_scratch_.size());
@@ -616,6 +653,7 @@ void LraTableau::set_soi_direction(LraVarId var, int new_direction, const Row& v
     }
     rebuilt.emplace_back(term_var, sum, static_cast<std::uint32_t>(occurs_in_[term_var].size()));
     occurs_in_[term_var].push_back(*f_var_);
+    ++soi_work_.objective_occurrence_changes;
   }
   f_row = std::move(rebuilt);
 }
@@ -630,6 +668,7 @@ struct SoiBreakPoint {
   LraVarId k;
   bool is_upper;
   util::Rational coefficient;
+  bool exposes_conflict = false;
 };
 }  // namespace
 
@@ -752,6 +791,15 @@ std::optional<LraTableau::SoiSelection> LraTableau::soi_select() const {
       }
     }
 
+    bool has_conflict_point = false;
+    if (tuning_.soi_linear_maintenance && tuning_.soi_cached_conflicts) {
+      for (auto& point : points) {
+        point.exposes_conflict =
+            soi_crossing_conflicts(j, point.k, point.delta, point.coefficient, point.is_upper);
+        has_conflict_point = has_conflict_point || point.exposes_conflict;
+      }
+    }
+
     DeltaRational current_delta = kZero;
     util::Rational beta = t0j;
     DeltaRational delta_vio = kZero;
@@ -759,6 +807,7 @@ std::optional<LraTableau::SoiSelection> LraTableau::soi_select() const {
     bool best_conflict_for_j = false;
     DeltaRational best_delta_for_j = kZero;
     LraVarId best_k_for_j = j;
+    util::Rational best_coefficient_for_j(0);
     DeltaRational best_delta_vio_for_j = kZero;
 
     std::size_t index = 0;
@@ -771,14 +820,19 @@ std::optional<LraTableau::SoiSelection> LraTableau::soi_select() const {
         const LraVarId k = points[group_end].k;
         const bool conflict =
             tuning_.soi_selection != SoiSelectionRule::Historical &&
-            soi_crossing_conflicts(j, k, this_delta, points[group_end].coefficient,
-                                   points[group_end].is_upper);
+            (tuning_.soi_linear_maintenance
+                 ? points[group_end].exposes_conflict
+                 : soi_crossing_conflicts(j, k, this_delta, points[group_end].coefficient,
+                                          points[group_end].is_upper));
+
         const DeltaRational abs_delta = delta_positive ? this_delta : -this_delta;
         if (!have_best_for_j) {
           have_best_for_j = true;
           best_conflict_for_j = conflict;
           best_delta_for_j = this_delta;
           best_k_for_j = k;
+          if (tuning_.soi_linear_maintenance)
+            best_coefficient_for_j = points[group_end].coefficient;
           best_delta_vio_for_j = delta_vio;
         } else {
           const DeltaRational best_abs = delta_positive ? best_delta_for_j : -best_delta_for_j;
@@ -793,6 +847,8 @@ std::optional<LraTableau::SoiSelection> LraTableau::soi_select() const {
             best_conflict_for_j = conflict;
             best_delta_for_j = this_delta;
             best_k_for_j = k;
+            if (tuning_.soi_linear_maintenance)
+              best_coefficient_for_j = points[group_end].coefficient;
             best_delta_vio_for_j = delta_vio;
           }
         }
@@ -814,11 +870,14 @@ std::optional<LraTableau::SoiSelection> LraTableau::soi_select() const {
           }
           continue;
         }
-        util::Rational coeff(0);
-        for (const auto& [var, c, var_slot] : rows_.at(k)) {
-          if (var == j) {
-            coeff = c;
-            break;
+        util::Rational coeff = points[g].coefficient;
+        if (!tuning_.soi_linear_maintenance) {
+          coeff = util::Rational(0);
+          for (const auto& [var, c, var_slot] : rows_.at(k)) {
+            if (var == j) {
+              coeff = c;
+              break;
+            }
           }
         }
         const bool increasing = (coeff.sign() > 0) == (walk_sign > 0);
@@ -829,14 +888,24 @@ std::optional<LraTableau::SoiSelection> LraTableau::soi_select() const {
         beta = beta + coeff * util::Rational(delta_d);
       }
       index = group_end;
+      // Convexity: after the forward slope becomes nonnegative, later
+      // points cannot improve V or the distance tie. A proven conflict has
+      // higher priority, so do not prune past a yet-unvisited conflict point.
+      if (tuning_.soi_linear_maintenance &&
+          (best_conflict_for_j || (!has_conflict_point && beta.sign() * walk_sign >= 0)))
+        break;
     }
     if (!have_best_for_j) {
       continue;
     }
 
     if (short_column && (best_conflict_for_j || best_delta_vio_for_j < kZero)) {
-      return SoiSelection{j, best_k_for_j, best_delta_for_j, best_delta_vio_for_j,
-                          best_conflict_for_j};
+      return SoiSelection{j,
+                          best_k_for_j,
+                          best_delta_for_j,
+                          best_delta_vio_for_j,
+                          best_conflict_for_j,
+                          best_coefficient_for_j};
     }
     const int sign = best_delta_vio_for_j == kZero ? 0 : (best_delta_vio_for_j < kZero ? -1 : 1);
     const util::Rational abs_score = t0j.sign() < 0 ? -t0j : t0j;
@@ -858,16 +927,24 @@ std::optional<LraTableau::SoiSelection> LraTableau::soi_select() const {
       best_abs_score = abs_score;
       best_paper_score = paper_score;
       best_j = j;
-      best_selection = SoiSelection{j, best_k_for_j, best_delta_for_j, best_delta_vio_for_j,
-                                    best_conflict_for_j};
+      best_selection = SoiSelection{j,
+                                    best_k_for_j,
+                                    best_delta_for_j,
+                                    best_delta_vio_for_j,
+                                    best_conflict_for_j,
+                                    best_coefficient_for_j};
     } else if (conflict_preferred || same_class_preferred) {
       best_conflict = best_conflict_for_j;
       best_sign = sign;
       best_abs_score = abs_score;
       best_paper_score = paper_score;
       best_j = j;
-      best_selection = SoiSelection{j, best_k_for_j, best_delta_for_j, best_delta_vio_for_j,
-                                    best_conflict_for_j};
+      best_selection = SoiSelection{j,
+                                    best_k_for_j,
+                                    best_delta_for_j,
+                                    best_delta_vio_for_j,
+                                    best_conflict_for_j,
+                                    best_coefficient_for_j};
     }
   }
 
@@ -2001,11 +2078,14 @@ std::optional<std::vector<sat::Lit>> LraTableau::check() {
         // convention below (pivot first using the old row shape, then
         // update the now-nonbasic leaving variable; its occurs_in_ entry
         // post-pivot correctly includes the new entering row).
-        util::Rational coeff(0);
-        for (const auto& [var, c, var_slot] : rows_.at(selection->leaving)) {
-          if (var == selection->entering) {
-            coeff = c;
-            break;
+        util::Rational coeff = selection->leaving_coefficient;
+        if (!tuning_.soi_linear_maintenance) {
+          coeff = util::Rational(0);
+          for (const auto& [var, c, var_slot] : rows_.at(selection->leaving)) {
+            if (var == selection->entering) {
+              coeff = c;
+              break;
+            }
           }
         }
         const DeltaRational target =

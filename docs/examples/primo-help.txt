@@ -338,6 +338,9 @@ QF_LRA theory options:
                               SOI short-column partial-sort chunk size (default 16)
           --lra-soi-stall-limit UINT:POSITIVE [16]
                               SOI short-column zero-progress steps before Bland (default 16)
+          --lra-soi-cached-conflicts
+                              Experimental cached row activity and conflict preference for SOI
+                              paper selectors
           --lra-soi-minimize TEXT:{quickxplain,deletion,none} [quickxplain]
                               How --lra-pivoting-rule soi shrinks a multi-row conflict before
                               turning it into a clause: quickxplain (Junker 2001), deletion

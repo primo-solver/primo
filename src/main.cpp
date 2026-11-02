@@ -458,6 +458,9 @@ int run_main(int argc, char** argv) {
   app.add_flag("--lra-soi-cached-conflicts", solver_options.lra_tuning.soi_cached_conflicts,
                "Experimental cached row activity and conflict preference for SOI paper selectors");
 
+  app.add_flag("--lra-soi-linear-maintenance", solver_options.lra_tuning.soi_linear_maintenance,
+               "Experimental linear objective merge, crossing reuse and convex pruning");
+
   add_enum_option(app, "--lra-soi-minimize", solver_options.lra_tuning.soi_minimization,
                   primo::cli::kLraSoiMinimizationNames,
                   "How --lra-pivoting-rule soi shrinks a multi-row conflict before turning "

@@ -863,6 +863,73 @@ void assert_soi_objective_identity(const LraTableau& tableau) {
   assert_tableau_invariants(tableau);
 }
 
+void soi_linear_objective_merge_preserves_support_and_rollback() {
+  std::uint64_t old_occurrences = 0;
+  std::uint64_t merged_occurrences = 0;
+  for (const bool linear : {false, true}) {
+    LraTableau t(LraTableau::PivotingRule::Soi);
+    auto tuning = t.tuning();
+    tuning.soi_selection = LraTableau::SoiSelectionRule::Paper;
+    tuning.soi_linear_maintenance = linear;
+    tuning.soi_cached_conflicts = true;
+    t.set_tuning(tuning);
+    const auto x = t.add_variable();
+    const auto y = t.add_variable();
+    const auto r = t.add_variable();
+    const auto s = t.add_variable();
+    t.add_row(r, {{x, Rational(1)}, {y, Rational(1)}});
+    t.add_row(s, {{x, Rational(1)}, {y, Rational(-1)}});
+    const auto checkpoint = t.push();
+    const auto verify = [&] {
+      assert_soi_objective_identity(t);
+      primo::theory::arithmetic::LraTableauTestAccess::verify_activity(t);
+    };
+    assert(!t.assert_lower(r, rat(4), Lit{1}));
+    verify();
+    assert(!t.assert_lower(s, rat(2), Lit{2}));
+    verify();
+    t.set_nonbasic_value(x, rat(3));
+    verify();
+    t.set_nonbasic_value(y, rat(1));
+    verify();
+    assert(!t.check());
+    verify();
+    t.pop(checkpoint);
+    verify();
+    if (linear)
+      merged_occurrences = t.soi_work().objective_occurrence_changes;
+    else
+      old_occurrences = t.soi_work().objective_occurrence_changes;
+  }
+  assert(merged_occurrences < old_occurrences);
+}
+
+void soi_convex_pruning_preserves_exact_selection() {
+  for (const long sign : {-1L, 1L}) {
+    LraTableau t(LraTableau::PivotingRule::Soi);
+    const auto x = t.add_variable();
+    const auto b = t.add_variable();
+    const auto c = t.add_variable();
+    t.add_row(b, {{x, Rational(sign)}});
+    t.add_row(c, {{x, Rational(sign * 2)}});
+    assert(!t.assert_lower(b, rat(1), Lit{1}));
+    assert(!t.assert_upper(b, rat(2), Lit{2}));
+    assert(!t.assert_upper(c, rat(10), Lit{3}));
+    auto tuning = t.tuning();
+    tuning.soi_selection = LraTableau::SoiSelectionRule::Paper;
+    t.set_tuning(tuning);
+    const auto full = primo::theory::arithmetic::LraTableauTestAccess::selection(t);
+    tuning.soi_linear_maintenance = true;
+    t.set_tuning(tuning);
+    const auto pruned = primo::theory::arithmetic::LraTableauTestAccess::selection(t);
+    assert(full && pruned);
+    assert(full->entering == pruned->entering && full->leaving == pruned->leaving);
+    assert(full->delta == pruned->delta && full->objective_delta == pruned->objective_delta);
+    assert(!t.check());
+    assert_soi_objective_identity(t);
+  }
+}
+
 void soi_cached_activity_matches_recomputation_across_operations() {
   for (const long sign : {-1L, 1L}) {
     LraTableau t(LraTableau::PivotingRule::Soi);
@@ -2988,6 +3055,8 @@ int main() {
   sparse_matches_bland_on_multi_pivot_scenarios();
   least_violated_leaving_matches_bland_on_multi_pivot_scenarios();
   least_violated_leaving_selects_differently_from_most_violated();
+  soi_linear_objective_merge_preserves_support_and_rollback();
+  soi_convex_pruning_preserves_exact_selection();
   soi_cached_activity_matches_recomputation_across_operations();
   soi_short_column_continues_after_a_nonprogressing_shortlist();
   soi_short_column_stall_limit_enters_ordinary_bland_repair();

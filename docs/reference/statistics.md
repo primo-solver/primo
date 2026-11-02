@@ -1158,3 +1158,12 @@ report, including assertion-time objective updates. Counters are cumulative
 work, survive rollback, and are zero for other pivot rules. Selection timing
 is nested in check timing; objective maintenance also occurs during assertion.
 See the [SOI implementation](../implementation/soi.md) for invariants and scope.
+
+
+The experimental cached-conflict flag adds `:lra.soi-activity-updates` (term
+contributions processed while adjusting status counts or rebuilding a row) and
+`:lra.soi-conflict-preferences` (selected predictions ending in the resulting
+row conflict). Initial construction and assertion work is included when a
+subsequent engine check drains these cumulative counters. They survive rollback;
+the cache itself is rebuilt after rollback. See
+{soicachesource}`work state and maintenance <src/theory/arithmetic/lra_tableau.hpp>`.

@@ -205,6 +205,8 @@ enum class StatKey : std::size_t {
   LraSoiSelectedRows,
   LraSoiActivityUpdates,
   LraSoiConflictPreferences,
+  LraSoiObjectiveTerms,
+  LraSoiObjectiveOccurrenceChanges,
   LraSoiSelectionNs,
   LraSoiObjectiveNs,
 

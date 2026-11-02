@@ -231,6 +231,7 @@ class LraTableau {
     std::size_t soi_pricing_candidates = 16;
     std::size_t soi_stall_limit = 16;
     bool soi_cached_conflicts = false;
+    bool soi_linear_maintenance = false;
     SoiMinimization soi_minimization = SoiMinimization::QuickXplain;
     SoiMinimizationOrder soi_minimization_order = SoiMinimizationOrder::Id;
   };
@@ -727,6 +728,8 @@ class LraTableau {
     std::uint64_t predicate_calls = 0;
     std::uint64_t arithmetic_terms = 0;
     std::uint64_t selected_rows = 0;
+    std::uint64_t objective_terms = 0;
+    std::uint64_t objective_occurrence_changes = 0;
     std::uint64_t activity_updates = 0;
     std::uint64_t conflict_preferences = 0;
     std::uint64_t selection_ns = 0;
@@ -923,6 +926,7 @@ class LraTableau {
     DeltaRational delta;
     DeltaRational objective_delta;
     bool exposes_conflict = false;
+    util::Rational leaving_coefficient{0};
   };
   std::optional<SoiSelection> soi_select() const;
   std::optional<std::vector<sat::Lit>> soi_row_conflict(const std::vector<LraVarId>& candidates);

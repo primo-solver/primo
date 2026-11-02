@@ -137,3 +137,10 @@ All remaining candidates are examined when earlier chunks make no progress.
 These are experimental Primo constants; see [short-column pricing](../implementation/soi.md#experimental-short-column-pricing).
 {soishortsource}`The CLI <src/main.cpp>` and
 {soishortsource}`tuning state <src/theory/arithmetic/lra_tableau.hpp>` own them.
+
+
+`--lra-soi-cached-conflicts` enables experimental RHS activity counts and
+candidate conflict preference for paper/short-column selection. It is off by
+default. The historical selector keeps its selection behavior when this flag
+is supplied. See [cached conflict preference](../implementation/soi.md#experimental-cached-conflict-preference)
+and {soicachesource}`the CLI <src/main.cpp>`.
