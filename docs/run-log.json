@@ -39,7 +39,14 @@
         "candidate_gdb": "335811",
         "real_seed_mutations": "335812",
         "documentation_examples": "335912",
-        "pilot_analysis": "335913"
+        "pilot_analysis": "335913",
+        "full_timing": "336029_0..999",
+        "full_models": "336030_0..999",
+        "full_profiles": "336031_0..999",
+        "full_analysis": "336032",
+        "full_qualification": "336033",
+        "fixture_include_recheck": "336722",
+        "check_after_include": "336783"
       },
       "qualification": {
         "check": "make -j4 check BUILD_DIR=build-slurm-rel:45 CTest and275 Python pass on retry335807; native hash unchanged from initial build. Adjacent e2eded8 updates missing fake machine metadata in report test, no native changes.",
@@ -83,13 +90,35 @@
         "local": "make lint, git diff --check and make docs pass. make docs-check-links assembles current+historical site:269 pages,34929 local links,1169 unique Git links,0 failures;418 external URLs deferred.",
         "documentation_examples": "12/12 pass335912 against native8faa775, including refreshed exact help",
         "pure_class_probe": "16 independent diagonal rows with forced one-step SOI prefix:15 Bland suffix pivots; snapshot1/untrailed15 vs eager snapshot0/untrailed0; shorter lazy trail. Private two-pivot strict-bound probe has no incremental objective/cache updates and no per-pivot trail growth; resume/pop identities and activity slow checks pass.",
-        "rendering": "Changed lifecycle HTML rendered and visually inspected:results/soi-fallback-20261102/lifecycle-cdp.png"
+        "rendering": "Changed lifecycle HTML rendered and visually inspected:results/soi-fallback-20261102/lifecycle-cdp.png",
+        "static": "335795 completed all130translation units:17 unchanged clang-tidy diagnostics (externalCLI11 leak1,shared_ptr aggregate1,guarded enum casts15). Advisory include scan403 diagnostics:20 paired self-header suggestions retained,382 existing direct-provider suggestions,one new std::size_t missing direct include in explanation fixture. Added cstddef in adjacent test-only6a6a493;focused336722 COMPLETED and removed precisely that new warning, leaving the382+20 baseline advisories. Normal check336783 pending;native source/hash unchanged.",
+        "real_seed_mutations": {
+          "job": "335812",
+          "state": "COMPLETED",
+          "generator": "YinYang/typefuzz0.3",
+          "seed": 611821,
+          "seeds": 24,
+          "iterations_per_seed": 20,
+          "duration_limit_seconds": 900,
+          "native_reference_timeout_seconds": 5,
+          "retained_unique_mutants": 480,
+          "PASS": 52,
+          "SAT": 16,
+          "UNSAT": 36,
+          "INVALID_GENERATED_NONLINEAR": 428,
+          "wrong_answers": 0,
+          "crashes": 0,
+          "untriaged_disagreements": 0,
+          "command": "scripts/qualification/soi_improvements/verified_mutations.sbatch;frozen soi-fallback-mutations-plan.json;native combined64/8 + check-model;reference z3 model_validate=true;classify_soi_mutations.py preserves partial reference stdout",
+          "report": "docs/coverage/soi-fallback-mutations-20261102.json",
+          "artifacts": "results/real-seed-mutations/{selection,scratch,bugs,logs,classification.json}"
+        },
+        "pilot_sat_models": "335810_0..99 completed all100shards;every selected SAT row passed native+Dolmen worker checks;full-run row-exact join336033 remains separate."
       },
       "pending": [
-        "pilot/full speed acceptance",
-        "separate native+Dolmen SAT coverage",
-        "real-seed mutation classification",
-        "whole-tree static disposition",
+        "full speed acceptance",
+        "full native+Dolmen SAT coverage and diagnostic join",
+        "focused include recheck/normal check after test-only include",
         "final docs/results/review and commits"
       ],
       "documentation_review": {
@@ -107,7 +136,68 @@
           "docs/examples/primo-help.txt": "6ae5b9957815c2ec48d28b8cfa4d9b36b49d9ddb888d9e23591508f712c6e5fc"
         }
       },
-      "build_command": "scripts/slurm_prepare_benchmark_workspace.py --build-via-slurm --reuse-dependencies --jobs 4 --extra-target primo_lra_tableau_tests --extra-target primo_lra_soi_explanation_tests --require-tool contrib/local/bin/z3 --require-tool contrib/local/bin/dolmen (private remote/SSH/CMake/header-manifest arguments; source snapshot8faa775)"
+      "build_command": "scripts/slurm_prepare_benchmark_workspace.py --build-via-slurm --reuse-dependencies --jobs 4 --extra-target primo_lra_tableau_tests --extra-target primo_lra_soi_explanation_tests --require-tool contrib/local/bin/z3 --require-tool contrib/local/bin/dolmen (private remote/SSH/CMake/header-manifest arguments; source snapshot8faa775)",
+      "pilot": {
+        "report": "docs/coverage/soi-fallback-pilot-20261102.json",
+        "status": "passed predeclared nonregression; proceeded to full24-profile run",
+        "production_historical": {
+          "eager_stable": 76,
+          "suspended_stable": 77,
+          "eager_par2": 842.334,
+          "suspended_par2": 811.695,
+          "losses": 0,
+          "bootstrap_mean_change_ci95": [
+            -0.7912249927536229,
+            -0.04651171768707483
+          ]
+        },
+        "production_combined": {
+          "eager_stable": 88,
+          "suspended_stable": 89,
+          "eager_par2": 497.011,
+          "suspended_par2": 455.866,
+          "losses": 0,
+          "bootstrap_mean_change_ci95": [
+            -0.8907332323232321,
+            -0.11065955197132615
+          ]
+        },
+        "secondary_fixed_on": "No stable losses in either profile;historical83->83,combined90->91; PAR2 improves with paired CI below zero.",
+        "scope": "100 inputs,3 repeats,15s,85 parents;whole-process PAR2 totals in seconds;negative bootstrap mean score change favors suspended;profiling disabled."
+      },
+      "artifacts": {
+        "pilot": "results/soi-fallback-pilot",
+        "full": "results/soi-fallback-full",
+        "diagnostic": "results/soi-fallback-diagnostic",
+        "summary": "results/full-summary.json",
+        "qualification": "results/full-qualification.json",
+        "candidate_gdb": "results/candidate-gdb",
+        "real_seed_mutations": "results/real-seed-mutations",
+        "local": "results/soi-fallback-20261102"
+      },
+      "candidate_profile": {
+        "job": "335811",
+        "command": "scripts/qualification/soi_fallback/profile.sbatch; same input/combined flags/seed/interval as baseline335787",
+        "samples": 139,
+        "inclusive_check_samples": 23,
+        "inclusive_set_soi_direction_samples": 6,
+        "inclusive_substitute_solved_constants_samples": 95,
+        "profile_wall_seconds": 7.851110307499766,
+        "limitation": "Diagnostic GDB samples overlap and execution is perturbed;compare uninstrumented pilot/full process PAR2 for performance claims. No resume/suspend frame sampled;this does not establish zero boundary cost."
+      },
+      "pilot_documentation_review": {
+        "reviewer": "/root/soi_documentation_review",
+        "verdict": "ready;SOIFALLPILOT01 resolved",
+        "scope": "appended pilot/lifecycle follow-up, compact pilot report, pinned16/24plan links and Next-reading reference",
+        "accepted_sha256": {
+          "docs/papers/soi-experiments.md": "7a51a6e5ae763dd381d70bf9613d403ffaef2ebed88ed8d2d99c122689d4938d",
+          "docs/implementation/soi.md": "7f4c10be65c5bf11faed09af7ba6497e22a6b616464ac61083737354751e5e2e",
+          "docs/coverage/soi-fallback-pilot-20261102.json": "494e327e4cf3e1bc562291d73bebd999b63aa2efea2e1914aa5d86dfc65289bb",
+          "docs/_config.yml": "14395fcd7907f7c3aed89eb4c76c2657908fd0bd1f0d8870b16510c5f51c20f9"
+        },
+        "links": "269pages;34937local;1171Git;0failures",
+        "rendering": "Pilot table rendered and visually inspected:results/soi-fallback-20261102/pilot-table-cdp.png"
+      }
     },
     {
       "id": "2026-11-02-soi-fallback-baseline-standard-profile",

@@ -254,7 +254,7 @@ Reader: implementers reviewing heuristic shutdown and rollback. Prerequisites:
 ordinary tableau equations, nonbasic feasibility and the SOI coefficient
 identity above. This section answers which state can stop being maintained
 when the active repair policy changes to Bland, and how later checks/pop remain
-valid. Next: the fallback experiment in the experiments chapter.
+valid. Next: {ref}`the fallback experiment <soi-fallback-followup>`.
 
 This is a Primo lifecycle design, motivated by the observed SOI tail costs;
 it is not a mechanism claimed from FMCAD or the thesis. Bland selection still

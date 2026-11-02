@@ -7,7 +7,8 @@ support. Prerequisites are [LRA operations](../implementation/lra.md) and the
 [SOI algorithm](../implementation/soi.md). Read the
 [paper guide](soi-guide.md) for the algorithmic basis and the
 [dated audit](soi-implementation-audit.md) for the preserved baseline findings.
-Sparse remains the solver default.
+Sparse remains the solver default. The {ref}`lifecycle follow-up <soi-fallback-followup>`
+separately evaluates suspending inactive SOI bookkeeping during Bland repair.
 
 ## Scope and immutable baseline
 
@@ -360,3 +361,71 @@ model/explanation checks establish bounded evidence, not a universal correctness
 proof. Full trailing, unfused activity refresh and source-specific safeguards
 remain explicit deviations. The next performance experiment would need its own
 frozen hypothesis and gates; this result does not authorize a new default.
+
+(soi-fallback-followup)=
+## Bland fallback lifecycle follow-up
+
+This follow-up is for readers assessing the cost of inactive heuristics.
+It assumes the [fallback lifecycle and rollback proof](../implementation/soi.md#bland-fallback-lifecycle).
+The preceding mechanism study remains evidence for its archived `9a1efcf`
+binary; this experiment isolates the later lifecycle change in `8faa775`.
+Read the {ref}`overall comparison <lra-simplex-overall-current>`
+for the earlier policy ranking.
+
+The candidate binary SHA-256 is
+`18b3182d9f95698dc7684ade226cbdaf091e691c648640971ef20b34d5274bd0`.
+The old/new registry retains `9a1efcf` as an immutable control. Within the
+candidate, the eager arm adds `--no-lra-soi-suspend-on-fallback`; the suspended
+arm adds `--lra-soi-suspend-on-fallback`. All selector, pricing, cache,
+maintenance and minimizer arguments otherwise match. Historical SOI and the
+combined 64/8 profile are separate arms. No SOI parameter was retuned.
+
+The {soifallbackworkflow}`frozen 16-configuration pilot plan <benchmarks/qf-lra-simplex-ablation/soi-fallback-pilot-plan.json>`
+uses 100 inputs, three repetitions, a 15-second process limit,
+Gaussian elimination on and fixed elimination both ways. Each input's versions
+and repetitions share one SLURM CPU allocation. The
+[pilot report](../coverage/soi-fallback-pilot-20261102.json) records machine
+identities, family summaries, outcomes and parent-bootstrap comparisons.
+Negative mean score changes favor suspension; uncertainty resamples the 85
+original parents, using 2,000 bootstrap draws with seed 20261102.
+
+| Fixed elimination | SOI profile | Eager stable | Suspended stable | Eager PAR2 (s) | Suspended PAR2 (s) |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Off | Historical | 76 | 77 | 842.334 | 811.695 |
+| Off | Combined | 88 | 89 | 497.011 | 455.866 |
+| On | Historical | 83 | 83 | 693.043 | 687.970 |
+| On | Combined | 90 | 91 | 414.508 | 385.635 |
+
+No stable solve is lost in these four paired comparisons. Each paired 95%
+interval for mean per-input PAR2 change excludes zero in the improving
+direction. Against the archived binary, production fixed-off historical SOI
+improves from 841.397 to 811.695 seconds and combined SOI from 496.084 to
+455.866 seconds, again with no stable losses. These are pilot results, not
+full-corpus acceptance.
+
+The pilot therefore permits the predeclared full run. Its
+{soifallbackworkflow}`24-configuration full plan <benchmarks/qf-lra-simplex-ablation/soi-fallback-plan.json>` adds
+paired old/new Bland and Dantzig controls to the 16 pilot configurations,
+for 24 full configurations. This addition was committed before inspecting the
+pilot summary or executing the full run: the common Bland leaving scan also
+stops computing unused violation magnitudes. Sparse controls were already in
+the pilot. All 1,000 inputs, three repetitions, the 15-second limit and both
+fixed-elimination settings remain unchanged. Model validation and phase
+profiling run separately from process timing.
+
+Qualification before this full run includes 45 C++ suites, 275 Python tests,
+45 ASAN suites and 62 independently refuted selected-premise conflict fixtures.
+Fresh 3,000-case QF_LRA FuzzSMT campaigns produce 2,877 PASS/123 timeout cases
+for historical SOI and 2,956 PASS/44 timeout cases for combined SOI, with no
+hard errors. These timeouts do not count as passes. Real-seed mutation
+classification and full-corpus native/Dolmen replay remain separate gates.
+
+A standard GDB sampler on the preselected objective-heavy input
+`fa718a03e97b909188f63f2803428b9f89ec4f7f1dc3b2d5b786ce31f42a79b7`
+provides supporting diagnostic evidence. Of 210 old samples, 71 include
+`set_soi_direction`; of 139 candidate samples, six include it. Inclusive
+`check` samples fall from 88 to 23, while substantial solved-constant
+preprocessing remains (94 versus 95 inclusive samples). Sample counts overlap
+and GDB perturbs execution; its 12.152/7.851-second wall times are not benchmark
+speedups. The process table and separate counters are the performance evidence.
+The run log retains commands, binary hashes, seeds, jobs and artifact paths.
