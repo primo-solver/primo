@@ -1,14 +1,26 @@
 from __future__ import annotations
 
+import subprocess
 import sys
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
-from classify_soi_mutations import classify
+from classify_soi_mutations import classify, run
 
 
 class MutationClassificationTests(unittest.TestCase):
+    def test_timeout_preserves_reference_rejection_diagnostics(self):
+        failure = subprocess.TimeoutExpired(
+            ["reference"], 5, output=b"nonlinear input\n", stderr=b"diagnostic\n"
+        )
+        with patch("classify_soi_mutations.subprocess.run", side_effect=failure):
+            result = run(["reference"], Path("unused"), 5)
+        self.assertTrue(result["timeout"])
+        self.assertEqual(result["stdout"], "nonlinear input\n")
+        self.assertEqual(result["stderr"], "diagnostic\n")
+
     def test_reference_must_succeed_and_valid_native_errors_block(self):
         sat = {"exit": 0, "stdout": "sat\n", "stderr": ""}
         unsat = {"exit": 0, "stdout": "unsat\n", "stderr": ""}
@@ -26,3 +38,10 @@ class MutationClassificationTests(unittest.TestCase):
             "UNTRIAGED_REFERENCE_ERROR",
         )
         self.assertEqual(classify({"exit": -11}, invalid), "CRASH")
+        self.assertEqual(
+            classify(error, {"timeout": True}), "UNTRIAGED_NATIVE_REJECTION"
+        )
+        self.assertEqual(
+            classify(error, {"timeout": True, "stdout": invalid["stdout"]}),
+            "INVALID_GENERATED_NONLINEAR",
+        )

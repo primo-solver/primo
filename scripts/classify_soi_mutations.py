@@ -21,8 +21,20 @@ def run(command, source, timeout):
             timeout=timeout,
             check=False,
         )
-    except subprocess.TimeoutExpired:
-        return {"timeout": True}
+    except subprocess.TimeoutExpired as error:
+
+        def decoded(value):
+            return (
+                value.decode(errors="replace")
+                if isinstance(value, bytes)
+                else value or ""
+            )
+
+        return {
+            "timeout": True,
+            "stdout": decoded(error.stdout),
+            "stderr": decoded(error.stderr),
+        }
     return {"exit": result.returncode, "stdout": result.stdout, "stderr": result.stderr}
 
 
@@ -37,6 +49,14 @@ def answer(run):
 def classify(native, reference):
     if native.get("exit", 0) < 0 or reference.get("exit", 0) < 0:
         return "CRASH"
+    # Mutation can replace an existing scalar factor. A reference rejection
+    # establishes invalid input even if solving the remaining assertions later
+    # times out; preserve that diagnostic instead of accepting an untriaged
+    # native rejection as a timeout-only outcome.
+    if "logic does not support nonlinear arithmetic" in reference.get("stdout", ""):
+        return "INVALID_GENERATED_NONLINEAR"
+    if reference.get("timeout") and native.get("exit", 0) != 0:
+        return "UNTRIAGED_NATIVE_REJECTION"
     if native.get("timeout") or reference.get("timeout"):
         return "TIMEOUT"
     expected = answer(reference)
@@ -44,13 +64,6 @@ def classify(native, reference):
         if answer(native):
             return "PASS" if answer(native) == expected else "WRONG_ANSWER"
         return "VALID_INPUT_NATIVE_ERROR"
-    # type-aware mutation can replace a constant factor inside a seed's
-    # multiplication, even when '*' is excluded from generative signatures.
-    if (
-        reference.get("exit") == 1
-        and "logic does not support nonlinear arithmetic" in reference["stdout"]
-    ):
-        return "INVALID_GENERATED_NONLINEAR"
     return "UNTRIAGED_REFERENCE_ERROR"
 
 
