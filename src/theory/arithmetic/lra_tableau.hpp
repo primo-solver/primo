@@ -102,10 +102,10 @@ struct DeltaRational {
 // **PivotingRule::Soi is the exception and still trails everything.** Its
 // objective row is explicitly maintained and genuinely basis-dependent --
 // it is a sum over the *currently* violated rows, not a linear combination
-// of A -- so neither half of the argument above covers it. SOI is an
-// extension beyond the paper (FMCAD 2013), so it keeps the pre-2026-07-31
-// behaviour rather than being made to fit an argument written for the
-// paper's algorithm.
+// of A -- so neither half of the earlier feasibility-simplex rollback
+// argument covers objective maintenance. FMCAD 2013 is the source of SOI;
+// this implementation retains full trailing rather than extending that
+// earlier rollback argument to the changing objective.
 //
 // Rows must all be added via add_row() before the first push() in the
 // caller's intended usage (build the full tableau once, then push/assert/
