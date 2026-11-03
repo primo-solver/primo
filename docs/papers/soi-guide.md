@@ -16,6 +16,8 @@ Formulas Over Linear Real and Integer Arithmetic*, NYU PhD thesis, 2014
 [project paper mirror](https://cvc4.github.io/publications/2013/KBD13.pdf) and
 [NYU thesis](https://cs.nyu.edu/media/publications/king_tim.pdf) were read as
 primary algorithm sources. Their recorded checksums are in `docs/run-log.json`.
+The workspace copies are `external/kbd-fmcad2013.pdf` and
+`external/king-thesis2014.pdf`; consult these before fetching another copy.
 No other solver's implementation supplies code or documentation text.
 
 ## Notation and the implementation boundary
@@ -209,23 +211,61 @@ zero events can select a no-op; the guard remains a defensive safeguard.
 Counters report both prefix and suffix work. No unrestricted-paper termination
 claim is attached to the combined engineering profile.
 
+(soi-stalls-and-bland)=
 ## FMCAD §V-D and thesis §3.3.3: short-column heuristics
 
 **Purpose and assumptions.** Avoid exhaustive pricing when one progressing
 candidate suffices. Columns are ordered by length, then ID. A zero-progress
 candidate cannot justify concluding that no later column progresses.
 
+**What the sources say.** FMCAD §V-D and thesis §3.3.3 (printed p. 95)
+explicitly describe CVC4 preferring short columns until progress stalls, then
+using Bland's rule. The stall-based change is therefore a source mechanism,
+not a Primo invention. Neither passage specifies a numerical stall threshold
+or a complete mode-switching protocol. Read with thesis Figure 3.4 and the
+§3.3.2 termination argument, the natural interpretation is a change of
+selection within SOI, retaining its objective and crossing machinery. This is
+an interpretation of that context; the passages do not explicitly describe a
+handoff to the ordinary SMT row-repair loop.
+
+Here **zero progress** means that the selected step has $\Delta V=0$, where
+$V$ is the sum of bound violations. It does not establish that $V$ is at its
+minimum. For example, a basis exchange can leave $V=3$ unchanged yet enable a
+later decrease. Thesis §3.3.2 explains how the source's distance and ID rules
+handle such degenerate pivots. A positive-minimum conflict instead requires a
+blocked-objective certificate, as in §3.3.5; a stall count is not a certificate.
+
 **Operations and costs.** {soifinalsource}`soi_select <src/theory/arithmetic/lra_tableau.cpp>` partially sorts chunks and stops at the
 first progressing candidate, or proven conflict when caching is enabled. If a
 chunk has none, it continues through remaining columns. Worst-case crossing
 work remains exhaustive; chunks change ordering cost, not the visited order.
 After a consecutive stall limit, {soifinalsource}`check <src/theory/arithmetic/lra_tableau.cpp>` switches to ordinary Bland repair.
+It leaves the SOI loop for the rest of that check: the suffix repairs one
+violated basic at a time, choosing the smallest eligible leaving and entering
+IDs, rather than continuing to select from SOI crossings. The stall count
+increases on $\Delta V=0$ and resets on a nonzero change. This handoff and its
+threshold are Primo choices; they must not be identified with the source's
+selection change merely because both use the name Bland.
+
+The safeguards have different scopes:
+
+| Mechanism | Source or current Primo behavior |
+| --- | --- |
+| SOI selection on a zero-progress tail | Thesis §3.3.2 uses distance and smallest-ID ties within SOI for its termination argument. |
+| Practical SOI stall response | Thesis §3.3.3 / FMCAD §V-D describe short-column heuristics followed by Bland selection; no numerical threshold is given. |
+| Ordinary SMT simplex safeguards | Thesis §2.2.12, pp. 78–79, discusses finite selection caps and repeated basis-leaving counts. Ordinary simplex is not exempt from anti-cycling safeguards. |
+| Primo common cap | Dantzig, Sparse and SOI share the $4n+64$ cap formula, reset per check. SOI counts selected updates, including assignment-only moves, and includes its artificial objective in $n$; the ordinary rules count pivots. |
+| Primo early stall handoff | Only the short-column SOI arm also switches to ordinary Bland repair at its configured zero-progress streak. It does not return SAT or UNSAT merely because the streak is reached. |
 
 **Example and status.** If the first chunk contains only blocked or zero-progress
 columns and column 17 improves, a budget of 16 still reaches column 17. Tests
 exercise this boundary. Budgets 4/16/64 and stalls 8/16/32 were a predeclared
 pilot grid. Its frozen 64/8 choice is a Primo parameter choice, not a paper
 constant. Public option defaults remain 16/16 and the selector stays historical.
+The measured combined arm therefore compares a guarded SOI/ordinary-Bland
+hybrid with the ordinary profiles. It does not isolate SOI versus Dantzig under
+identical fallback triggers, nor implement a measured SOI-preserving Bland
+mode after stalls.
 
 ## Thesis §3.3.4 and FMCAD §V-D: cached conflict preference
 

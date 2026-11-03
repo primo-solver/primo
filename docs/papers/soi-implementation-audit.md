@@ -320,3 +320,21 @@ behavior. Its {ref}`separate evaluation <soi-fallback-full-results>` records
 archived, eager and suspended arms, boundary costs and completed model gates.
 The dated audit and `9a1efcf` resolution table above retain their original
 scope and evidence.
+
+### Stall-response clarification (2026-11-03)
+
+The SOI-1/2/5 responses above do not establish that every fallback choice
+matches the source algorithm. Thesis §3.3.3, p. 95, and FMCAD §V-D explicitly
+describe changing from short-column heuristics to Bland selection after stalls.
+The numerical threshold is unspecified. Their surrounding SOI algorithm and
+termination proof support selection within SOI; they do not explicitly describe
+Primo's early handoff to ordinary Bland row repair. The
+{ref}`source guide <soi-stalls-and-bland>` records the distinction, including
+ordinary SMT simplex's own safeguards from thesis §2.2.12.
+
+The current combined profile's threshold of eight and the ordinary-repair
+handoff remain engineering choices. Its qualified results measure that hybrid;
+they do not settle the performance of retaining SOI's objective and crossings
+while using Bland selection after stalls. This is an open conformance and
+evaluation question, not a newly observed wrong answer or a change to the
+archived benchmark results.

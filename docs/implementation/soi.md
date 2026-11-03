@@ -117,6 +117,14 @@ frozen grid. The overall finite guard remains active too.
 
 These constants and the partial-sort organization are Primo engineering
 choices, motivated by thesis §3.3.3 / FMCAD §V-D rather than specified by them.
+The sources explicitly describe switching from short-column heuristics to
+Bland selection when progress stalls. Their surrounding SOI algorithm and
+termination argument support interpreting this as selection within SOI; they
+do not explicitly specify Primo's handoff to ordinary row repair. In
+{soifallbacksource}`check <src/theory/arithmetic/lra_tableau.cpp>`, the stall
+branch sets `force_bland` and exits the SOI loop for the rest of the check.
+This distinction, the meaning of zero progress, and the safeguards used by
+ordinary SMT simplex are explained in the {ref}`source guide <soi-stalls-and-bland>`.
 The budget changes sorting cost; stopping at the first progressing column means
 all three budgets visit the same ordered sequence, apart from time limits.
 The stall limit can change the repair path. Pure tableau regressions exercise

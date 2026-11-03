@@ -632,7 +632,17 @@ Primo has not reproduced that favorable pivot behavior: combined SOI takes
 281,753 pivots versus Dantzig's 111,315 on the 883 matched inputs. Moreover,
 232,573 of its pivots (82.5%) occur in ordinary Bland repair after the SOI
 prefix. Our guarded hybrid therefore differs from running SOI throughout a
-check. The maintained representation, preprocessing and starting states also
+check. King does describe responding to stalled progress with Bland selection;
+that idea is not itself a deviation. The {ref}`paper and thesis guide <soi-stalls-and-bland>`
+distinguishes the source's selection change from Primo's handoff to ordinary
+repair and its tuned eight-step threshold. Dantzig and Sparse also have the
+common finite cap; only the combined SOI arm adds the early stall trigger.
+Thus the 82.5% suffix fraction alone does not explain SOI's loss. Different
+prefixes leave different bases and assignments for the suffix, and these
+measurements do not isolate the stall handoff from an SOI-preserving Bland
+selection mode or a common-cap-only SOI arm.
+
+The maintained representation, preprocessing and starting states also
 differ. Improving bookkeeping leaves these pivot trajectories unchanged.
 
 The present result is unfavorable for this Primo profile on this workload;
