@@ -206,8 +206,11 @@ magnitude, as above. The proof motivates exact tuple comparisons in
 
 **Status and owner.** {soifinalsource}`check <src/theory/arithmetic/lra_tableau.cpp>` retains the existing $4n+64$ prefix limit, where $n$ includes all tableau variables, slacks and the
 artificial objective (with one additional selection allowed by its inclusive guard), then Bland repair.
-Short columns also switch after the configured zero-progress streak. Own-bound
-zero events can select a no-op; the guard remains a defensive safeguard.
+Short columns also switch after the configured zero-progress streak. Since
+source `7cb3743`, exact-zero own-bound events are excluded before breakpoint sorting;
+{ref}`the design argument <soi-self-step-resolution>` explains why these
+self-updates can be discarded while basic-row zero-distance pivots remain.
+The guard remains a defensive safeguard.
 Counters report both prefix and suffix work. No unrestricted-paper termination
 claim is attached to the combined engineering profile.
 

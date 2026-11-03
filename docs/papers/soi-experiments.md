@@ -718,3 +718,54 @@ zero-distance self-event before selection needs a design argument and focused
 regressions; switching to SOI-preserving Bland selection is a separate arm.
 Neither correction has been evaluated here. These findings limit conclusions
 about SOI itself drawn from the current hybrid's pivot totals.
+
+(soi-selfstep-pilot)=
+## Zero-distance self-event fix: frozen pilot
+
+This section answers whether removing the demonstrated self-update defect
+changes correctness or search behavior. Read the
+{ref}`design argument <soi-self-step-resolution>` first; the preceding
+drill-down remains evidence about source `8faa775`.
+
+The candidate is `7cb3743`, binary SHA-256
+`643bbb0092b563986cbebcff59f95e61761be42b6d30509954c6fbf7ab3633f0`.
+The immutable original is `8faa775`, binary
+`18b3182d9f95698dc7684ade226cbdaf091e691c648640971ef20b34d5274bd0`.
+Only exact-zero own-bound events are excluded. The combined profile retains
+64-candidate chunks, an eight-step stall limit, cached conflict preference,
+linear objective maintenance, row-growing explanations and ordinary Bland
+repair after fallback. The separate pure paper-selector controls exercise
+the same filter without those combined mechanisms. Neither default changes.
+
+The [frozen pilot plan](../../benchmarks/qf-lra-simplex-ablation/soi-selfstep-pilot-plan.json)
+uses the existing 100 stratified inputs, three repetitions, a 15-second process
+limit, Gaussian elimination enabled and fixed elimination separately off/on.
+SLURM job `340997` measured all 3,600 timing rows. Job `340998` subsequently
+replayed every successful SAT timing row: all 1,764 passed native checking and
+direct Dolmen 0.10. No model-checking time enters the table. The
+[portable pilot report](../coverage/soi-selfstep-pilot-20261103.json) retains
+family results, runtime distributions, outcomes and same-setting comparisons.
+
+| Profile | Fixed off: stable / PAR2 sum (s) | Fixed on: stable / PAR2 sum (s) |
+|---|---:|---:|
+| Sparse, candidate binary | 98 / 182.539 | 97 / 197.913 |
+| Dantzig, candidate binary | 91 / 378.617 | 95 / 273.962 |
+| Combined, original | 89 / 456.346 | 91 / 385.331 |
+| Combined, fixed | 89 / 455.698 | 91 / 375.445 |
+| Paper selector, original | 76 / 825.110 | 84 / 638.922 |
+| Paper selector, fixed | 76 / 827.128 | 80 / 745.728 |
+
+Stable means solved in all three repetitions; PAR2 averages each input's
+three penalties, then sums across inputs. The repaired combined profile has
+zero stable gains and losses against its original in both settings. Its
+parent-bootstrap 95% interval for the mean per-input PAR2 change is
+[-0.01148, -0.00125] seconds with fixed elimination off and
+[-0.29439, +0.00712] with it on. The latter interval includes zero.
+
+The pure paper selector loses four stable solves with fixed elimination on.
+Removing an unchanged self-step makes a different real basis exchange
+possible and can change when and from which basis fallback starts; it does
+not establish a uniformly faster search path. No wrong answers, crashes or
+invalid SAT models were observed. This pilot supports testing the unchanged
+combined candidate on the full frozen corpus; it does not qualify a default
+promotion or establish an improvement for the pure paper selector.

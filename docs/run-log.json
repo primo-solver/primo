@@ -26,7 +26,16 @@
         "fuzz_missing_generator_paper": "339756_0..3",
         "combined_fuzz": "340037_0..5",
         "paper_fuzz": "340038_0..3",
-        "real_seed_mutations": "339908"
+        "real_seed_mutations": "339908",
+        "pilot_timing": "340997_0..99",
+        "pilot_models": "340998_0..99",
+        "pilot_summary": "341465",
+        "focused_regressions": "341457",
+        "pilot_failed_summary": "341344",
+        "full_timing": "341466_0..999",
+        "full_models": "341467_0..999",
+        "full_profiles": "341468_0..999",
+        "full_summary": "341469"
       },
       "execution": "CIIRC SLURM only for native builds,tests,fuzzing,mutations,benchmarks and models. Local edits,lint,docs and result analysis. Archived baseline workspace and binary preserved;candidate workspace primo-soi-selfstep-20261103.",
       "preparation": "slurm_prepare_benchmark_workspace.py --local-dir <clean7cb3743worktree> --sync-mode rsync --reuse-dependencies --build-via-slurm --jobs4 --cmake <verifiedCMake> --cxx-header-manifest <matchingGCCheaderlist>;check-only preflight before submission. Initial uncompressed archive transfer was interrupted before any build and retried through helper compressed rsync with corrected CMake path.",
@@ -37,7 +46,7 @@
       },
       "predeclaration": "Existing deterministic100 pilot first with12profiles,including old/fixed paper arms. Main frozen1000,8profiles(old/fixedcombined,currentSparse,currentDantzig,bothfixedsettings),3repeats,15sec,Gaussianon;no timing clocks;separate1repeat diagnostic plan. Full native+Dolmen SAT replay after timing,not within timing.",
       "correctness_plan": "make check;62independentZ3explanationfixtures;make asan-test;3000freshQF_LRA cases combined(seed613010..613015,6x500),1000paper(seed613110..613113,4x250),5sec per solver,Z3reference,nativecheck-model;fresh retained-input typefuzz mutation campaign(seed611821,24seeds20iterations,5sec);all hard failures block acceptance.",
-      "setup_failures": "339755/339756 exited2 before generating cases because fuzzsmt was missing from candidate PATH. Retried using the verified existing shared generator;new output directories combined-retry/paper-retry. No solver failure or fuzz pass claimed from failed dispatches.",
+      "setup_failures": "339755/339756 exited2 before generating cases because fuzzsmt was missing from candidate PATH. Retried using the verified existing shared generator;new output directories combined-retry/paper-retry. No solver failure or fuzz pass claimed from failed dispatches. Initial pilot submission referenced old completed job IDs already purged from the SLURM controller and was rejected without creating a job. After checking terminal gate results and all4000case summaries,the pilot was submitted without obsolete dependencies. Pilot summary341344 failed because the frozen plan had not been copied to the run root expected by the existing summarizer; timing/model shards remained intact. Copied the byte-identical frozen plan and reran summary341465 successfully.",
       "design_review": {
         "reviewer": "soi_drill_doc_review",
         "verdict": "Ready;no findings",
@@ -45,7 +54,105 @@
         "scope": "Design/proof boundary,newcounter,regression source and native publication owners;not runtime qualification.",
         "documentation_patch_sha256": "6674bd64fb5c7426c481d167350f2e3d213ff191f34c33bae96738239dc24fd2"
       },
-      "verification": "Local make lint,docs-site and link checks pass;source-native qualification and paired results pending. Full solver/ASAN/static/fuzz commands are existing checked-in wrappers,with exact env/profile metadata retained in SLURM artifacts."
+      "verification": "make lint,docs-site and local/Git link checks passed for implementation design. SLURM check(45CTest+275Python),62Z3explanations,ASAN45,whole-tree static134,fresh4000generated and480mutations complete;pilot qualified;full evaluation pending.",
+      "qualification_progress": {
+        "check": "339752 COMPLETED0:0;45CTest pass;62independentZ3explanations pass",
+        "asan": "339753 COMPLETED0:0;45CTest pass",
+        "combined_fuzz": {
+          "summaries": 6,
+          "generated": 3000,
+          "PASS": 2963,
+          "TIMEOUT": 37,
+          "hard_failures": 0
+        },
+        "paper_fuzz": {
+          "summaries": 4,
+          "generated": 1000,
+          "PASS": 952,
+          "TIMEOUT": 48,
+          "hard_failures": 0
+        },
+        "mutations": "339908 retained480 classified52PASS,428INVALID_GENERATED_NONLINEAR;24validseeds and0bugtriggers;no hard failures.",
+        "static": "339754 COMPLETED0:0;134CPP scanned(130src/tests+4docs examples),17existing analyzer warnings;402unchanged src/test include-cleaner advisories plus7docs-example advisories. No new warnings in changed native engine/statistics code.",
+        "pilot_timing": "340997 all100shards COMPLETED0:0;3600rows",
+        "focused_regressions": "341457 COMPLETED0:0;12/12 public SMT-LIB regression comparisons pass",
+        "pilot_models": "340998 all100shards COMPLETED0:0;1764/1764SAT timing rows native+Dolmen0.10 pass",
+        "pilot_summary": "341465 COMPLETED0:0;combined stable89/91 unchanged;PAR2old456.346/385.331,fixed455.698/375.445;purepaper fixed-on stable84to80;no hard correctness failures"
+      },
+      "full_submission": "After passing frozen-worktree preflight and pilot qualification:1000shards,8profiles,3repetitions,15sec,onephysicalCPU8GiB,15min timing allocation,128concurrent;models after timing,60min allocation;separate8-profile one-repeat diagnostics after timing,8min allocation;summary after allthree. Full and diagnostic frozen plans copied to run-root plan.json before submission.",
+      "artifacts": [
+        "docs/coverage/soi-selfstep-pilot-20261103.json",
+        "results/soi-selfstep-20261103/gate-summaries",
+        "results/soi-selfstep-20261103/checks-static",
+        "results/soi-selfstep-20261103/mutation-classification.json",
+        "SLURM:primo-soi-selfstep-20261103/results/full",
+        "SLURM:primo-soi-selfstep-20261103/results/profiles"
+      ],
+      "fuzz_provenance": {
+        "launcher": "scripts/slurm_qfuf_fuzz_gate.sbatch at7cb3743;PRIMO_FUZZ_OPFUZZ_TASKS=0,PRIMO_FUZZ_YINYANG_SHARDS=0,PRIMO_FUZZ_FUZZSMT_LOGIC=QF_LRA,PRIMO_FUZZ_FUZZSMT_REF=z3,PRIMO_FUZZ_FUZZSMT_TIMEOUT=5;1CPU2GiB,1hour batch allocation",
+        "generator": {
+          "name": "FuzzSMT",
+          "jar_sha256": "89f887283d409842ebb19af6fce7a33a1b4a6c006746801b98ca8d716a3b0552",
+          "effective_command": "java -jar <shared>/fuzzsmt.jar QF_LRA -seed <seed> <profile> -bulk-prefix fuzzsmt_<seed>_ -bulk-export <count>",
+          "profiles_in_shard_order": [
+            "-mv 1 -Mv 3 -mc 1 -Mc 3 -Mbw 4",
+            "-mv 1 -Mv 3 -mc 1 -Mc 3 -Mbw 16",
+            "-mv 2 -Mv 5 -mc 1 -Mc 4 -Mbw 16",
+            "-mv 2 -Mv 5 -mc 1 -Mc 4 -Mbw 16 -bool-and",
+            "-mv 2 -Mv 5 -mc 1 -Mc 4 -Mbw 16 -bool-or",
+            "-mv 1 -Mv 3 -mc 1 -Mc 3 -Mbw 32"
+          ],
+          "profile_mapping": "shard i selects profile i modulo6;paper uses first4 profiles"
+        },
+        "combined": {
+          "job": "340037_0..5",
+          "seeds": [
+            613010,
+            613011,
+            613012,
+            613013,
+            613014,
+            613015
+          ],
+          "count_per_shard": 500,
+          "native_command": "qualified/candidate/primo --quiet --gaussian-elimination --lra-pivoting-rule=soi --lra-soi-selection=short-column --lra-soi-pricing-candidates=64 --lra-soi-stall-limit=8 --lra-soi-cached-conflicts --lra-soi-linear-maintenance --lra-soi-minimize=row-growing --check-model --quiet",
+          "reference_command": "z3 <generated-input.smt2>",
+          "artifact": "SLURM:primo-soi-selfstep-20261103/fuzz-results/combined-retry/fuzzsmt/shard-<i>/summary.csv",
+          "counts": {
+            "PASS": 2963,
+            "TIMEOUT": 37,
+            "wrong_answer": 0,
+            "crash": 0,
+            "parser_type_error": 0,
+            "unsupported": 0,
+            "reference_disagreement": 0
+          }
+        },
+        "paper": {
+          "job": "340038_0..3",
+          "seeds": [
+            613110,
+            613111,
+            613112,
+            613113
+          ],
+          "count_per_shard": 250,
+          "native_command": "qualified/candidate/primo --quiet --gaussian-elimination --lra-pivoting-rule=soi --lra-soi-selection=paper --check-model --quiet",
+          "reference_command": "z3 <generated-input.smt2>",
+          "artifact": "SLURM:primo-soi-selfstep-20261103/fuzz-results/paper-retry/fuzzsmt/shard-<i>/summary.csv",
+          "counts": {
+            "PASS": 952,
+            "TIMEOUT": 48,
+            "wrong_answer": 0,
+            "crash": 0,
+            "parser_type_error": 0,
+            "unsupported": 0,
+            "reference_disagreement": 0
+          }
+        },
+        "reference_sha256": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+        "mutations": "Exact generation wrapper and argv: scripts/qualification/soi_improvements/verified_mutations.sbatch at7cb3743,random seed611821,20iterations per seed,900s generationcap,5s solverlimit. Independent retained-input native/reference commands and hashes: results/soi-selfstep-20261103/mutation-classification.json (SLURM results/real-seed-mutations/classification.json). That classifier uses soi-full-plan.json solely to select final-g1-f0 arguments;native binary hash643bbb... identifies this candidate. Generation lacks Gaussian flag;classification enables it as recorded in the artifact."
+      }
     },
     {
       "id": "2026-11-03-soi-stall-noop-drilldown",

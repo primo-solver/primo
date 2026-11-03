@@ -351,3 +351,24 @@ has a demonstrated operational effect. The finite guard prevents indefinite
 repetition but does not resolve that selection issue. No claim of corpus-wide
 prevalence, a repaired selector or a new performance result follows from these
 three diagnostic traces.
+
+### Self-update boundary resolved (2026-11-03)
+
+Source `7cb3743` excludes an own-bound event whose exact distance is zero
+before breakpoint sorting. It retains basic-row events at zero distance, so selection
+can exchange a basis rather than repeating an unchanged state. Nonzero
+own-bound assignment steps also remain eligible. The
+{ref}`implementation checklist and argument <soi-self-step-resolution>`
+state why deleting this event preserves the crossing objective and a genuine
+zero-distance candidate. This resolves the demonstrated self-update defect;
+it does not resolve the separate ordinary-repair handoff question above.
+
+The new counter `:lra.soi-self-zero-events-skipped` exposes the filter.
+Mirrored rational and infinitesimal regressions check genuine degenerate
+pivots, positive assignment-only steps, objective coefficients and rollback.
+SLURM qualification passed 45 solver tests, 275 Python tests, 45 ASAN tests
+and 62 independent Z3 explanation refutations. Fresh reference checking
+classified 3,915 of 4,000 generated cases as passes and 85 as timeouts, with
+no hard failures. The {ref}`paired pilot <soi-selfstep-pilot>` records its
+separate model qualification and mixed performance findings. The historical
+SOI selector, Sparse default and combined profile's 64/8 settings are unchanged.
