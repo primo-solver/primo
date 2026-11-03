@@ -1161,6 +1161,10 @@ report, including assertion-time objective updates. Counters are cumulative
 work, survive rollback, and are zero for other pivot rules. Selection timing
 is nested in check timing; objective maintenance also occurs during assertion.
 See the [SOI implementation](../implementation/soi.md) for invariants and scope.
+The self-event counter is registered in the
+{soiselfstepsource}`current keys <src/util/statistics.hpp>` and
+{soiselfstepsource}`printed names <src/util/statistics.cpp>` and drained by
+{soiselfstepsource}`both arithmetic engine reports <src/smt/solver_engines.cpp>`.
 
 
 The experimental cached-conflict flag adds `:lra.soi-activity-updates` (term

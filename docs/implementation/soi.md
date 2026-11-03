@@ -149,14 +149,16 @@ $k=j,h=0$, which does neither an assignment change nor a pivot. This fix is
 Primo's explicit resolution of that operational boundary, not a claim that
 the source pseudocode explicitly filters it.
 
-**State and operation checklist.** `LraTableau::soi_select` owns the temporary
+**State and operation checklist.**
+{soiselfstepsource}`LraTableau::soi_select <src/theory/arithmetic/lra_tableau.cpp#L722>` owns the temporary
 `SoiBreakPoint` vector; bounds and assignments remain tableau-owned. Before
 inserting an own-bound event, discard it if its exact `DeltaRational` distance
 is zero. Keep all basic-row zero events, nonzero own-bound events, coincident
 groups and outward slope changes. No persistent tableau state or rollback
 semantics changes. The historical selector already considers only the
 non-active own bound in the movement direction, so this filter is inert there.
-Each discarded event increments cumulative SOI work; the check's existing
+Each discarded event increments cumulative
+{soiselfstepsource}`SOI work <src/theory/arithmetic/lra_tableau.hpp>`; the check's existing
 work publication exposes it as `:lra.soi-self-zero-events-skipped`.
 
 **Proof obligations.** An eligible nonbasic $j$ is in bounds and is not at its
@@ -179,7 +181,8 @@ unrestricted termination for the entire guarded implementation.
 paper/short-column selection with cache and linear maintenance on/off, retain
 zero-distance basis exchanges, and test positive rational and infinitesimal
 own-bound steps. Check the objective identity after repair and rollback.
-Keep the stall threshold and ordinary-repair handoff unchanged so the fix can
+The {soiselfstepsource}`regressions <tests/unit/lra_tableau_tests.cpp>`
+keep the stall threshold and ordinary-repair handoff unchanged so the fix can
 be evaluated independently. The existing frozen binaries remain baselines.
 
 ## Experimental objective and crossing maintenance

@@ -35,6 +35,9 @@ sphinx:
   config:
     bibtex_reference_style: label
     extlinks:
+      soiselfstepsource:
+        - "https://github.com/primo-solver/primo/blob/7cb3743/%s"
+        - "%s"
       soistallsource:
         - "https://github.com/primo-solver/primo/blob/9a3854d10c5d5e3d71dde0e62744f934079afba5/%s"
         - "%s"
