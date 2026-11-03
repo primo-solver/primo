@@ -774,15 +774,21 @@ std::optional<LraTableau::SoiSelection> LraTableau::soi_select() const {
     const int walk_sign = delta_positive ? 1 : -1;
 
     std::vector<SoiBreakPoint> points;
-    // Figure 3.4 includes j itself. Keep both forward own-bound events,
-    // including an inward zero event; the latter changes no violation slope.
-    // Historical replay keeps only the cap in the direction of movement.
+    // King Figure 3.4 includes j itself. An own-bound event at distance zero
+    // changes neither the assignment nor the basis and cannot change the
+    // slope: eligible j is moving inward from that bound. Exclude this no-op,
+    // retaining all zero-distance basic-row pivots. Proof/boundary resolution:
+    // docs/implementation/soi.md, "Excluding zero-distance self-updates".
     for (const bool upper : {false, true}) {
       const auto& bound = upper ? j_state.upper : j_state.lower;
       if (!bound) continue;
       if (tuning_.soi_selection == SoiSelectionRule::Historical && upper != delta_positive)
         continue;
       const auto delta = bound->value - j_state.assignment;
+      if (delta == kZero) {
+        ++soi_work_.self_zero_events_skipped;
+        continue;
+      }
       if ((delta_positive && delta >= kZero) || (!delta_positive && delta <= kZero)) {
         points.push_back(SoiBreakPoint{delta, j, upper, util::Rational(1)});
       }

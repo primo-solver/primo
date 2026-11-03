@@ -1250,6 +1250,99 @@ void soi_paper_retains_all_events_at_entering_bound() {
   assert_soi_objective_identity(tableau);
 }
 
+void soi_zero_self_events_do_not_hide_degenerate_basis_exchanges() {
+  // In coordinates u=direction*x,v=direction*y, both coordinate directions
+  // initially have zero improvement: u+v>=target, u<=2v, v<=2u. A zero
+  // pivot exposes a progressing direction; assigning x=0 to itself does not.
+  for (const int direction : {-1, 1}) {
+    for (const auto selection :
+         {LraTableau::SoiSelectionRule::Paper, LraTableau::SoiSelectionRule::ShortColumn}) {
+      for (const bool cached : {false, true}) {
+        for (const bool linear : {false, true}) {
+          for (const auto& target : {rat(1), DeltaRational{Rational(0), Rational(1)},
+                                     DeltaRational{Rational(1), Rational(1)}}) {
+            LraTableau tableau(LraTableau::PivotingRule::Soi);
+            const auto x = tableau.add_variable();
+            const auto y = tableau.add_variable();
+            const auto b = tableau.add_variable();
+            const auto c = tableau.add_variable();
+            const auto d = tableau.add_variable();
+            tableau.add_row(b, {{x, Rational(direction)}, {y, Rational(direction)}});
+            tableau.add_row(c, {{x, Rational(direction)}, {y, Rational(-2 * direction)}});
+            tableau.add_row(d, {{x, Rational(-2 * direction)}, {y, Rational(direction)}});
+            auto tuning = tableau.tuning();
+            tuning.soi_selection = selection;
+            tuning.soi_cached_conflicts = cached;
+            tuning.soi_linear_maintenance = linear;
+            tableau.set_tuning(tuning);
+            const auto checkpoint = tableau.push();
+            for (int replay = 0; replay < 2; ++replay) {
+              if (direction > 0) {
+                assert(!tableau.assert_lower(x, rat(0), Lit{1}));
+                assert(!tableau.assert_lower(y, rat(0), Lit{2}));
+              } else {
+                assert(!tableau.assert_upper(x, rat(0), Lit{1}));
+                assert(!tableau.assert_upper(y, rat(0), Lit{2}));
+              }
+              assert(!tableau.assert_lower(b, target, Lit{3}));
+              assert(!tableau.assert_upper(c, rat(0), Lit{4}));
+              assert(!tableau.assert_upper(d, rat(0), Lit{5}));
+              const auto before = tableau.soi_work();
+              const auto chosen =
+                  primo::theory::arithmetic::LraTableauTestAccess::selection(tableau);
+              assert(chosen && chosen->entering == x && chosen->leaving == c);
+              assert(chosen->delta == rat(0) && chosen->objective_delta == rat(0));
+              assert(tableau.soi_work().self_zero_events_skipped ==
+                     before.self_zero_events_skipped + 2);
+              assert(!tableau.check());
+              assert(tableau.soi_work().prefix_pivots == before.prefix_pivots + 2);
+              assert(tableau.soi_work().selected_steps == before.selected_steps + 2);
+              assert(tableau.soi_work().zero_progress_steps == before.zero_progress_steps + 1);
+              assert(tableau.bland_fallback_count() == 0);
+              assert(tableau.assignment(b) == target);
+              assert_soi_objective_identity(tableau);
+              tableau.pop(checkpoint);
+              assert(!tableau.is_basic(x) && !tableau.is_basic(y));
+              assert_soi_objective_identity(tableau);
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+void soi_positive_self_bound_steps_remain_eligible() {
+  for (const int direction : {-1, 1}) {
+    for (const auto selection :
+         {LraTableau::SoiSelectionRule::Paper, LraTableau::SoiSelectionRule::ShortColumn}) {
+      for (const auto& step : {rat(1), DeltaRational{Rational(0), Rational(1)},
+                               DeltaRational{Rational(1), Rational(1)}}) {
+        LraTableau tableau(LraTableau::PivotingRule::Soi);
+        const auto x = tableau.add_variable();
+        const auto b = tableau.add_variable();
+        tableau.add_row(b, {{x, Rational(direction)}});
+        assert(!tableau.assert_lower(b, step.scaled(Rational(2)), Lit{1}));
+        if (direction > 0) {
+          assert(!tableau.assert_lower(x, rat(0), Lit{2}));
+          assert(!tableau.assert_upper(x, step, Lit{3}));
+        } else {
+          assert(!tableau.assert_upper(x, rat(0), Lit{2}));
+          assert(!tableau.assert_lower(x, step.scaled(Rational(-1)), Lit{3}));
+        }
+        auto tuning = tableau.tuning();
+        tuning.soi_selection = selection;
+        tableau.set_tuning(tuning);
+        const auto chosen = primo::theory::arithmetic::LraTableauTestAccess::selection(tableau);
+        assert(chosen && chosen->entering == x && chosen->leaving == x);
+        assert(chosen->delta == step.scaled(Rational(direction)));
+        assert(chosen->objective_delta == step.scaled(Rational(-1)));
+        assert(tableau.soi_work().self_zero_events_skipped == 1);
+      }
+    }
+  }
+}
+
 void soi_paper_can_pivot_entering_variable_past_its_own_bound() {
   LraTableau tableau(LraTableau::PivotingRule::Soi);
   const auto x = tableau.add_variable();
@@ -3247,6 +3340,8 @@ int main() {
   soi_short_column_stall_limit_enters_ordinary_bland_repair();
   soi_paper_zero_progress_uses_smallest_entering_id();
   soi_paper_retains_all_events_at_entering_bound();
+  soi_zero_self_events_do_not_hide_degenerate_basis_exchanges();
+  soi_positive_self_bound_steps_remain_eligible();
   soi_paper_checks_row_conflicts_before_global_selection();
   soi_paper_can_pivot_entering_variable_past_its_own_bound();
   soi_objective_identity_survives_bound_changes_pivots_and_rollback();

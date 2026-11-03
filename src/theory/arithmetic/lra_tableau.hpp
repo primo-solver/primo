@@ -725,6 +725,7 @@ class LraTableau {
   struct SoiWork {
     std::uint64_t selected_steps = 0;
     std::uint64_t zero_progress_steps = 0;
+    std::uint64_t self_zero_events_skipped = 0;
     std::uint64_t candidates = 0;
     std::uint64_t crossings = 0;
     std::uint64_t crossings_examined = 0;

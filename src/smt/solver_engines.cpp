@@ -7442,6 +7442,9 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
       statistics_.increment(
           util::StatKey::LraSoiZeroProgressSteps,
           tableau_.soi_work().zero_progress_steps - soi_before.zero_progress_steps);
+      statistics_.increment(
+          util::StatKey::LraSoiSelfZeroEventsSkipped,
+          tableau_.soi_work().self_zero_events_skipped - soi_before.self_zero_events_skipped);
       statistics_.increment(util::StatKey::LraSoiCandidates,
                             tableau_.soi_work().candidates - soi_before.candidates);
       statistics_.increment(util::StatKey::LraSoiCrossings,
@@ -9065,6 +9068,9 @@ class ComponentLraExecution final {
       statistics_.increment(
           util::StatKey::LraSoiZeroProgressSteps,
           tableau_.soi_work().zero_progress_steps - soi_before.zero_progress_steps);
+      statistics_.increment(
+          util::StatKey::LraSoiSelfZeroEventsSkipped,
+          tableau_.soi_work().self_zero_events_skipped - soi_before.self_zero_events_skipped);
       statistics_.increment(util::StatKey::LraSoiCandidates,
                             tableau_.soi_work().candidates - soi_before.candidates);
       statistics_.increment(util::StatKey::LraSoiCrossings,

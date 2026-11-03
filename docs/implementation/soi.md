@@ -91,8 +91,9 @@ Both arms retain a finite prefix limit in
 {soiselectsource}`check <src/theory/arithmetic/lra_tableau.cpp>`:
 $4n+64$ selected steps by default, with one extra step from the inclusive loop
 guard. Here $n$ counts every tableau variable, including slacks and the artificial
-objective. The suffix uses ordinary Bland repair. An inward zero own-bound
-event can select a no-op; the finite guard covers that boundary too. This is a
+objective. The suffix uses ordinary Bland repair. Zero-distance self-updates
+are now excluded as described in the {ref}`boundary resolution <soi-self-step-resolution>`.
+The finite guard remains a separate safeguard. This is a
 defensive implementation safeguard, and this profile is not presented as an
 unrestricted execution of the paper's algorithm.
 
@@ -132,6 +133,54 @@ continuing beyond an unproductive chunk and entering the Bland suffix at a
 one-step stall limit. The [recorded pilot](../papers/soi-experiments.md#parameter-pilot) froze 64 and 8
 for the evaluated candidate. Public option defaults remain 16 and 16; a full
 profile must pass the separate acceptance rule before promotion.
+
+(soi-self-step-resolution)=
+## Excluding zero-distance self-updates
+
+Reader: implementers checking the stall fix. Question: which zero-distance
+events may be removed without removing degenerate pivots? Prerequisites:
+the coefficient identity and crossing walk above. Next reading: the
+{ref}`diagnostic evidence <soi-stall-drilldown>` and qualification results.
+
+**Basis and boundary.** King thesis Figure 3.4 enumerates both own bounds;
+§3.3.2 / FMCAD §V-C justify termination through actual basis exchanges when
+objective progress stops. The literal enumeration used by Primo admitted
+$k=j,h=0$, which does neither an assignment change nor a pivot. This fix is
+Primo's explicit resolution of that operational boundary, not a claim that
+the source pseudocode explicitly filters it.
+
+**State and operation checklist.** `LraTableau::soi_select` owns the temporary
+`SoiBreakPoint` vector; bounds and assignments remain tableau-owned. Before
+inserting an own-bound event, discard it if its exact `DeltaRational` distance
+is zero. Keep all basic-row zero events, nonzero own-bound events, coincident
+groups and outward slope changes. No persistent tableau state or rollback
+semantics changes. The historical selector already considers only the
+non-active own bound in the movement direction, so this filter is inert there.
+Each discarded event increments cumulative SOI work; the check's existing
+work publication exposes it as `:lra.soi-self-zero-events-skipped`.
+
+**Proof obligations.** An eligible nonbasic $j$ is in bounds and is not at its
+limiting bound in the selected movement direction. A zero-distance own event
+therefore moves inward from the opposite bound. It changes no violation
+slope and cannot expose a new row conflict. Deleting it preserves every other
+crossing integral and the nonbasic-feasibility invariant. It costs a constant
+exact comparison per own bound and removes one event's later sorting/walk work.
+
+If the best change is zero, a real zero-distance basic-row event remains:
+otherwise no basic variable changes its violation slope at distance zero,
+and the eligible objective coefficient gives a strict decrease for a small
+positive forward distance, contradicting a zero minimum. Thus the filter
+must not replace a zero minimum with a positive selected change or invent a
+blocked-objective conflict. The retained row event permits a basis exchange.
+This argument removes the self-update defect; it is not a new proof of
+unrestricted termination for the entire guarded implementation.
+
+**Regression obligations.** Mirror entering directions and row signs, exercise
+paper/short-column selection with cache and linear maintenance on/off, retain
+zero-distance basis exchanges, and test positive rational and infinitesimal
+own-bound steps. Check the objective identity after repair and rollback.
+Keep the stall threshold and ordinary-repair handoff unchanged so the fix can
+be evaluated independently. The existing frozen binaries remain baselines.
 
 ## Experimental objective and crossing maintenance
 
@@ -406,16 +455,16 @@ the candidate pivot. The old cap remains in the historical arm.
 
 Write h=walk_sign*t for forward distance t>=0. At an OUTWARD entering-bound
 crossing, dV/dt gains 1; in signed-step coordinates beta gains walk_sign.
-An inward zero event contributes no slope. The reference arm includes both
-forward own-bound events, including inward zero events, matching the literal
-Figure 3.4 tuples. Such a zero event can select a no-op; the retained finite
-fallback prevents an indefinite no-op prefix. The
+An inward zero event contributes no slope. The earlier reference arm included
+inward zero own-bound events from a literal reading of Figure 3.4 tuples;
+these could select a no-op repeatedly until fallback. The
 {ref}`stall drill-down <soi-stall-drilldown>` confirms repeated zero-distance
 self-updates in two selected corpus traces, while a third trace makes genuine
 degenerate basis exchanges. Treating both as one stall counter hides this
-difference. Handling self-events before selection remains an open operational
-boundary of this literal enumeration; the guard is not evidence that the
-source's degeneracy argument is implemented by those no-ops. We do not claim unrestricted
+difference. The {ref}`self-step resolution <soi-self-step-resolution>` now
+excludes those own events before sorting while retaining real zero-distance
+row pivots. The guard is not evidence that the source's degeneracy argument
+was implemented by the earlier no-ops. We do not claim unrestricted
 paper-algorithm termination for this engineering profile. Historical code's `k == j` slope skip
 is therefore retained only for the capped historical arm. All other direction
 changes continue to use their crossing row coefficient. Selection minimizes

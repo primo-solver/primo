@@ -195,6 +195,7 @@ constexpr std::array<std::string_view, static_cast<std::size_t>(StatKey::Count)>
     ":lra.soi-conflict-lits"sv,
     ":lra.soi-selected-steps"sv,
     ":lra.soi-zero-progress-steps"sv,
+    ":lra.soi-self-zero-events-skipped"sv,
     ":lra.soi-candidates"sv,
     ":lra.soi-crossings"sv,
     ":lra.soi-crossings-examined"sv,

@@ -195,6 +195,7 @@ enum class StatKey : std::size_t {
   LraSoiConflictLits,
   LraSoiSelectedSteps,
   LraSoiZeroProgressSteps,
+  LraSoiSelfZeroEventsSkipped,
   LraSoiCandidates,
   LraSoiCrossings,
   LraSoiCrossingsExamined,

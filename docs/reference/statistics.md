@@ -1143,8 +1143,11 @@ The {soiworksource}`SOI work state <src/theory/arithmetic/lra_tableau.hpp>`
 is published through {soiworksource}`registered keys <src/util/statistics.hpp>`
 and {soiworksource}`printed names <src/util/statistics.cpp>`.
 The opt-in SOI tableau publishes `:lra.soi-selected-steps`,
-`:lra.soi-zero-progress-steps` (zero objective change), `:lra.soi-candidates`
-(eligible entering variables examined), `:lra.soi-crossings` (generated events),
+`:lra.soi-zero-progress-steps` (zero objective change),
+`:lra.soi-self-zero-events-skipped` (own-bound events at exact distance zero
+discarded before sorting; real zero-distance basic-row pivots remain eligible),
+`:lra.soi-candidates` (eligible entering variables examined),
+`:lra.soi-crossings` (generated events),
 `:lra.soi-objective-updates` (direction changes), `:lra.soi-prefix-pivots`, and
 `:lra.soi-fallback-pivots`. Reaching an entering variable's own bound can be a
 step without a pivot. `:lra.soi-predicate-calls` counts restricted-objective
