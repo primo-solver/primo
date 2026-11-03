@@ -3,6 +3,109 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-11-03-soi-portfolio-and-publication-interpretation",
+      "date": "2026-11-03",
+      "kind": "analysis-of-existing-qualified-results-and-primary-paper",
+      "evidence_status": "no-new-solver-runs;derived-coverage-and-hindsight-selector",
+      "source_revision": "14c36ad",
+      "native": {
+        "sha256": "18b3182d9f95698dc7684ade226cbdaf091e691c648640971ef20b34d5274bd0",
+        "source": "8faa775"
+      },
+      "parent_jobs": {
+        "timing": "336029_0..999",
+        "models": "336030_0..999",
+        "qualification": "336033"
+      },
+      "inputs": 1000,
+      "repeats": 3,
+      "process_timeout_seconds": 15,
+      "settings": "Gaussian elimination on;fixed elimination off/on separately and together;current Sparse,Dantzig,Bland versus combined suspended SOI.",
+      "hardware": "Inherited CIIRC SLURM node-02..09,Intel XeonE5-2690v4,one physical core8GiB per original input timing task. This turn performs only local result analysis/docs;no solver compute.",
+      "command": "python3 scripts/analyze_soi_portfolio.py --summary results/soi-fallback-20261102/full-summary.json --qualified-report docs/coverage/soi-fallback-results-20261102.json --qualification docs/coverage/soi-fallback-qualification-20261102.json --plan benchmarks/qf-lra-simplex-ablation/soi-fallback-plan.json --out docs/coverage/soi-portfolio-20261103.json",
+      "analysis_sha256": "83b31cb7d24e17e8e753fd0f81eecc8481fa7abd8952f7e4b39ca9a0818607d6",
+      "parent_summary_sha256": "d0c6dda4070162aac8d07dbd92f7c2f71bf564eda0b25e918ef0ae478356ded5",
+      "parent_qualification_sha256": "549d0b4ac2c32d745bc3072a7f6edf569e398228a9505834e42969cf69443528",
+      "plan_sha256": "caaa847b15803f2a537d8224bec6b2d996666ec6bd35dba54d58b46856e65db0",
+      "report": "docs/coverage/soi-portfolio-20261103.json",
+      "scope": "Stable solved-set overlap and speed complementarity on already-qualified frozen cold conjunctions;not an executed portfolio or a whole-SMT reproduction.",
+      "results": {
+        "fixed_off_additions": {
+          "bland": 8,
+          "dantzig": 5,
+          "ordinary_union": 0,
+          "sparse": 0
+        },
+        "fixed_on_additions": {
+          "bland": 16,
+          "dantzig": 0,
+          "ordinary_union": 0,
+          "sparse": 0
+        },
+        "all_added_families": "miplib",
+        "across_settings": {
+          "ordinary_plus_soi_union_stable": 996,
+          "ordinary_union_stable": 996,
+          "soi_only": [],
+          "soi_union_stable": 986,
+          "uncovered": [
+            "cubes/2cc8e805e52c410677ed5e4792c0f6c43054198448df4c8a3175640a523a108f.smt2",
+            "cubes/8bdfb0f1be6618513675d519f5d48c3ac4c4e34d90cf223c6aa958bd4dcb803f.smt2",
+            "cubes/ec117837697250f63f4e96949199a51c495e30e3b69e1930f24b59cdf2e531f0.smt2",
+            "cubes/f9c4f0cde5245b21ead3c5188eb9251861fe65a4677d6fc6c33b5fc1459c7940.smt2"
+          ]
+        },
+        "hindsight_selector": {
+          "0": {
+            "max_median_seconds_saved": 0.005336999999999925,
+            "max_median_speedup": 1.0052416074716732,
+            "median_runtime_win_count": 13,
+            "ordinary_par2": 526.368638,
+            "ordinary_plus_soi_par2": 526.3082753333333,
+            "reduction_percent": 0.011467755164151636,
+            "reduction_seconds": 0.06036266666671963
+          },
+          "1": {
+            "max_median_seconds_saved": 0.02426600000000001,
+            "max_median_speedup": 1.2857479304294581,
+            "median_runtime_win_count": 19,
+            "ordinary_par2": 500.00094533333333,
+            "ordinary_plus_soi_par2": 499.7741843333334,
+            "reduction_percent": 0.045352114254260036,
+            "reduction_seconds": 0.22676099999995358
+          }
+        }
+      },
+      "paper_read": {
+        "title": "King,Barrett,Dutertre:Simplex with Sum of Infeasibilities for SMT,FMCAD2013",
+        "url": "https://cvc4.github.io/publications/2013/KBD13.pdf",
+        "sha256": "6f342398bfa091c9b5b287c450f3c3d90ec1331626934cd4e103dbb8b163176a",
+        "sections": "IV baseline;V-D heuristics;VI experiments;VII conclusion",
+        "interpretation": "Paper reports mixed results,not uniform dominance. Primo current hybrid/representation,budget,baseline and cold-input context differ;we have not reproduced its favorable pivot/hard-family behavior. No claim that publication is disproved or that a new portfolio is worthwhile."
+      },
+      "verification": "make lint and actual report generation pass; raw summary hash matched qualified report; model qualification complete; make docs-site (includes make docs) passes; local/Git link check:269 pages,34973 local links,1173 unique Git links,0 failures;418 external URLs deferred; rendered portfolio table and publication section inspected. Analysis-only change; no solver behavior or default changes and no new solver runs.",
+      "analysis_revision": "ee440119bd3b7c4d375b4942d60c16a84107e3bc",
+      "independent_review": {
+        "reviewer": "soi_documentation_review",
+        "baseline": "14c36ad",
+        "scope": "Appended portfolio/publication sections,analysis methodology,report and first ledger entry;primary FMCAD IV,V-D,VI,VII and independent overlap/score recomputation.",
+        "finding": "SOIPORT01 required source-navigation link repaired using committed analysis revision ee44011.",
+        "verdict": "Ready;no remaining required findings after recheck.",
+        "accepted_sha256": {
+          "docs/papers/soi-experiments.md": "31e48a252a61d55a18d722e765dbdd1a418d3deac9f1eecdc5adacfcc94efd7f",
+          "docs/_config.yml": "64891e1626ba0f0cadcb5cbb4f8b39b2fb9c007b08c81393d99c7fed652e3853",
+          "docs/coverage/soi-portfolio-20261103.json": "a18c3a39622d3916396ae8f1439a3f0ee0ac419c701c1b40133ccc6685a1df3a",
+          "scripts/analyze_soi_portfolio.py": "83b31cb7d24e17e8e753fd0f81eecc8481fa7abd8952f7e4b39ca9a0818607d6"
+        },
+        "post_review_changes": "Only ledger verification/review metadata added;analytical claims unchanged.",
+        "unchecked": "No new performance experiment,executed portfolio,whole-SMT reproduction or external URL liveness check."
+      },
+      "rendered_checks": [
+        "results/soi-fallback-20261102/portfolio-cdp.png",
+        "results/soi-fallback-20261102/publication-cdp.png"
+      ]
+    },
+    {
       "id": "2026-11-02-soi-bland-fallback-lifecycle-qualification",
       "date": "2026-11-02",
       "kind": "implementation-qualification-and-frozen-paired-evaluation",

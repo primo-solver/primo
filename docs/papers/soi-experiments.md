@@ -500,8 +500,8 @@ timeouts, unsupported validator inputs or missing selected rows. Validation
 allowed Primo 90 seconds and Dolmen 30 seconds per selected row; both budgets
 are separate from the 15-second speed limit and excluded from process PAR2.
 The [joined qualification report](../coverage/soi-fallback-qualification-20261102.json)
-records per-profile coverage and validator identities. All 24,000 diagnostic
-scheduled diagnostic processes have records; timeout prefixes remain censored.
+records per-profile coverage and validator identities. All 24,000 scheduled
+diagnostic processes have records; timeout prefixes remain censored.
 
 The fresh retained mutation gate completed with 52 exact agreements (16 SAT,
 36 UNSAT) and 428 explicitly witnessed invalid generated nonlinear inputs.
@@ -574,3 +574,70 @@ in the run log and compact reports. The command/profile flags remain those
 frozen before the full run. The benchmark still consists of cold conjunctions;
 it does not qualify warm whole-parent SMT performance, snapshot rollback cost
 or a different elimination/default profile.
+
+(soi-portfolio-orthogonality)=
+### Portfolio orthogonality on the frozen corpus
+
+This analysis reuses the qualified `8faa775` results; it launches no new solver
+runs. Orthogonality here means the stable inputs solved by combined suspended
+SOI that a proposed portfolio baseline does not solve. Stability still requires
+all three 15-second repetitions. Gaussian elimination remains on.
+
+| Baseline | SOI additions, fixed off | Union, fixed off | SOI additions, fixed on | Union, fixed on |
+| --- | ---: | ---: | ---: | ---: |
+| Sparse | 0 | 996 | 0 | 996 |
+| Dantzig | 5 | 973 | 0 | 991 |
+| Bland | 8 | 962 | 16 | 986 |
+| Sparse + Dantzig + Bland | 0 | 996 | 0 | 996 |
+
+Every added input in the Dantzig/Bland comparisons belongs to `miplib`.
+Combined SOI's solved set is contained in Sparse's in both settings. Allowing
+both fixed-elimination settings gives the six ordinary profiles a union of
+996; adding both combined SOI profiles leaves it at 996. The same four inputs
+remain unsolved. The [portable analysis](../coverage/soi-portfolio-20261103.json)
+retains their identities, pairwise differences and source hashes.
+The calculation is implemented in
+{soiportfoliosource}`analyze_soi_portfolio.py <scripts/analyze_soi_portfolio.py>`.
+
+Speed complementarity is also small once all three ordinary policies are
+available. Selecting the best profile per input with hindsight reduces the sum
+of minimum mean-repeat PAR2 scores from 526.369 to 526.308 seconds with fixed
+off (0.0115%), and from 500.001 to 499.774 with fixed on (0.0454%). This is an
+oracle configuration selector computed from existing timings, not a measured
+parallel race or a budget-sharing schedule. It ignores selection overhead and
+resource cost and provides no confidence interval for practical speedup.
+The 13/19 median-runtime wins over the fastest stable ordinary profile save
+at most 5.34/24.27 milliseconds per input, respectively; none reaches 2x.
+
+Thus the current corpus supplies modest complementarity with Dantzig/Bland
+alone, but no extra coverage and little measured speed opportunity after
+Sparse is included. This conclusion is specific to these cold conjunctions and
+the 15-second limit. Whole-SMT workloads could differ: this benchmark does not
+measure the effect of explanation choices on subsequent Boolean search.
+
+(soi-publication-comparison)=
+### What this says about the original publication
+
+FMCAD §VI {cite}`King-fmcad2013` reports an aggregate SOI lead, but slightly
+slower performance and one fewer solve on SMT-LIB; `latendresse` supplies its
+first experiment's gain. That comparison uses whole SMT problems, CVC4 and a
+1,000-second limit. Its ordinary short-column baseline also differs from
+Primo's Dantzig configuration.
+
+On Primo's 17 extracted `latendresse` conjunctions, combined SOI solves
+zero/eight with fixed elimination off/on, while Sparse solves 15 in either
+setting. These are extracted checks rather than the original whole problems.
+
+Primo has not reproduced that favorable pivot behavior: combined SOI takes
+281,753 pivots versus Dantzig's 111,315 on the 883 matched inputs. Moreover,
+232,573 of its pivots (82.5%) occur in ordinary Bland repair after the SOI
+prefix. Our guarded hybrid therefore differs from running SOI throughout a
+check. The maintained representation, preprocessing and starting states also
+differ. Improving bookkeeping leaves these pivot trajectories unchanged.
+
+The present result is unfavorable for this Primo profile on this workload;
+it does not establish a contradiction of the publication or prove that the
+technique cannot become useful. A controlled whole-SMT comparison would be
+needed to distinguish workload effects from implementation and hybrid-policy
+choices. The zero-loss default-promotion gate is a separate policy decision
+from accepting an aggregate gain with some regressions.
