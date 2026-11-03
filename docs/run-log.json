@@ -3,6 +3,51 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-11-03-soi-zero-self-event-resolution",
+      "date": "2026-11-03",
+      "kind": "solver-fix-qualification-and-paired-evaluation",
+      "evidence_status": "in-progress;no-promotion-or-new-speed-claim",
+      "source": "7cb37437dd73fb6231b12bd98a7cf75d272e2f3b",
+      "workflow": "6f10ac8",
+      "binary_sha256": "643bbb0092b563986cbebcff59f95e61761be42b6d30509954c6fbf7ab3633f0",
+      "baseline": {
+        "source": "8faa775",
+        "sha256": "18b3182d9f95698dc7684ade226cbdaf091e691c648640971ef20b34d5274bd0",
+        "status": "immutable qualified binary;combined flags unchanged"
+      },
+      "change": "Filter only own-bound events at exact zero DeltaRational distance before sorting;retain all basic-row zero events,nonzero own-bound steps,cached conflict preference,64/8 combined tuning and ordinary Bland handoff. New self-zero-events-skipped counter published by both arithmetic engines. Historical selector and Sparse default unchanged.",
+      "pure_regression": "Mirrored Paper/ShortColumn,cache and maintenance combinations; rational,infinitesimal and mixed targets;two useful pivots including one zero-distance basis exchange,no fallback;replay after pop. Separate positive own-bound-step tests and SMT-LIB self-zero-bound.smt2.",
+      "jobs": {
+        "build": "339751",
+        "check_and_explanations": "339752",
+        "asan": "339753",
+        "whole_tree_static": "339754",
+        "fuzz_missing_generator_combined": "339755_0..5",
+        "fuzz_missing_generator_paper": "339756_0..3",
+        "combined_fuzz": "340037_0..5",
+        "paper_fuzz": "340038_0..3",
+        "real_seed_mutations": "339908"
+      },
+      "execution": "CIIRC SLURM only for native builds,tests,fuzzing,mutations,benchmarks and models. Local edits,lint,docs and result analysis. Archived baseline workspace and binary preserved;candidate workspace primo-soi-selfstep-20261103.",
+      "preparation": "slurm_prepare_benchmark_workspace.py --local-dir <clean7cb3743worktree> --sync-mode rsync --reuse-dependencies --build-via-slurm --jobs4 --cmake <verifiedCMake> --cxx-header-manifest <matchingGCCheaderlist>;check-only preflight before submission. Initial uncompressed archive transfer was interrupted before any build and retried through helper compressed rsync with corrected CMake path.",
+      "plans": {
+        "benchmarks/qf-lra-simplex-ablation/soi-selfstep-pilot-plan.json": "c2a203da45599e18565f440440aabecdcc3cdf1eba1fba64e1d2889f8d2b26d9",
+        "benchmarks/qf-lra-simplex-ablation/soi-selfstep-plan.json": "6d8ac3d9aa39d81d9419a1e4423ff2b6429d589110aae59d79c22893baada71d",
+        "benchmarks/qf-lra-simplex-ablation/soi-selfstep-profile-plan.json": "6a6a3d38f20ed9eadce62c35801bb79ca29e165e3d2d6440c2cc08105e7fb45a"
+      },
+      "predeclaration": "Existing deterministic100 pilot first with12profiles,including old/fixed paper arms. Main frozen1000,8profiles(old/fixedcombined,currentSparse,currentDantzig,bothfixedsettings),3repeats,15sec,Gaussianon;no timing clocks;separate1repeat diagnostic plan. Full native+Dolmen SAT replay after timing,not within timing.",
+      "correctness_plan": "make check;62independentZ3explanationfixtures;make asan-test;3000freshQF_LRA cases combined(seed613010..613015,6x500),1000paper(seed613110..613113,4x250),5sec per solver,Z3reference,nativecheck-model;fresh retained-input typefuzz mutation campaign(seed611821,24seeds20iterations,5sec);all hard failures block acceptance.",
+      "setup_failures": "339755/339756 exited2 before generating cases because fuzzsmt was missing from candidate PATH. Retried using the verified existing shared generator;new output directories combined-retry/paper-retry. No solver failure or fuzz pass claimed from failed dispatches.",
+      "design_review": {
+        "reviewer": "soi_drill_doc_review",
+        "verdict": "Ready;no findings",
+        "source": "7cb3743",
+        "scope": "Design/proof boundary,newcounter,regression source and native publication owners;not runtime qualification.",
+        "documentation_patch_sha256": "6674bd64fb5c7426c481d167350f2e3d213ff191f34c33bae96738239dc24fd2"
+      },
+      "verification": "Local make lint,docs-site and link checks pass;source-native qualification and paired results pending. Full solver/ASAN/static/fuzz commands are existing checked-in wrappers,with exact env/profile metadata retained in SLURM artifacts."
+    },
+    {
       "id": "2026-11-03-soi-stall-noop-drilldown",
       "date": "2026-11-03",
       "kind": "existing-counter-analysis-and-read-only-debug-traces",
