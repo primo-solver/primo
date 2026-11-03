@@ -3,6 +3,116 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-11-03-soi-stall-noop-drilldown",
+      "date": "2026-11-03",
+      "kind": "existing-counter-analysis-and-read-only-debug-traces",
+      "evidence_status": "diagnostic;no-solver-source-or-default-change;no-new-speed-claim",
+      "source_revision": "231edff",
+      "native_source": "8faa775",
+      "native_sha256": "18b3182d9f95698dc7684ade226cbdaf091e691c648640971ef20b34d5274bd0",
+      "debug_source": "8faa775",
+      "debug_sha256": "1f0846ca41320d4e60c66c0763c5cb28d33aa33fdddbd4173c28bd0c7e7c5360",
+      "debug_build": "Existing Debug/address-sanitizer binary;leak checking disabled under GDB;no new build.",
+      "parent_jobs": {
+        "timing": "336029",
+        "profiles": "336031",
+        "qualification": "336033",
+        "independent_diagnostics": "339267"
+      },
+      "jobs": {
+        "final_basis_trace": "339750",
+        "stable_argument_points": "339749",
+        "initial_trace": "339748",
+        "failed_debuginfod_native": "339745",
+        "failed_debug_library_setup": "339746",
+        "failed_debuginfod_debug": "339747"
+      },
+      "job_results": {
+        "339750": "COMPLETED0:0,14s;3 normal solver exits,2SAT1UNSAT,answers agree with existing qualified runs",
+        "339749": "COMPLETED0:0,14s;stable breakpoint arguments/selection validated",
+        "339748": "COMPLETED0:0,16s;function-entry pivot IDs contained stale stack slots;superseded by stable source-line breakpoint traces",
+        "339745": "FAILED124:0;GDB separate-debug-info download timeout;not a solver timeout",
+        "339746": "FAILED127:0;missing libasan.so.6 environment before solver execution",
+        "339747": "FAILED124:0;system DSO debug-info download timeout;fixed with empty DEBUGINFOD_URLS"
+      },
+      "execution": "All solver/debugger executions in CIIRC SLURM. Local result analysis,editing,syntax/lint/docs only. Archived native and source workspace preserved;staged callbacks under a separate results/workflow directory using slurm_stage_manifest_files.py.",
+      "hardware": "Final trace node-02,Intel XeonE5-2690v4;1CPU8GiB allocation,5min batch cap,60s per GDB child. Debug traces are not timed performance samples.",
+      "preflight": "scripts/slurm_prepare_benchmark_workspace.py --check-only --no-sync --local-dir <clean8faa775worktree> --remote-dir <archivedworkspace> --require-tool /usr/bin/gdb;separate Debug --version check under its recorded GCCcore11.3 library environment.",
+      "command": "sbatch scripts/qualification/soi_stalls/trace.sbatch with PRIMO_WORKDIR,PRIMO_TRACE_SOLVER=build-soi-asan/primo,PRIMO_TRACE_CALLBACK,PRIMO_TRACE_LIBRARY_PATH=<GCCcore11.3lib64>,PRIMO_TRACE_OUT,PRIMO_CORPUS_ROOT=<frozen1000corpus>;3 input identities and all solver options are fixed in the batch script.",
+      "analysis_command": "python3 scripts/analyze_soi_stalls.py --summary results/soi-fallback-20261102/full-summary.json --qualified-report docs/coverage/soi-fallback-results-20261102.json --traces results/soi-fallback-20261102/stall-trace-bases --out docs/coverage/soi-stalls-20261103.json",
+      "analysis_sha256": "4b06d5bcc8dc55f42fe64530e0e287462391f77b2b969db0ceb6c6ad8e3ad543",
+      "callback_sha256": "46746f3da55b8fd6f519c88295f7535f9f9d0d6f84ee782349eb72fb0d877e38",
+      "parent_summary_sha256": "d0c6dda4070162aac8d07dbd92f7c2f71bf564eda0b25e918ef0ae478356ded5",
+      "counter_scope": "Per-input medians of three unprofiled timing repetitions; common stable intersection across all 24 configurations. These are distinct from the one-repetition call-profile aggregates.",
+      "counter_results": {
+        "0": {
+          "current-dantzig": {
+            "fallback_inputs": 0,
+            "pivots": 110788.0
+          },
+          "current-sparse": {
+            "fallback_inputs": 7,
+            "pivots": 170569.0
+          },
+          "suspended-combined": {
+            "below_common_cap": 798,
+            "exactly_eight_nonpivot_steps": 503,
+            "exactly_eight_zero_steps": 737,
+            "fallback_inputs": 798,
+            "no_prefix_pivots": 9,
+            "pivots": 281209.0
+          }
+        },
+        "1": {
+          "current-dantzig": {
+            "fallback_inputs": 0,
+            "pivots": 45037.0
+          },
+          "current-sparse": {
+            "fallback_inputs": 9,
+            "pivots": 127823.0
+          },
+          "suspended-combined": {
+            "below_common_cap": 513,
+            "exactly_eight_nonpivot_steps": 364,
+            "exactly_eight_zero_steps": 479,
+            "fallback_inputs": 513,
+            "no_prefix_pivots": 2,
+            "pivots": 159685.0
+          }
+        }
+      },
+      "trace_selection": "Purposeful structural examples from existing fixed-off counters:fastest no-prefix-pivot fallback SAL f9874940;lexicographic SC00f92b15 eight nonpivot tail;clock02b44138 selected steps equal prefix pivots. Not a random or prevalence-estimation sample.",
+      "final_trace_results": {
+        "00f92b151e8a8509882ef220886f1e17bc378d9c494ab808d38e1fe537b80631": {
+          "answer": "sat",
+          "last_eight_same_variable_noops_without_pivots": true,
+          "last_eight_distinct_bases": 1,
+          "raw_sha256": "73624ca92a53cce762b74cc4e3d89809519aec1cde831330ff51755cfe28bac1"
+        },
+        "02b44138c0e44524d4f6f9417725c1de333625ce3b177e26a55f54775f112a7b": {
+          "answer": "unsat",
+          "last_eight_same_variable_noops_without_pivots": false,
+          "last_eight_distinct_bases": 8,
+          "raw_sha256": "374fb49283ca4732162cf168af5df2a009f0542b41ee7fe68b3c49b8396a71f0"
+        },
+        "f9874940bbbfe7ce16d588d10faf6173222a1f9b83eb4e9758619dfd3d269c0a": {
+          "answer": "sat",
+          "last_eight_same_variable_noops_without_pivots": true,
+          "last_eight_distinct_bases": 1,
+          "raw_sha256": "cb6aa0d114d7cb336cf299d6dbbd6fedfb23160b3a88a64d99268f17d9fb3ef9"
+        }
+      },
+      "finding": "Two selected examples repeat entering=leaving,delta=0 updates eight times with identical assignment and basis. One contrast performs eight genuine zero-distance pivots through distinct bases. One counter conflates no-ops with degenerate basis exchanges;the stall trigger does not establish cycling.",
+      "limits": "No candidate fix,unrestricted-SOI termination proof or new performance/portfolio/default claim. Median timing counters and single-repetition call-profile counters have different populations/aggregation;798/513 median fallback inputs must not replace797/512 profile activations in old tables. No prevalence claim for repeated no-ops beyond selected traces. No fresh full solver/fuzz/model/static gate needed for read-only diagnostic tooling;the existing native qualification remains the source of performance correctness evidence.",
+      "artifacts": {
+        "report": "docs/coverage/soi-stalls-20261103.json",
+        "local_raw": "results/soi-fallback-20261102/stall-trace-bases",
+        "remote_raw": "primo-soi-fallback-20261102/results/stall-drilldown-20261103/trace-bases"
+      },
+      "verification": "Actual3-input SLURM callback run plus report regeneration pass;stable breakpoint argument ranges and exact small-rational comparisons checked;make lint and sbatch validator pass;independent documentation review/build/link/render checks follow in adjacent documentation milestone."
+    },
+    {
       "id": "2026-11-03-soi-portfolio-and-publication-interpretation",
       "date": "2026-11-03",
       "kind": "analysis-of-existing-qualified-results-and-primary-paper",
