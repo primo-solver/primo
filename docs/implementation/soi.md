@@ -140,7 +140,8 @@ profile must pass the separate acceptance rule before promotion.
 Reader: implementers checking the stall fix. Question: which zero-distance
 events may be removed without removing degenerate pivots? Prerequisites:
 the coefficient identity and crossing walk above. Next reading: the
-{ref}`diagnostic evidence <soi-stall-drilldown>` and qualification results.
+{ref}`diagnostic evidence <soi-stall-drilldown>` and
+{ref}`qualified full comparison <soi-selfstep-full>`.
 
 **Basis and boundary.** King thesis Figure 3.4 enumerates both own bounds;
 §3.3.2 / FMCAD §V-C justify termination through actual basis exchanges when

@@ -6,9 +6,9 @@
       "id": "2026-11-03-soi-zero-self-event-resolution",
       "date": "2026-11-03",
       "kind": "solver-fix-qualification-and-paired-evaluation",
-      "evidence_status": "in-progress;no-promotion-or-new-speed-claim",
+      "evidence_status": "accepted defect repair in experimental selectors;correctness-qualified;no statistically established process speedup;no default promotion",
       "source": "7cb37437dd73fb6231b12bd98a7cf75d272e2f3b",
-      "workflow": "6f10ac8",
+      "workflow": "6f10ac8(plan generator),6f94962(qualified pilot/report owner),73f2b03(full submission wrapper),adjacent final-results commit",
       "binary_sha256": "643bbb0092b563986cbebcff59f95e61761be42b6d30509954c6fbf7ab3633f0",
       "baseline": {
         "source": "8faa775",
@@ -54,7 +54,7 @@
         "scope": "Design/proof boundary,newcounter,regression source and native publication owners;not runtime qualification.",
         "documentation_patch_sha256": "6674bd64fb5c7426c481d167350f2e3d213ff191f34c33bae96738239dc24fd2"
       },
-      "verification": "make lint,docs-site and local/Git link checks passed for implementation design. SLURM check(45CTest+275Python),62Z3explanations,ASAN45,whole-tree static134,fresh4000generated and480mutations complete;pilot qualified;full evaluation pending.",
+      "verification": "SLURM make check:45CTest+275Python;62independentZ3explanations;make asan-test:45CTest;whole-tree clang-tidy134CPP and advisory include-cleaner;fresh4000generated cases and480retained real-seed mutations;focused12/12;full24000timing rows and separate15897SAT native+Dolmen0.10 passes. make lint,docs-site,local/Git links and rendered inspection pass for pilot;final documentation validation recorded in final commit.",
       "qualification_progress": {
         "check": "339752 COMPLETED0:0;45CTest pass;62independentZ3explanations pass",
         "asan": "339753 COMPLETED0:0;45CTest pass",
@@ -77,7 +77,11 @@
         "pilot_timing": "340997 all100shards COMPLETED0:0;3600rows",
         "focused_regressions": "341457 COMPLETED0:0;12/12 public SMT-LIB regression comparisons pass",
         "pilot_models": "340998 all100shards COMPLETED0:0;1764/1764SAT timing rows native+Dolmen0.10 pass",
-        "pilot_summary": "341465 COMPLETED0:0;combined stable89/91 unchanged;PAR2old456.346/385.331,fixed455.698/375.445;purepaper fixed-on stable84to80;no hard correctness failures"
+        "pilot_summary": "341465 COMPLETED0:0;combined stable89/91 unchanged;PAR2old456.346/385.331,fixed455.698/375.445;purepaper fixed-on stable84to80;no hard correctness failures",
+        "full_timing": "341466_0..999 allCOMPLETED0:0;24000 rows;only SAT/UNSAT/timeouts",
+        "full_models": "341467_0..999 allCOMPLETED0:0;15897/15897 SAT timing rows native+Dolmen0.10 pass",
+        "full_profiles": "341468_0..999 allCOMPLETED0:0;8000 rows,951 common successful complete profiles",
+        "full_summary": "341469 COMPLETED0:0;all schedules,plan/binary identities,replay joins checked"
       },
       "full_submission": "After passing frozen-worktree preflight and pilot qualification:1000shards,8profiles,3repetitions,15sec,onephysicalCPU8GiB,15min timing allocation,128concurrent;models after timing,60min allocation;separate8-profile one-repeat diagnostics after timing,8min allocation;summary after allthree. Full and diagnostic frozen plans copied to run-root plan.json before submission.",
       "artifacts": [
@@ -86,7 +90,11 @@
         "results/soi-selfstep-20261103/checks-static",
         "results/soi-selfstep-20261103/mutation-classification.json",
         "SLURM:primo-soi-selfstep-20261103/results/full",
-        "SLURM:primo-soi-selfstep-20261103/results/profiles"
+        "SLURM:primo-soi-selfstep-20261103/results/profiles",
+        "docs/coverage/soi-selfstep-results-20261103.json",
+        "results/soi-selfstep-20261103/full-summary.json",
+        "results/soi-selfstep-20261103/full-qualification.json",
+        "SLURM:primo-soi-selfstep-20261103/logs/full-*"
       ],
       "fuzz_provenance": {
         "launcher": "scripts/slurm_qfuf_fuzz_gate.sbatch at7cb3743;PRIMO_FUZZ_OPFUZZ_TASKS=0,PRIMO_FUZZ_YINYANG_SHARDS=0,PRIMO_FUZZ_FUZZSMT_LOGIC=QF_LRA,PRIMO_FUZZ_FUZZSMT_REF=z3,PRIMO_FUZZ_FUZZSMT_TIMEOUT=5;1CPU2GiB,1hour batch allocation",
@@ -151,7 +159,203 @@
           }
         },
         "reference_sha256": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
-        "mutations": "Exact generation wrapper and argv: scripts/qualification/soi_improvements/verified_mutations.sbatch at7cb3743,random seed611821,20iterations per seed,900s generationcap,5s solverlimit. Independent retained-input native/reference commands and hashes: results/soi-selfstep-20261103/mutation-classification.json (SLURM results/real-seed-mutations/classification.json). That classifier uses soi-full-plan.json solely to select final-g1-f0 arguments;native binary hash643bbb... identifies this candidate. Generation lacks Gaussian flag;classification enables it as recorded in the artifact."
+        "mutations": "Exact generation wrapper and argv: scripts/qualification/soi_improvements/verified_mutations.sbatch at7cb3743,random seed611821,20iterations per seed,900s generationcap,5s solverlimit. Independent retained-input native/reference commands and hashes: results/soi-selfstep-20261103/mutation-classification.json (SLURM results/real-seed-mutations/classification.json). That classifier uses soi-full-plan.json solely to select final-g1-f0 arguments;native binary hash643bbb... identifies this candidate. Generation lacks Gaussian flag;classification enables it as recorded in the artifact.",
+        "mutator_identity": "YinYang0.3.0(typefuzz),read from shared virtualenv installed METADATA;classification artifact captures native/reference hashes;FuzzSMT jar identity above."
+      },
+      "decision": {
+        "implementation": "Accept zero-distance own-bound event exclusion as a correctness-preserving resolution of repeated unchanged self-steps;retain all basic-row zero events and nonzero own-bound steps. Experimental paper and short-column profiles only;historical selector inert.",
+        "performance": "No stable gains/losses against old combined in either setting. Both parent-bootstrap PAR2 change intervals include zero;no speedup accepted as established.",
+        "solver_default": "Sparse unchanged",
+        "soi_default": "historical selector unchanged;combined remains experimental;64/8 flags and ordinary Bland handoff unchanged",
+        "paper_selector_limitation": "Pilot fixed-on paper selector falls from84 to80 stable solves;no full-paper performance claim or promotion.",
+        "remaining_conformance_question": "SOI-preserving Bland selection after stalls versus ordinary Bland repair is a separate unimplemented/unevaluated arm;this fix does not resolve it."
+      },
+      "full_result": {
+        "dantzig-g1-f0": {
+          "stable_solves": 968,
+          "process_par2": 1522.6218493333345,
+          "outcomes": {
+            "sat": 1953,
+            "timeout": 96,
+            "unsat": 951
+          }
+        },
+        "dantzig-g1-f1": {
+          "stable_solves": 991,
+          "process_par2": 857.8437506666677,
+          "outcomes": {
+            "sat": 2013,
+            "timeout": 27,
+            "unsat": 960
+          }
+        },
+        "fixed-combined-g1-f0": {
+          "stable_solves": 958,
+          "process_par2": 2002.2869440000004,
+          "outcomes": {
+            "sat": 1935,
+            "timeout": 126,
+            "unsat": 939
+          }
+        },
+        "fixed-combined-g1-f1": {
+          "stable_solves": 982,
+          "process_par2": 1165.4650773333333,
+          "outcomes": {
+            "sat": 2001,
+            "timeout": 54,
+            "unsat": 945
+          }
+        },
+        "old-combined-g1-f0": {
+          "stable_solves": 958,
+          "process_par2": 2002.7690816666698,
+          "outcomes": {
+            "sat": 1935,
+            "timeout": 126,
+            "unsat": 939
+          }
+        },
+        "old-combined-g1-f1": {
+          "stable_solves": 982,
+          "process_par2": 1180.1024526666658,
+          "outcomes": {
+            "sat": 2001,
+            "timeout": 54,
+            "unsat": 945
+          }
+        },
+        "sparse-g1-f0": {
+          "stable_solves": 997,
+          "process_par2": 519.2366853333334,
+          "outcomes": {
+            "sat": 2031,
+            "timeout": 9,
+            "unsat": 960
+          }
+        },
+        "sparse-g1-f1": {
+          "stable_solves": 996,
+          "process_par2": 520.5825116666666,
+          "outcomes": {
+            "sat": 2028,
+            "timeout": 12,
+            "unsat": 960
+          }
+        }
+      },
+      "paired_par2": {
+        "fixed-0": {
+          "bootstrap_samples": 2000,
+          "ci95": [
+            -0.008305102081268589,
+            0.007756848484848471
+          ],
+          "inputs": 1000,
+          "mean_per_input_seconds": -0.00048213766666666913,
+          "parents": 460,
+          "seed": 20261102
+        },
+        "fixed-1": {
+          "bootstrap_samples": 2000,
+          "ci95": [
+            -0.04403238191632927,
+            0.017738936898395733
+          ],
+          "inputs": 1000,
+          "mean_per_input_seconds": -0.014637375333333338,
+          "parents": 460,
+          "seed": 20261102
+        }
+      },
+      "diagnostics": {
+        "common_successful_inputs": 951,
+        "population": "Separate1repeat8profile measurement;do not compare totals with prior883population",
+        "old_combined_fallbacks": [
+          864,
+          568
+        ],
+        "fixed_combined_fallbacks": [
+          775,
+          481
+        ],
+        "old_combined_prefix_pivots": [
+          53880,
+          45894
+        ],
+        "fixed_combined_prefix_pivots": [
+          63289,
+          51327
+        ],
+        "old_combined_suffix_pivots": [
+          355033,
+          144657
+        ],
+        "fixed_combined_suffix_pivots": [
+          349833,
+          166793
+        ],
+        "candidate_self_zero_events_skipped": [
+          852840,
+          211590
+        ],
+        "fixed_on_assertion_elimination_pivots": 219624,
+        "order": "fixed elimination off,on",
+        "remaining": "Most pivots still in suffix;zero-progress basis exchanges remain;fewer handoffs do not imply less total pivot work."
+      },
+      "hardware": [
+        {
+          "affinity_logical_cpus": 2,
+          "cpu_model": "Intel(R) Xeon(R) CPU E5-2690 v4 @ 2.60GHz",
+          "host": "node-02.ciircluster",
+          "shards": 231
+        },
+        {
+          "affinity_logical_cpus": 2,
+          "cpu_model": "Intel(R) Xeon(R) CPU E5-2690 v4 @ 2.60GHz",
+          "host": "node-03.ciircluster",
+          "shards": 236
+        },
+        {
+          "affinity_logical_cpus": 2,
+          "cpu_model": "Intel(R) Xeon(R) CPU E5-2690 v4 @ 2.60GHz",
+          "host": "node-04.ciircluster",
+          "shards": 245
+        },
+        {
+          "affinity_logical_cpus": 2,
+          "cpu_model": "Intel(R) Xeon(R) CPU E5-2690 v4 @ 2.60GHz",
+          "host": "node-05.ciircluster",
+          "shards": 288
+        }
+      ],
+      "resource_limits": {
+        "timing": "15s per solver process;1physicalCPU(2logical-affinity siblings),8GiB,15min per full timing shard,128array concurrency",
+        "models": "after timing;native90s,Dolmen30s per replay,60min per shard;not timed as speed",
+        "profiles": "after timing;one repetition,phase profiling on,8min per shard;not timed as headline",
+        "bootstrap": "2000parentresamples,460parents,seed20261102"
+      },
+      "reproduction": {
+        "submission": "scripts/qualification/soi_selfstep/submit-full.sh;PRIMO_WORKDIR=<prepared-workspace>,PRIMO_SOI_PLAN_DIR=results/selfstep-plans/benchmarks/qf-lra-simplex-ablation,PRIMO_SELFSTEP_SUMMARY_SCRIPT=results/selfstep-workflow/scripts/qualification/soi_selfstep/summarize.sbatch. Executed equivalent private recipe before wrapper was committed;checked-in wrapper syntax and fake-sbatch dependency/plan/overwrite smoke pass.",
+        "preflight": "python3 scripts/slurm_prepare_benchmark_workspace.py --check-only --no-sync --local-dir <clean7cb3743worktree> --ssh-config <session-private-config> --remote <session-alias> --remote-dir <prepared-workspace> --require-tool contrib/local/bin/z3 --require-tool contrib/local/bin/dolmen;version7cb3743,Release,no sanitizers,CaDiCaL3.0.0-7b99c07;passed before full submission",
+        "summary": "scripts/qualification/soi_selfstep/summarize.sbatch uses summarize_soi_improvements.py plus strict model_coverage/diagnostics from summarize_soi_qualification.py;portable report command in soi-experiments.md#soi-selfstep-full",
+        "profile_plan": "benchmarks/qf-lra-simplex-ablation/soi-selfstep-profile-plan.json,one repetition;all other config/hash identities frozen"
+      },
+      "artifact_sha256": {
+        "results/soi-selfstep-20261103/full-summary.json": "1fbf7b1ab7e7c41e989addc8f4ffed247d04a2f6625031b726ce21d04a64e789",
+        "results/soi-selfstep-20261103/full-qualification.json": "73b180fdb0112bd6685390c8e258314ac3abbb28aa3f77e43fe68977f439569d",
+        "results/soi-selfstep-20261103/pilot-summary.json": "248891da799824f62cb0042012897d85fc910ff19129f9214daa5f16f397d412",
+        "results/soi-selfstep-20261103/pilot-qualification.json": "6d7d5ba849248affaa91bee2802c5fc9d541562ce5601804eff3213fcde0b6b3",
+        "results/soi-selfstep-20261103/mutation-classification.json": "2f986306abbefb02472f9fffce4a4f85b92bea6ae25a252511e80fe200a5d23b"
+      },
+      "pilot_documentation_review": {
+        "reviewer": "soi_drill_doc_review",
+        "baseline": "ee05259",
+        "verdict": "Ready",
+        "findings": "SOISTEP-PILOT-1 precise event-filter ordering;SOISTEP-PILOT-2 exact fuzz command/generator provenance;both resolved",
+        "tracked_patch_sha256": "9f3cb25051eb517348a0a3f516cc9d595d8e368f168256635259ba8f3322162b",
+        "accepted_commit": "6f94962",
+        "scope": "Pilot prose/portable report,guide status,audit fix section,runlog entry,report owner;not full-result acceptance."
       }
     },
     {

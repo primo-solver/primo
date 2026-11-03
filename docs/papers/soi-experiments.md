@@ -769,3 +769,124 @@ not establish a uniformly faster search path. No wrong answers, crashes or
 invalid SAT models were observed. This pilot supports testing the unchanged
 combined candidate on the full frozen corpus; it does not qualify a default
 promotion or establish an improvement for the pure paper selector.
+
+(soi-selfstep-full)=
+## Zero-distance self-event fix: full comparison
+
+This section answers whether the repair changes the combined profile's full
+corpus result and its dependence on ordinary Bland repair. It uses the same
+two binaries and combined flags as the pilot. The
+[full plan](../../benchmarks/qf-lra-simplex-ablation/soi-selfstep-plan.json)
+freezes the original 1,000 inputs, eight configurations, three repetitions,
+15-second process limits, Gaussian elimination on and fixed elimination
+off/on. The pure paper controls remain pilot-only; this full comparison
+does not qualify their performance.
+
+Timing job `341466` completed all 24,000 rows without phase profiling.
+Separate model job `341467` validated all 15,897 SAT timing rows with native
+checking and direct Dolmen 0.10. There were no wrong answers, crashes,
+invalid models or untriaged disagreements. Separate one-repeat profiling
+job `341468` supplied diagnostic counters; summary job `341469` checked
+schedule, binary identities and replay coverage. All jobs completed with
+exit zero. Timing ran on CIIRC SLURM nodes 02–05, Intel Xeon E5-2690 v4
+at 2.60 GHz, one physical CPU and 8 GiB per task. The recorded affinity
+contains that core's two logical CPUs.
+
+| Profile | Fixed off: stable / PAR2 sum (s) | Fixed on: stable / PAR2 sum (s) |
+|---|---:|---:|
+| Sparse, candidate binary | 997 / 519.237 | 996 / 520.583 |
+| Dantzig, candidate binary | 968 / 1522.622 | 991 / 857.844 |
+| Combined, original | 958 / 2002.769 | 982 / 1180.102 |
+| Combined, repaired | 958 / 2002.287 | 982 / 1165.465 |
+
+Both combined solve sets are identical in this paired run: no stable gains
+and no stable losses. The mean per-input PAR2 changes are -0.000482 seconds
+with fixed elimination off and -0.014637 seconds with it on. Parent-bootstrap
+95% intervals are respectively [-0.008305, +0.007757] and
+[-0.044032, +0.017739], using 2,000 resamples of 460 parents. Both include
+zero. The defect is resolved, but this experiment does not establish a
+process-time improvement. Sparse and Dantzig remain better overall.
+The [portable report](../coverage/soi-selfstep-results-20261103.json)
+includes family results, runtime distributions, timeout counts, solve-set
+differences, bootstrap parameters, binary/plan hashes and model qualification.
+
+### What changed inside the check
+
+The following published counters are sums on the **951 inputs successfully
+profiled in all eight configurations**, not the preceding timing population
+or the earlier investigation's 883-input population. A fallback is a theory
+check handing off, so one input can contribute multiple fallbacks. Prefix
+pivots exchange a basis in SOI; suffix pivots use ordinary Bland repair.
+
+| Combined arm | Fixed elimination | Fallbacks | SOI prefix pivots | Bland suffix pivots | Selected SOI steps | Own zero events skipped |
+|---|---|---:|---:|---:|---:|---:|
+| Original | off | 864 | 53,880 | 355,033 | 60,279 | unavailable |
+| Repaired | off | 775 | 63,289 | 349,833 | 63,782 | 852,840 |
+| Original | on | 568 | 45,894 | 144,657 | 50,189 | unavailable |
+| Repaired | on | 481 | 51,327 | 166,793 | 51,638 | 211,590 |
+
+The filter prevents repeated unchanged self-steps, but the skipped-event count
+counts events considered during candidate examination, not selected moves or
+distinct states. Selected steps minus prefix pivots drops from 6,399 to 493
+with fixed elimination off and from 4,295 to 311 with it on. In the repaired
+selector those remaining assignment-only steps have nonzero distance.
+Fallbacks fall by 10.3% and 15.3%; nevertheless suffix pivots still account
+for 84.7% and 76.5% of all check pivots. Zero-progress SOI steps increase from
+7,171 to 7,909 and from 4,844 to 4,908: a genuine degenerate pivot can replace
+a self-step and lead to another basis with zero progress. These counts do
+not prove cycling.
+
+Fewer handoffs also do not imply less total work. With fixed elimination on,
+the repaired path performs 218,120 check pivots versus 190,551 for the
+original, **plus the same 219,624 assertion-time elimination pivots**.
+Its separately profiled check time is 191.749 versus 197.992 seconds.
+With fixed elimination off, check time is 365.985 versus 364.010 seconds.
+Those phase measurements have profiling enabled and are not substitutes for
+the process table. Candidate selection time rises from 10.027 to 10.488 seconds
+off and from 5.231 to 5.490 seconds on; removing inert crossings does not
+guarantee less pricing work after the basis path changes. The portable report
+retains objective maintenance, crossing, explanation and rollback counters,
+including unsupported or absent fields explicitly.
+
+### Acceptance and reproduction
+
+Retain the repair in the experimental paper and short-column selectors as a
+correction of the demonstrated operational defect. Keep Sparse as the solver
+default and historical selection as the default within opt-in SOI. This result
+does not promote the combined profile: its production fixed-off PAR2 interval
+includes zero, and it remains worse than the ordinary controls. The pure paper
+selector's four pilot losses are also retained as a limitation.
+
+There is no additional stable solve over Sparse in either fixed setting.
+Against Dantzig the repaired combined profile gains five and loses fifteen
+inputs with fixed elimination off; with it on, it gains none and loses nine.
+Thus this corpus provides no solve-coverage argument for adding this profile
+to a portfolio that already contains Sparse. It does not rule out differences
+on another corpus or at another time limit.
+
+The run log entry `2026-11-03-soi-zero-self-event-resolution` records gate
+commands, revisions, hashes, seeds, job IDs, setup failures and artifact
+locations. Build and preflight the clean native source using
+`scripts/slurm_prepare_benchmark_workspace.py --build-via-slurm`, with the
+session's private SSH configuration, and stage the frozen plans and qualified
+binary map. After the pilot gate, the
+{soiselfstepworkflow}`full submission script <scripts/qualification/soi_selfstep/submit-full.sh>`
+reproduces the timing → separate model/profile → summary dependency chain.
+It requires `PRIMO_WORKDIR`; `PRIMO_SOI_PLAN_DIR` and
+`PRIMO_SELFSTEP_SUMMARY_SCRIPT` select separately staged workflow files when
+the native worktree is frozen. It refuses to overwrite existing run plans.
+The executed submission used the equivalent private shell recipe before this
+wrapper was committed. Both use the checked-in measurement and summary jobs.
+
+The raw `results/soi-selfstep-20261103/full-summary.json` and
+`full-qualification.json` are collected locally and retained with the SLURM
+workspace's `results/full` and `results/profiles`. Regenerate the portable
+artifact without solver execution:
+
+```bash
+python3 scripts/summarize_soi_selfstep.py \
+  --summary results/soi-selfstep-20261103/full-summary.json \
+  --qualification results/soi-selfstep-20261103/full-qualification.json \
+  --plan benchmarks/qf-lra-simplex-ablation/soi-selfstep-plan.json \
+  --out docs/coverage/soi-selfstep-results-20261103.json
+```

@@ -372,3 +372,10 @@ classified 3,915 of 4,000 generated cases as passes and 85 as timeouts, with
 no hard failures. The {ref}`paired pilot <soi-selfstep-pilot>` records its
 separate model qualification and mixed performance findings. The historical
 SOI selector, Sparse default and combined profile's 64/8 settings are unchanged.
+
+The {ref}`qualified full comparison <soi-selfstep-full>` preserves both
+combined stable solve sets and reduces handoffs on the matched profiling
+population. Most pivots still occur in ordinary repair, and neither
+parent-bootstrap interval establishes a process-time improvement. The filter
+is accepted as a defect repair in the experimental selectors; the ordinary
+Bland handoff remains an explicit deviation awaiting a separate experiment.

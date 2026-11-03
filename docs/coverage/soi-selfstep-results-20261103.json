@@ -1,0 +1,1617 @@
+{
+  "analysis_sha256": "c1ac3db81eee82bb8a612f94900eccf550e52cab90ba3d177cc45df22197f164",
+  "binaries": {
+    "candidate": {
+      "sha256": "643bbb0092b563986cbebcff59f95e61761be42b6d30509954c6fbf7ab3633f0",
+      "source": "7cb3743"
+    },
+    "original": {
+      "sha256": "18b3182d9f95698dc7684ade226cbdaf091e691c648640971ef20b34d5274bd0",
+      "source": "8faa775"
+    }
+  },
+  "comparisons": {
+    "fixed-combined-g1-f0-vs-dantzig-g1-f0": {
+      "par2_change": {
+        "bootstrap_samples": 2000,
+        "ci95": [
+          0.13758909857723578,
+          0.8756471562600064
+        ],
+        "inputs": 1000,
+        "mean_per_input_seconds": 0.4796650946666667,
+        "parents": 460,
+        "seed": 20261102
+      },
+      "stable_solve_gains": [
+        "cubes/044413f6ce001681c49644ec4de24cb473048690743a5f6b348c1f24bfc63615.smt2",
+        "cubes/30d2fb539c8c166f18549c38520f11d5d721ed2703aba68d894faf2deac1416d.smt2",
+        "cubes/4540e4215df7a561c2079d0cd1c49597e28cfb4f91587b043172bde7de6f47d4.smt2",
+        "cubes/d09de35e25691e0f8424f80d3957ea0d5dd32d17b0608a1b3cba9880c0809c5d.smt2",
+        "cubes/f946150c03f40c0320082f84e1b80d3df248def0d58e451a013b82e2a6ca74fe.smt2"
+      ],
+      "stable_solve_losses": [
+        "cubes/0111fd9dff56c67e7daa42ad4f4e1e6d9067461ee3851c3c212128b7e38c2ebd.smt2",
+        "cubes/1c7846e46c523df96a52add9bd8668c3ab1f5524b75f5a81a8edd56acd5744be.smt2",
+        "cubes/34939868d147960425f2cef4355615e1d88026d9577a0c729ff481b124504128.smt2",
+        "cubes/3c5ae1317cbca811b8b466599d50143b94d958863a2036d6ac81ba71336c5829.smt2",
+        "cubes/58fb73249e5aeeb5d9e84ab3357883649f23bee19e8a2cfc5b3f002ee29f308e.smt2",
+        "cubes/70ca7635cfc675c1bf2cc36a4cfa69d8e0eb1c5cdea0277c9457b8c2b9aa4b13.smt2",
+        "cubes/8f84bb0bd7c709d054aa5bf9f9dfcd3d5089f24dab2c883d48b8543ed90ce407.smt2",
+        "cubes/b46d5be5b61e8207cf376f261fb544ce404a8c805f063775b0c92983fe3ed392.smt2",
+        "cubes/bb817a1f96ea97b51dcfd67a7b669a5b895012db850a569acc169b699b22f143.smt2",
+        "cubes/bff653c8a5af515bf78fbb85ae4c089ff360083c1d5bc79ee078e74aa2950fa0.smt2",
+        "cubes/c66be8ceba595778847d83423da8c949c5245c6217727df39df2110c30395487.smt2",
+        "cubes/cb9f2ad1de64138c3a3ed7e1e1c25c7192eb45877b714624867f93bb58f1bb87.smt2",
+        "cubes/da8e9b995df2a02a0f6d7d14492f07d2087c3c546e94eea44a75abba75507753.smt2",
+        "cubes/f364dbf7c892e229db8ca6edbe56b20c0a181aaae912cd5ae65f2df13e659ad4.smt2",
+        "cubes/ff4068ce6dcc7c20bab8b2e90fc55713039983e9ef25d45c55ab6fe074fef664.smt2"
+      ]
+    },
+    "fixed-combined-g1-f0-vs-old-combined-g1-f0": {
+      "par2_change": {
+        "bootstrap_samples": 2000,
+        "ci95": [
+          -0.008305102081268593,
+          0.007756848484848476
+        ],
+        "inputs": 1000,
+        "mean_per_input_seconds": -0.0004821376666666722,
+        "parents": 460,
+        "seed": 20261102
+      },
+      "stable_solve_gains": [],
+      "stable_solve_losses": []
+    },
+    "fixed-combined-g1-f0-vs-sparse-g1-f0": {
+      "par2_change": {
+        "bootstrap_samples": 2000,
+        "ci95": [
+          0.9585408262243286,
+          2.0613796108324975
+        ],
+        "inputs": 1000,
+        "mean_per_input_seconds": 1.4830502586666667,
+        "parents": 460,
+        "seed": 20261102
+      },
+      "stable_solve_gains": [],
+      "stable_solve_losses": [
+        "cubes/0111fd9dff56c67e7daa42ad4f4e1e6d9067461ee3851c3c212128b7e38c2ebd.smt2",
+        "cubes/0d6e4ad55b5cedd356b5a6c45f4e5138f28ce50b2ed45ccae7c34dc069a641ba.smt2",
+        "cubes/10d6c2814a35f91b63e083ff39c322a3193548094a6f68a620534841a0412a0b.smt2",
+        "cubes/166dd9b45c018a304a5b7578d7d8315eea09be14c567d42f3a63fb9ec8f0164c.smt2",
+        "cubes/18d86f3f5937116369c957bcbceaf40b3dffe59d83e521acfda1871ce1a3bb9a.smt2",
+        "cubes/1c7846e46c523df96a52add9bd8668c3ab1f5524b75f5a81a8edd56acd5744be.smt2",
+        "cubes/22d00b27fed561a06420fa19b77653230c71a30c4deb181abd069f31f4562589.smt2",
+        "cubes/2cc8e805e52c410677ed5e4792c0f6c43054198448df4c8a3175640a523a108f.smt2",
+        "cubes/32bb2a5d56fa3e10395bc1cb1660ebf01688c90d2e451c88c25725677e3fd588.smt2",
+        "cubes/34939868d147960425f2cef4355615e1d88026d9577a0c729ff481b124504128.smt2",
+        "cubes/3c5ae1317cbca811b8b466599d50143b94d958863a2036d6ac81ba71336c5829.smt2",
+        "cubes/45973acea1915c33dd52f36b79cdc1a7975053c15354d92816fd589f8f3dd8c8.smt2",
+        "cubes/51553c46f5cdc3f2bea7874b82621a61c2deae5e3989a4b50528536842f34ed8.smt2",
+        "cubes/58fb73249e5aeeb5d9e84ab3357883649f23bee19e8a2cfc5b3f002ee29f308e.smt2",
+        "cubes/5c05f8606b6485de3d538cff469dfff1fa4dea2afa0bed68543332aed46fb1ca.smt2",
+        "cubes/64f8fa665c49adff537d588063fbcb8d66d4e811f82ae169b7bb61f889e6d87d.smt2",
+        "cubes/65e8ed60e241d6eaae460b1fe407828710f3c5b50007d965f80c436b9047610c.smt2",
+        "cubes/70b5e05ab7ea61c5ba3744399f1b23e2b2804bad3c710edb466f330cd86ec8d9.smt2",
+        "cubes/70ca7635cfc675c1bf2cc36a4cfa69d8e0eb1c5cdea0277c9457b8c2b9aa4b13.smt2",
+        "cubes/79014ab070945164c9bcc45e3b936b860a90206179ea9edf1414ba41da758a9a.smt2",
+        "cubes/7d0b71994aede088b5759955aa95450eff132c0a5d310d9351cb6d9e77c8ba68.smt2",
+        "cubes/88fd3b130d017c4f61273bb5a1013bcbda8526cc2b41a47a19fb24627da414ed.smt2",
+        "cubes/8f84bb0bd7c709d054aa5bf9f9dfcd3d5089f24dab2c883d48b8543ed90ce407.smt2",
+        "cubes/95f0db6530aa2596937caf9bcff4c03d07f0821ae10aace4fb813ef7ed202cfd.smt2",
+        "cubes/9ac413bfad64926c8b10676062396b9627a5dc9bc8bc4f936cbef04f6adba120.smt2",
+        "cubes/b46d5be5b61e8207cf376f261fb544ce404a8c805f063775b0c92983fe3ed392.smt2",
+        "cubes/bb817a1f96ea97b51dcfd67a7b669a5b895012db850a569acc169b699b22f143.smt2",
+        "cubes/bff653c8a5af515bf78fbb85ae4c089ff360083c1d5bc79ee078e74aa2950fa0.smt2",
+        "cubes/c66be8ceba595778847d83423da8c949c5245c6217727df39df2110c30395487.smt2",
+        "cubes/c6f79fa866c703e1219c559ae50c47f87f2e804937de11fa4f7d43d556f27c5c.smt2",
+        "cubes/cb9f2ad1de64138c3a3ed7e1e1c25c7192eb45877b714624867f93bb58f1bb87.smt2",
+        "cubes/d9a1366a8244600b52e89481e7be2363117fc80210a1c8570eaca3c6aeb08004.smt2",
+        "cubes/da8e9b995df2a02a0f6d7d14492f07d2087c3c546e94eea44a75abba75507753.smt2",
+        "cubes/e6d93724758dd975b724a70476ad945c970d3c43df5e3d939ed58ccf49f48233.smt2",
+        "cubes/ee2ee1f93bcfb44b80ab1123b5e1e19ed177ca5cc766fb64b3e88367994eb343.smt2",
+        "cubes/f364dbf7c892e229db8ca6edbe56b20c0a181aaae912cd5ae65f2df13e659ad4.smt2",
+        "cubes/f69baef3ccbedc4df58b003e3680cf7543ccd6533c32d72dde4c3b36d31f9ad8.smt2",
+        "cubes/fdb4e04e83e390b2edfd2cd5bf9dbe257a35c8a59fba261b6bcdd75a938012fc.smt2",
+        "cubes/ff4068ce6dcc7c20bab8b2e90fc55713039983e9ef25d45c55ab6fe074fef664.smt2"
+      ]
+    },
+    "fixed-combined-g1-f1-vs-dantzig-g1-f1": {
+      "par2_change": {
+        "bootstrap_samples": 2000,
+        "ci95": [
+          0.06928454621578099,
+          0.6299673906976744
+        ],
+        "inputs": 1000,
+        "mean_per_input_seconds": 0.3076213266666667,
+        "parents": 460,
+        "seed": 20261102
+      },
+      "stable_solve_gains": [],
+      "stable_solve_losses": [
+        "cubes/044413f6ce001681c49644ec4de24cb473048690743a5f6b348c1f24bfc63615.smt2",
+        "cubes/18d86f3f5937116369c957bcbceaf40b3dffe59d83e521acfda1871ce1a3bb9a.smt2",
+        "cubes/88fd3b130d017c4f61273bb5a1013bcbda8526cc2b41a47a19fb24627da414ed.smt2",
+        "cubes/910f321eb37d680dd79075957600c9c151fd7bc8bb5c8cded18715e3a0c731c0.smt2",
+        "cubes/bff653c8a5af515bf78fbb85ae4c089ff360083c1d5bc79ee078e74aa2950fa0.smt2",
+        "cubes/d4d97d312861a6054f2884173c77c706cda7b741fe41d70a5e0b544e0775720a.smt2",
+        "cubes/ee2ee1f93bcfb44b80ab1123b5e1e19ed177ca5cc766fb64b3e88367994eb343.smt2",
+        "cubes/f946150c03f40c0320082f84e1b80d3df248def0d58e451a013b82e2a6ca74fe.smt2",
+        "cubes/ff4068ce6dcc7c20bab8b2e90fc55713039983e9ef25d45c55ab6fe074fef664.smt2"
+      ]
+    },
+    "fixed-combined-g1-f1-vs-old-combined-g1-f1": {
+      "par2_change": {
+        "bootstrap_samples": 2000,
+        "ci95": [
+          -0.04403238191632929,
+          0.017738936898395733
+        ],
+        "inputs": 1000,
+        "mean_per_input_seconds": -0.014637375333333334,
+        "parents": 460,
+        "seed": 20261102
+      },
+      "stable_solve_gains": [],
+      "stable_solve_losses": []
+    },
+    "fixed-combined-g1-f1-vs-sparse-g1-f1": {
+      "par2_change": {
+        "bootstrap_samples": 2000,
+        "ci95": [
+          0.3565183540305011,
+          1.0047518273504272
+        ],
+        "inputs": 1000,
+        "mean_per_input_seconds": 0.6448825656666667,
+        "parents": 460,
+        "seed": 20261102
+      },
+      "stable_solve_gains": [],
+      "stable_solve_losses": [
+        "cubes/044413f6ce001681c49644ec4de24cb473048690743a5f6b348c1f24bfc63615.smt2",
+        "cubes/10d6c2814a35f91b63e083ff39c322a3193548094a6f68a620534841a0412a0b.smt2",
+        "cubes/18d86f3f5937116369c957bcbceaf40b3dffe59d83e521acfda1871ce1a3bb9a.smt2",
+        "cubes/45973acea1915c33dd52f36b79cdc1a7975053c15354d92816fd589f8f3dd8c8.smt2",
+        "cubes/65e8ed60e241d6eaae460b1fe407828710f3c5b50007d965f80c436b9047610c.smt2",
+        "cubes/88fd3b130d017c4f61273bb5a1013bcbda8526cc2b41a47a19fb24627da414ed.smt2",
+        "cubes/910f321eb37d680dd79075957600c9c151fd7bc8bb5c8cded18715e3a0c731c0.smt2",
+        "cubes/bff653c8a5af515bf78fbb85ae4c089ff360083c1d5bc79ee078e74aa2950fa0.smt2",
+        "cubes/d4d97d312861a6054f2884173c77c706cda7b741fe41d70a5e0b544e0775720a.smt2",
+        "cubes/e6d93724758dd975b724a70476ad945c970d3c43df5e3d939ed58ccf49f48233.smt2",
+        "cubes/ee2ee1f93bcfb44b80ab1123b5e1e19ed177ca5cc766fb64b3e88367994eb343.smt2",
+        "cubes/f946150c03f40c0320082f84e1b80d3df248def0d58e451a013b82e2a6ca74fe.smt2",
+        "cubes/fdb4e04e83e390b2edfd2cd5bf9dbe257a35c8a59fba261b6bcdd75a938012fc.smt2",
+        "cubes/ff4068ce6dcc7c20bab8b2e90fc55713039983e9ef25d45c55ab6fe074fef664.smt2"
+      ]
+    }
+  },
+  "configurations": {
+    "dantzig-g1-f0": {
+      "families": {
+        "2017-Heizmann-UltimateInvariantSynthesis": {
+          "inputs": 109,
+          "process_par2": 21.667142000000002,
+          "stable_solves": 109
+        },
+        "2019-ezsmt": {
+          "inputs": 103,
+          "process_par2": 3.0404906666666656,
+          "stable_solves": 103
+        },
+        "DTP-Scheduling": {
+          "inputs": 105,
+          "process_par2": 21.726705666666664,
+          "stable_solves": 105
+        },
+        "LassoRanker": {
+          "inputs": 105,
+          "process_par2": 302.709545,
+          "stable_solves": 103
+        },
+        "clock_synchro": {
+          "inputs": 105,
+          "process_par2": 21.725963000000004,
+          "stable_solves": 105
+        },
+        "latendresse": {
+          "inputs": 17,
+          "process_par2": 510,
+          "stable_solves": 0
+        },
+        "miplib": {
+          "inputs": 112,
+          "process_par2": 486.6989619999997,
+          "stable_solves": 99
+        },
+        "sal": {
+          "inputs": 8,
+          "process_par2": 0.13877733333333334,
+          "stable_solves": 8
+        },
+        "sc": {
+          "inputs": 102,
+          "process_par2": 7.928414666666663,
+          "stable_solves": 102
+        },
+        "tropical-matrix": {
+          "inputs": 110,
+          "process_par2": 138.63623966666663,
+          "stable_solves": 110
+        },
+        "tta_startup": {
+          "inputs": 22,
+          "process_par2": 2.5345139999999997,
+          "stable_solves": 22
+        },
+        "uart": {
+          "inputs": 102,
+          "process_par2": 5.815095333333333,
+          "stable_solves": 102
+        }
+      },
+      "inputs": 1000,
+      "outcomes": {
+        "sat": 1953,
+        "timeout": 96,
+        "unsat": 951
+      },
+      "process_par2": 1522.6218493333345,
+      "stable_process_seconds": {
+        "inputs": 968,
+        "max": 13.984312,
+        "p50": 0.0582405,
+        "p90": 1.418344,
+        "p99": 11.145203
+      },
+      "stable_solves": 968
+    },
+    "dantzig-g1-f1": {
+      "families": {
+        "2017-Heizmann-UltimateInvariantSynthesis": {
+          "inputs": 109,
+          "process_par2": 21.610862,
+          "stable_solves": 109
+        },
+        "2019-ezsmt": {
+          "inputs": 103,
+          "process_par2": 3.013495333333333,
+          "stable_solves": 103
+        },
+        "DTP-Scheduling": {
+          "inputs": 105,
+          "process_par2": 21.697414666666667,
+          "stable_solves": 105
+        },
+        "LassoRanker": {
+          "inputs": 105,
+          "process_par2": 301.56091833333335,
+          "stable_solves": 103
+        },
+        "clock_synchro": {
+          "inputs": 105,
+          "process_par2": 8.526553,
+          "stable_solves": 105
+        },
+        "latendresse": {
+          "inputs": 17,
+          "process_par2": 240.65153633333333,
+          "stable_solves": 10
+        },
+        "miplib": {
+          "inputs": 112,
+          "process_par2": 198.42517933333338,
+          "stable_solves": 112
+        },
+        "sal": {
+          "inputs": 8,
+          "process_par2": 0.139042,
+          "stable_solves": 8
+        },
+        "sc": {
+          "inputs": 102,
+          "process_par2": 6.180501666666668,
+          "stable_solves": 102
+        },
+        "tropical-matrix": {
+          "inputs": 110,
+          "process_par2": 48.09400899999998,
+          "stable_solves": 110
+        },
+        "tta_startup": {
+          "inputs": 22,
+          "process_par2": 2.5256953333333327,
+          "stable_solves": 22
+        },
+        "uart": {
+          "inputs": 102,
+          "process_par2": 5.418543666666666,
+          "stable_solves": 102
+        }
+      },
+      "inputs": 1000,
+      "outcomes": {
+        "sat": 2013,
+        "timeout": 27,
+        "unsat": 960
+      },
+      "process_par2": 857.8437506666677,
+      "stable_process_seconds": {
+        "inputs": 991,
+        "max": 14.273891,
+        "p50": 0.057636,
+        "p90": 1.12346,
+        "p99": 10.993006
+      },
+      "stable_solves": 991
+    },
+    "fixed-combined-g1-f0": {
+      "families": {
+        "2017-Heizmann-UltimateInvariantSynthesis": {
+          "inputs": 109,
+          "process_par2": 22.713624000000017,
+          "stable_solves": 109
+        },
+        "2019-ezsmt": {
+          "inputs": 103,
+          "process_par2": 3.316478666666666,
+          "stable_solves": 103
+        },
+        "DTP-Scheduling": {
+          "inputs": 105,
+          "process_par2": 26.795825666666662,
+          "stable_solves": 105
+        },
+        "LassoRanker": {
+          "inputs": 105,
+          "process_par2": 309.2367756666667,
+          "stable_solves": 103
+        },
+        "clock_synchro": {
+          "inputs": 105,
+          "process_par2": 202.08362099999997,
+          "stable_solves": 102
+        },
+        "latendresse": {
+          "inputs": 17,
+          "process_par2": 510,
+          "stable_solves": 0
+        },
+        "miplib": {
+          "inputs": 112,
+          "process_par2": 476.1033433333332,
+          "stable_solves": 100
+        },
+        "sal": {
+          "inputs": 8,
+          "process_par2": 0.158047,
+          "stable_solves": 8
+        },
+        "sc": {
+          "inputs": 102,
+          "process_par2": 8.766019000000002,
+          "stable_solves": 102
+        },
+        "tropical-matrix": {
+          "inputs": 110,
+          "process_par2": 433.78898333333353,
+          "stable_solves": 102
+        },
+        "tta_startup": {
+          "inputs": 22,
+          "process_par2": 2.565396,
+          "stable_solves": 22
+        },
+        "uart": {
+          "inputs": 102,
+          "process_par2": 6.758830333333333,
+          "stable_solves": 102
+        }
+      },
+      "inputs": 1000,
+      "outcomes": {
+        "sat": 1935,
+        "timeout": 126,
+        "unsat": 939
+      },
+      "process_par2": 2002.2869440000004,
+      "stable_process_seconds": {
+        "inputs": 958,
+        "max": 13.419676,
+        "p50": 0.080914,
+        "p90": 2.279308,
+        "p99": 9.793563
+      },
+      "stable_solves": 958
+    },
+    "fixed-combined-g1-f1": {
+      "families": {
+        "2017-Heizmann-UltimateInvariantSynthesis": {
+          "inputs": 109,
+          "process_par2": 22.250739333333332,
+          "stable_solves": 109
+        },
+        "2019-ezsmt": {
+          "inputs": 103,
+          "process_par2": 3.1757259999999987,
+          "stable_solves": 103
+        },
+        "DTP-Scheduling": {
+          "inputs": 105,
+          "process_par2": 26.74808233333333,
+          "stable_solves": 105
+        },
+        "LassoRanker": {
+          "inputs": 105,
+          "process_par2": 303.3945023333333,
+          "stable_solves": 103
+        },
+        "clock_synchro": {
+          "inputs": 105,
+          "process_par2": 211.76687366666664,
+          "stable_solves": 101
+        },
+        "latendresse": {
+          "inputs": 17,
+          "process_par2": 290.842013,
+          "stable_solves": 8
+        },
+        "miplib": {
+          "inputs": 112,
+          "process_par2": 211.70873533333344,
+          "stable_solves": 109
+        },
+        "sal": {
+          "inputs": 8,
+          "process_par2": 0.14281533333333332,
+          "stable_solves": 8
+        },
+        "sc": {
+          "inputs": 102,
+          "process_par2": 11.103323999999995,
+          "stable_solves": 102
+        },
+        "tropical-matrix": {
+          "inputs": 110,
+          "process_par2": 76.06144933333337,
+          "stable_solves": 110
+        },
+        "tta_startup": {
+          "inputs": 22,
+          "process_par2": 2.543948,
+          "stable_solves": 22
+        },
+        "uart": {
+          "inputs": 102,
+          "process_par2": 5.726868666666667,
+          "stable_solves": 102
+        }
+      },
+      "inputs": 1000,
+      "outcomes": {
+        "sat": 2001,
+        "timeout": 54,
+        "unsat": 945
+      },
+      "process_par2": 1165.4650773333333,
+      "stable_process_seconds": {
+        "inputs": 982,
+        "max": 13.396786,
+        "p50": 0.075216,
+        "p90": 1.890283,
+        "p99": 9.096461
+      },
+      "stable_solves": 982
+    },
+    "old-combined-g1-f0": {
+      "families": {
+        "2017-Heizmann-UltimateInvariantSynthesis": {
+          "inputs": 109,
+          "process_par2": 22.97464599999999,
+          "stable_solves": 109
+        },
+        "2019-ezsmt": {
+          "inputs": 103,
+          "process_par2": 3.265729999999999,
+          "stable_solves": 103
+        },
+        "DTP-Scheduling": {
+          "inputs": 105,
+          "process_par2": 26.959632000000003,
+          "stable_solves": 105
+        },
+        "LassoRanker": {
+          "inputs": 105,
+          "process_par2": 310.8034793333333,
+          "stable_solves": 103
+        },
+        "clock_synchro": {
+          "inputs": 105,
+          "process_par2": 204.68443166666663,
+          "stable_solves": 102
+        },
+        "latendresse": {
+          "inputs": 17,
+          "process_par2": 510,
+          "stable_solves": 0
+        },
+        "miplib": {
+          "inputs": 112,
+          "process_par2": 475.7827333333332,
+          "stable_solves": 100
+        },
+        "sal": {
+          "inputs": 8,
+          "process_par2": 0.15447,
+          "stable_solves": 8
+        },
+        "sc": {
+          "inputs": 102,
+          "process_par2": 8.73830266666667,
+          "stable_solves": 102
+        },
+        "tropical-matrix": {
+          "inputs": 110,
+          "process_par2": 430.105725,
+          "stable_solves": 102
+        },
+        "tta_startup": {
+          "inputs": 22,
+          "process_par2": 2.5894673333333333,
+          "stable_solves": 22
+        },
+        "uart": {
+          "inputs": 102,
+          "process_par2": 6.710464333333333,
+          "stable_solves": 102
+        }
+      },
+      "inputs": 1000,
+      "outcomes": {
+        "sat": 1935,
+        "timeout": 126,
+        "unsat": 939
+      },
+      "process_par2": 2002.7690816666698,
+      "stable_process_seconds": {
+        "inputs": 958,
+        "max": 13.460038,
+        "p50": 0.08149400000000001,
+        "p90": 2.30704,
+        "p99": 9.816051
+      },
+      "stable_solves": 958
+    },
+    "old-combined-g1-f1": {
+      "families": {
+        "2017-Heizmann-UltimateInvariantSynthesis": {
+          "inputs": 109,
+          "process_par2": 22.40212833333334,
+          "stable_solves": 109
+        },
+        "2019-ezsmt": {
+          "inputs": 103,
+          "process_par2": 3.1874000000000002,
+          "stable_solves": 103
+        },
+        "DTP-Scheduling": {
+          "inputs": 105,
+          "process_par2": 26.865858333333325,
+          "stable_solves": 105
+        },
+        "LassoRanker": {
+          "inputs": 105,
+          "process_par2": 305.581325,
+          "stable_solves": 103
+        },
+        "clock_synchro": {
+          "inputs": 105,
+          "process_par2": 225.20845866666667,
+          "stable_solves": 101
+        },
+        "latendresse": {
+          "inputs": 17,
+          "process_par2": 290.7310513333333,
+          "stable_solves": 8
+        },
+        "miplib": {
+          "inputs": 112,
+          "process_par2": 208.07110066666667,
+          "stable_solves": 109
+        },
+        "sal": {
+          "inputs": 8,
+          "process_par2": 0.14270466666666667,
+          "stable_solves": 8
+        },
+        "sc": {
+          "inputs": 102,
+          "process_par2": 9.073492000000002,
+          "stable_solves": 102
+        },
+        "tropical-matrix": {
+          "inputs": 110,
+          "process_par2": 80.51196800000001,
+          "stable_solves": 110
+        },
+        "tta_startup": {
+          "inputs": 22,
+          "process_par2": 2.569876666666667,
+          "stable_solves": 22
+        },
+        "uart": {
+          "inputs": 102,
+          "process_par2": 5.757089000000002,
+          "stable_solves": 102
+        }
+      },
+      "inputs": 1000,
+      "outcomes": {
+        "sat": 2001,
+        "timeout": 54,
+        "unsat": 945
+      },
+      "process_par2": 1180.1024526666658,
+      "stable_process_seconds": {
+        "inputs": 982,
+        "max": 13.068957,
+        "p50": 0.0759435,
+        "p90": 2.05692,
+        "p99": 9.309586
+      },
+      "stable_solves": 982
+    },
+    "sparse-g1-f0": {
+      "families": {
+        "2017-Heizmann-UltimateInvariantSynthesis": {
+          "inputs": 109,
+          "process_par2": 21.042645333333336,
+          "stable_solves": 109
+        },
+        "2019-ezsmt": {
+          "inputs": 103,
+          "process_par2": 3.182143,
+          "stable_solves": 103
+        },
+        "DTP-Scheduling": {
+          "inputs": 105,
+          "process_par2": 22.805474999999998,
+          "stable_solves": 105
+        },
+        "LassoRanker": {
+          "inputs": 105,
+          "process_par2": 300.79061,
+          "stable_solves": 103
+        },
+        "clock_synchro": {
+          "inputs": 105,
+          "process_par2": 20.734221333333334,
+          "stable_solves": 105
+        },
+        "latendresse": {
+          "inputs": 17,
+          "process_par2": 92.29023233333331,
+          "stable_solves": 16
+        },
+        "miplib": {
+          "inputs": 112,
+          "process_par2": 9.51159,
+          "stable_solves": 112
+        },
+        "sal": {
+          "inputs": 8,
+          "process_par2": 0.13584333333333334,
+          "stable_solves": 8
+        },
+        "sc": {
+          "inputs": 102,
+          "process_par2": 5.779682000000001,
+          "stable_solves": 102
+        },
+        "tropical-matrix": {
+          "inputs": 110,
+          "process_par2": 35.123948666666664,
+          "stable_solves": 110
+        },
+        "tta_startup": {
+          "inputs": 22,
+          "process_par2": 2.524169333333333,
+          "stable_solves": 22
+        },
+        "uart": {
+          "inputs": 102,
+          "process_par2": 5.3161249999999995,
+          "stable_solves": 102
+        }
+      },
+      "inputs": 1000,
+      "outcomes": {
+        "sat": 2031,
+        "timeout": 9,
+        "unsat": 960
+      },
+      "process_par2": 519.2366853333334,
+      "stable_process_seconds": {
+        "inputs": 997,
+        "max": 14.475177,
+        "p50": 0.056068,
+        "p90": 0.655435,
+        "p99": 8.975159
+      },
+      "stable_solves": 997
+    },
+    "sparse-g1-f1": {
+      "families": {
+        "2017-Heizmann-UltimateInvariantSynthesis": {
+          "inputs": 109,
+          "process_par2": 21.07220866666667,
+          "stable_solves": 109
+        },
+        "2019-ezsmt": {
+          "inputs": 103,
+          "process_par2": 3.1795720000000003,
+          "stable_solves": 103
+        },
+        "DTP-Scheduling": {
+          "inputs": 105,
+          "process_par2": 22.79451733333333,
+          "stable_solves": 105
+        },
+        "LassoRanker": {
+          "inputs": 105,
+          "process_par2": 300.74568566666665,
+          "stable_solves": 103
+        },
+        "clock_synchro": {
+          "inputs": 105,
+          "process_par2": 17.822311,
+          "stable_solves": 105
+        },
+        "latendresse": {
+          "inputs": 17,
+          "process_par2": 87.6845783333333,
+          "stable_solves": 15
+        },
+        "miplib": {
+          "inputs": 112,
+          "process_par2": 19.141168333333344,
+          "stable_solves": 112
+        },
+        "sal": {
+          "inputs": 8,
+          "process_par2": 0.137183,
+          "stable_solves": 8
+        },
+        "sc": {
+          "inputs": 102,
+          "process_par2": 6.260099333333334,
+          "stable_solves": 102
+        },
+        "tropical-matrix": {
+          "inputs": 110,
+          "process_par2": 33.892672999999995,
+          "stable_solves": 110
+        },
+        "tta_startup": {
+          "inputs": 22,
+          "process_par2": 2.5247706666666665,
+          "stable_solves": 22
+        },
+        "uart": {
+          "inputs": 102,
+          "process_par2": 5.327744333333333,
+          "stable_solves": 102
+        }
+      },
+      "inputs": 1000,
+      "outcomes": {
+        "sat": 2028,
+        "timeout": 12,
+        "unsat": 960
+      },
+      "process_par2": 520.5825116666666,
+      "stable_process_seconds": {
+        "inputs": 996,
+        "max": 12.94386,
+        "p50": 0.0564305,
+        "p90": 0.850567,
+        "p99": 7.739431
+      },
+      "stable_solves": 996
+    }
+  },
+  "defaults": "Sparse solver default;historical SOI selector unchanged;combined experimental",
+  "inputs": 1000,
+  "plan_sha256": "6d8ac3d9aa39d81d9419a1e4423ff2b6429d589110aae59d79c22893baada71d",
+  "qualification": {
+    "analysis_sha256": "2db8148aa62207a07632b597c223c2a9b6e7d01de4130e76af2d6968d6910335",
+    "diagnostics": {
+      "common_successful_inputs": 951,
+      "configurations": {
+        "dantzig-g1-f0": {
+          "absent_common_inputs": {
+            ":lra.bland-fallbacks": 0,
+            ":lra.elimination-pivots": 0,
+            ":lra.fixed-variables": 0,
+            ":lra.online-check-calls": 0,
+            ":lra.pivot-row-updates": 0,
+            ":lra.pivot-term-ops": 0,
+            ":lra.pivots": 0,
+            ":lra.row-nonzeros": 0,
+            ":lra.rows": 0,
+            ":lra.soi-activity-updates": 951,
+            ":lra.soi-arithmetic-terms": 951,
+            ":lra.soi-candidates": 951,
+            ":lra.soi-conflict-lits": 0,
+            ":lra.soi-conflict-preferences": 951,
+            ":lra.soi-crossings": 951,
+            ":lra.soi-crossings-examined": 951,
+            ":lra.soi-fallback-pivots": 951,
+            ":lra.soi-fallback-rebuild-terms": 951,
+            ":lra.soi-fallback-snapshot-terms": 951,
+            ":lra.soi-fallback-snapshots": 951,
+            ":lra.soi-fallback-untrailed-pivots": 951,
+            ":lra.soi-growing-rows": 951,
+            ":lra.soi-minimize-calls": 0,
+            ":lra.soi-minimize-shrunk": 0,
+            ":lra.soi-multi-row-conflicts": 0,
+            ":lra.soi-objective-ns": 951,
+            ":lra.soi-objective-occurrence-changes": 951,
+            ":lra.soi-objective-terms": 951,
+            ":lra.soi-objective-updates": 951,
+            ":lra.soi-predicate-calls": 951,
+            ":lra.soi-prefix-pivots": 951,
+            ":lra.soi-selected-rows": 951,
+            ":lra.soi-selected-steps": 951,
+            ":lra.soi-selection-ns": 951,
+            ":lra.soi-self-zero-events-skipped": 951,
+            ":lra.soi-zero-progress-steps": 951,
+            ":lra.tableau-vars": 0,
+            ":lra.theory-checks": 309,
+            "profile.check_seconds": 0
+          },
+          "common_sums": {
+            ":lra.bland-fallbacks": 0.0,
+            ":lra.elimination-pivots": 0.0,
+            ":lra.fixed-variables": 0.0,
+            ":lra.online-check-calls": 951.0,
+            ":lra.pivot-row-updates": 7224608.0,
+            ":lra.pivot-term-ops": 1327724011.0,
+            ":lra.pivots": 155284.0,
+            ":lra.row-nonzeros": 2524157.0,
+            ":lra.rows": 742822.0,
+            ":lra.soi-activity-updates": 0,
+            ":lra.soi-arithmetic-terms": 0,
+            ":lra.soi-candidates": 0,
+            ":lra.soi-conflict-lits": 0.0,
+            ":lra.soi-conflict-preferences": 0,
+            ":lra.soi-crossings": 0,
+            ":lra.soi-crossings-examined": 0,
+            ":lra.soi-fallback-pivots": 0,
+            ":lra.soi-fallback-rebuild-terms": 0,
+            ":lra.soi-fallback-snapshot-terms": 0,
+            ":lra.soi-fallback-snapshots": 0,
+            ":lra.soi-fallback-untrailed-pivots": 0,
+            ":lra.soi-growing-rows": 0,
+            ":lra.soi-minimize-calls": 0.0,
+            ":lra.soi-minimize-shrunk": 0.0,
+            ":lra.soi-multi-row-conflicts": 0.0,
+            ":lra.soi-objective-ns": 0,
+            ":lra.soi-objective-occurrence-changes": 0,
+            ":lra.soi-objective-terms": 0,
+            ":lra.soi-objective-updates": 0,
+            ":lra.soi-predicate-calls": 0,
+            ":lra.soi-prefix-pivots": 0,
+            ":lra.soi-selected-rows": 0,
+            ":lra.soi-selected-steps": 0,
+            ":lra.soi-selection-ns": 0,
+            ":lra.soi-self-zero-events-skipped": 0,
+            ":lra.soi-zero-progress-steps": 0,
+            ":lra.tableau-vars": 1447702.0,
+            ":lra.theory-checks": 642.0,
+            "profile.check_seconds": 144.92787475799997
+          },
+          "coverage": {
+            "complete": 968,
+            "prefix": 32
+          },
+          "successful": 968
+        },
+        "dantzig-g1-f1": {
+          "absent_common_inputs": {
+            ":lra.bland-fallbacks": 0,
+            ":lra.elimination-pivots": 0,
+            ":lra.fixed-variables": 0,
+            ":lra.online-check-calls": 0,
+            ":lra.pivot-row-updates": 0,
+            ":lra.pivot-term-ops": 0,
+            ":lra.pivots": 0,
+            ":lra.row-nonzeros": 0,
+            ":lra.rows": 0,
+            ":lra.soi-activity-updates": 951,
+            ":lra.soi-arithmetic-terms": 951,
+            ":lra.soi-candidates": 951,
+            ":lra.soi-conflict-lits": 0,
+            ":lra.soi-conflict-preferences": 951,
+            ":lra.soi-crossings": 951,
+            ":lra.soi-crossings-examined": 951,
+            ":lra.soi-fallback-pivots": 951,
+            ":lra.soi-fallback-rebuild-terms": 951,
+            ":lra.soi-fallback-snapshot-terms": 951,
+            ":lra.soi-fallback-snapshots": 951,
+            ":lra.soi-fallback-untrailed-pivots": 951,
+            ":lra.soi-growing-rows": 951,
+            ":lra.soi-minimize-calls": 0,
+            ":lra.soi-minimize-shrunk": 0,
+            ":lra.soi-multi-row-conflicts": 0,
+            ":lra.soi-objective-ns": 951,
+            ":lra.soi-objective-occurrence-changes": 951,
+            ":lra.soi-objective-terms": 951,
+            ":lra.soi-objective-updates": 951,
+            ":lra.soi-predicate-calls": 951,
+            ":lra.soi-prefix-pivots": 951,
+            ":lra.soi-selected-rows": 951,
+            ":lra.soi-selected-steps": 951,
+            ":lra.soi-selection-ns": 951,
+            ":lra.soi-self-zero-events-skipped": 951,
+            ":lra.soi-zero-progress-steps": 951,
+            ":lra.tableau-vars": 0,
+            ":lra.theory-checks": 309,
+            "profile.check_seconds": 0
+          },
+          "common_sums": {
+            ":lra.bland-fallbacks": 0.0,
+            ":lra.elimination-pivots": 219624.0,
+            ":lra.fixed-variables": 442637.0,
+            ":lra.online-check-calls": 951.0,
+            ":lra.pivot-row-updates": 3278864.0,
+            ":lra.pivot-term-ops": 451093661.0,
+            ":lra.pivots": 56483.0,
+            ":lra.row-nonzeros": 2524157.0,
+            ":lra.rows": 742822.0,
+            ":lra.soi-activity-updates": 0,
+            ":lra.soi-arithmetic-terms": 0,
+            ":lra.soi-candidates": 0,
+            ":lra.soi-conflict-lits": 0.0,
+            ":lra.soi-conflict-preferences": 0,
+            ":lra.soi-crossings": 0,
+            ":lra.soi-crossings-examined": 0,
+            ":lra.soi-fallback-pivots": 0,
+            ":lra.soi-fallback-rebuild-terms": 0,
+            ":lra.soi-fallback-snapshot-terms": 0,
+            ":lra.soi-fallback-snapshots": 0,
+            ":lra.soi-fallback-untrailed-pivots": 0,
+            ":lra.soi-growing-rows": 0,
+            ":lra.soi-minimize-calls": 0.0,
+            ":lra.soi-minimize-shrunk": 0.0,
+            ":lra.soi-multi-row-conflicts": 0.0,
+            ":lra.soi-objective-ns": 0,
+            ":lra.soi-objective-occurrence-changes": 0,
+            ":lra.soi-objective-terms": 0,
+            ":lra.soi-objective-updates": 0,
+            ":lra.soi-predicate-calls": 0,
+            ":lra.soi-prefix-pivots": 0,
+            ":lra.soi-selected-rows": 0,
+            ":lra.soi-selected-steps": 0,
+            ":lra.soi-selection-ns": 0,
+            ":lra.soi-self-zero-events-skipped": 0,
+            ":lra.soi-zero-progress-steps": 0,
+            ":lra.tableau-vars": 1447702.0,
+            ":lra.theory-checks": 642.0,
+            "profile.check_seconds": 43.604382908000055
+          },
+          "coverage": {
+            "complete": 991,
+            "prefix": 9
+          },
+          "successful": 991
+        },
+        "fixed-combined-g1-f0": {
+          "absent_common_inputs": {
+            ":lra.bland-fallbacks": 0,
+            ":lra.elimination-pivots": 0,
+            ":lra.fixed-variables": 0,
+            ":lra.online-check-calls": 0,
+            ":lra.pivot-row-updates": 0,
+            ":lra.pivot-term-ops": 0,
+            ":lra.pivots": 0,
+            ":lra.row-nonzeros": 0,
+            ":lra.rows": 0,
+            ":lra.soi-activity-updates": 0,
+            ":lra.soi-arithmetic-terms": 0,
+            ":lra.soi-candidates": 0,
+            ":lra.soi-conflict-lits": 0,
+            ":lra.soi-conflict-preferences": 0,
+            ":lra.soi-crossings": 0,
+            ":lra.soi-crossings-examined": 0,
+            ":lra.soi-fallback-pivots": 0,
+            ":lra.soi-fallback-rebuild-terms": 0,
+            ":lra.soi-fallback-snapshot-terms": 0,
+            ":lra.soi-fallback-snapshots": 0,
+            ":lra.soi-fallback-untrailed-pivots": 0,
+            ":lra.soi-growing-rows": 0,
+            ":lra.soi-minimize-calls": 0,
+            ":lra.soi-minimize-shrunk": 0,
+            ":lra.soi-multi-row-conflicts": 0,
+            ":lra.soi-objective-ns": 0,
+            ":lra.soi-objective-occurrence-changes": 0,
+            ":lra.soi-objective-terms": 0,
+            ":lra.soi-objective-updates": 0,
+            ":lra.soi-predicate-calls": 0,
+            ":lra.soi-prefix-pivots": 0,
+            ":lra.soi-selected-rows": 0,
+            ":lra.soi-selected-steps": 0,
+            ":lra.soi-selection-ns": 0,
+            ":lra.soi-self-zero-events-skipped": 0,
+            ":lra.soi-zero-progress-steps": 0,
+            ":lra.tableau-vars": 0,
+            ":lra.theory-checks": 309,
+            "profile.check_seconds": 0
+          },
+          "common_sums": {
+            ":lra.bland-fallbacks": 775.0,
+            ":lra.elimination-pivots": 0.0,
+            ":lra.fixed-variables": 0.0,
+            ":lra.online-check-calls": 951.0,
+            ":lra.pivot-row-updates": 48675782.0,
+            ":lra.pivot-term-ops": 4299368400.0,
+            ":lra.pivots": 413122.0,
+            ":lra.row-nonzeros": 2524157.0,
+            ":lra.rows": 743773.0,
+            ":lra.soi-activity-updates": 55056352.0,
+            ":lra.soi-arithmetic-terms": 254785.0,
+            ":lra.soi-candidates": 1808692.0,
+            ":lra.soi-conflict-lits": 2259.0,
+            ":lra.soi-conflict-preferences": 3.0,
+            ":lra.soi-crossings": 15731550.0,
+            ":lra.soi-crossings-examined": 7973940.0,
+            ":lra.soi-fallback-pivots": 349833.0,
+            ":lra.soi-fallback-rebuild-terms": 200825.0,
+            ":lra.soi-fallback-snapshot-terms": 2733828.0,
+            ":lra.soi-fallback-snapshots": 775.0,
+            ":lra.soi-fallback-untrailed-pivots": 349833.0,
+            ":lra.soi-growing-rows": 977.0,
+            ":lra.soi-minimize-calls": 34.0,
+            ":lra.soi-minimize-shrunk": 31.0,
+            ":lra.soi-multi-row-conflicts": 34.0,
+            ":lra.soi-objective-ns": 2617648621.0,
+            ":lra.soi-objective-occurrence-changes": 554501.0,
+            ":lra.soi-objective-terms": 55701132.0,
+            ":lra.soi-objective-updates": 262747.0,
+            ":lra.soi-predicate-calls": 1278.0,
+            ":lra.soi-prefix-pivots": 63289.0,
+            ":lra.soi-selected-rows": 301.0,
+            ":lra.soi-selected-steps": 63782.0,
+            ":lra.soi-selection-ns": 10487566652.0,
+            ":lra.soi-self-zero-events-skipped": 852840.0,
+            ":lra.soi-zero-progress-steps": 7909.0,
+            ":lra.tableau-vars": 1448653.0,
+            ":lra.theory-checks": 642.0,
+            "profile.check_seconds": 365.9846025100004
+          },
+          "coverage": {
+            "complete": 958,
+            "prefix": 42
+          },
+          "successful": 958
+        },
+        "fixed-combined-g1-f1": {
+          "absent_common_inputs": {
+            ":lra.bland-fallbacks": 0,
+            ":lra.elimination-pivots": 0,
+            ":lra.fixed-variables": 0,
+            ":lra.online-check-calls": 0,
+            ":lra.pivot-row-updates": 0,
+            ":lra.pivot-term-ops": 0,
+            ":lra.pivots": 0,
+            ":lra.row-nonzeros": 0,
+            ":lra.rows": 0,
+            ":lra.soi-activity-updates": 0,
+            ":lra.soi-arithmetic-terms": 0,
+            ":lra.soi-candidates": 0,
+            ":lra.soi-conflict-lits": 0,
+            ":lra.soi-conflict-preferences": 0,
+            ":lra.soi-crossings": 0,
+            ":lra.soi-crossings-examined": 0,
+            ":lra.soi-fallback-pivots": 0,
+            ":lra.soi-fallback-rebuild-terms": 0,
+            ":lra.soi-fallback-snapshot-terms": 0,
+            ":lra.soi-fallback-snapshots": 0,
+            ":lra.soi-fallback-untrailed-pivots": 0,
+            ":lra.soi-growing-rows": 0,
+            ":lra.soi-minimize-calls": 0,
+            ":lra.soi-minimize-shrunk": 0,
+            ":lra.soi-multi-row-conflicts": 0,
+            ":lra.soi-objective-ns": 0,
+            ":lra.soi-objective-occurrence-changes": 0,
+            ":lra.soi-objective-terms": 0,
+            ":lra.soi-objective-updates": 0,
+            ":lra.soi-predicate-calls": 0,
+            ":lra.soi-prefix-pivots": 0,
+            ":lra.soi-selected-rows": 0,
+            ":lra.soi-selected-steps": 0,
+            ":lra.soi-selection-ns": 0,
+            ":lra.soi-self-zero-events-skipped": 0,
+            ":lra.soi-zero-progress-steps": 0,
+            ":lra.tableau-vars": 0,
+            ":lra.theory-checks": 309,
+            "profile.check_seconds": 0
+          },
+          "common_sums": {
+            ":lra.bland-fallbacks": 481.0,
+            ":lra.elimination-pivots": 219624.0,
+            ":lra.fixed-variables": 442637.0,
+            ":lra.online-check-calls": 951.0,
+            ":lra.pivot-row-updates": 15556477.0,
+            ":lra.pivot-term-ops": 1832728448.0,
+            ":lra.pivots": 218120.0,
+            ":lra.row-nonzeros": 2524157.0,
+            ":lra.rows": 743773.0,
+            ":lra.soi-activity-updates": 88259344.0,
+            ":lra.soi-arithmetic-terms": 244432.0,
+            ":lra.soi-candidates": 722685.0,
+            ":lra.soi-conflict-lits": 2385.0,
+            ":lra.soi-conflict-preferences": 7.0,
+            ":lra.soi-crossings": 6910996.0,
+            ":lra.soi-crossings-examined": 2099902.0,
+            ":lra.soi-fallback-pivots": 166793.0,
+            ":lra.soi-fallback-rebuild-terms": 254793.0,
+            ":lra.soi-fallback-snapshot-terms": 3867339.0,
+            ":lra.soi-fallback-snapshots": 481.0,
+            ":lra.soi-fallback-untrailed-pivots": 166793.0,
+            ":lra.soi-growing-rows": 648.0,
+            ":lra.soi-minimize-calls": 40.0,
+            ":lra.soi-minimize-shrunk": 34.0,
+            ":lra.soi-multi-row-conflicts": 40.0,
+            ":lra.soi-objective-ns": 2390318675.0,
+            ":lra.soi-objective-occurrence-changes": 579436.0,
+            ":lra.soi-objective-terms": 45686846.0,
+            ":lra.soi-objective-updates": 263702.0,
+            ":lra.soi-predicate-calls": 897.0,
+            ":lra.soi-prefix-pivots": 51327.0,
+            ":lra.soi-selected-rows": 246.0,
+            ":lra.soi-selected-steps": 51638.0,
+            ":lra.soi-selection-ns": 5490090828.0,
+            ":lra.soi-self-zero-events-skipped": 211590.0,
+            ":lra.soi-zero-progress-steps": 4908.0,
+            ":lra.tableau-vars": 1448653.0,
+            ":lra.theory-checks": 642.0,
+            "profile.check_seconds": 191.7490865339999
+          },
+          "coverage": {
+            "complete": 982,
+            "prefix": 18
+          },
+          "successful": 982
+        },
+        "old-combined-g1-f0": {
+          "absent_common_inputs": {
+            ":lra.bland-fallbacks": 0,
+            ":lra.elimination-pivots": 0,
+            ":lra.fixed-variables": 0,
+            ":lra.online-check-calls": 0,
+            ":lra.pivot-row-updates": 0,
+            ":lra.pivot-term-ops": 0,
+            ":lra.pivots": 0,
+            ":lra.row-nonzeros": 0,
+            ":lra.rows": 0,
+            ":lra.soi-activity-updates": 0,
+            ":lra.soi-arithmetic-terms": 0,
+            ":lra.soi-candidates": 0,
+            ":lra.soi-conflict-lits": 0,
+            ":lra.soi-conflict-preferences": 0,
+            ":lra.soi-crossings": 0,
+            ":lra.soi-crossings-examined": 0,
+            ":lra.soi-fallback-pivots": 0,
+            ":lra.soi-fallback-rebuild-terms": 0,
+            ":lra.soi-fallback-snapshot-terms": 0,
+            ":lra.soi-fallback-snapshots": 0,
+            ":lra.soi-fallback-untrailed-pivots": 0,
+            ":lra.soi-growing-rows": 0,
+            ":lra.soi-minimize-calls": 0,
+            ":lra.soi-minimize-shrunk": 0,
+            ":lra.soi-multi-row-conflicts": 0,
+            ":lra.soi-objective-ns": 0,
+            ":lra.soi-objective-occurrence-changes": 0,
+            ":lra.soi-objective-terms": 0,
+            ":lra.soi-objective-updates": 0,
+            ":lra.soi-predicate-calls": 0,
+            ":lra.soi-prefix-pivots": 0,
+            ":lra.soi-selected-rows": 0,
+            ":lra.soi-selected-steps": 0,
+            ":lra.soi-selection-ns": 0,
+            ":lra.soi-self-zero-events-skipped": null,
+            ":lra.soi-zero-progress-steps": 0,
+            ":lra.tableau-vars": 0,
+            ":lra.theory-checks": 309,
+            "profile.check_seconds": 0
+          },
+          "common_sums": {
+            ":lra.bland-fallbacks": 864.0,
+            ":lra.elimination-pivots": 0.0,
+            ":lra.fixed-variables": 0.0,
+            ":lra.online-check-calls": 951.0,
+            ":lra.pivot-row-updates": 48032520.0,
+            ":lra.pivot-term-ops": 4239580681.0,
+            ":lra.pivots": 408913.0,
+            ":lra.row-nonzeros": 2524157.0,
+            ":lra.rows": 743773.0,
+            ":lra.soi-activity-updates": 50477108.0,
+            ":lra.soi-arithmetic-terms": 48694.0,
+            ":lra.soi-candidates": 1759471.0,
+            ":lra.soi-conflict-lits": 212.0,
+            ":lra.soi-conflict-preferences": 3.0,
+            ":lra.soi-crossings": 15670780.0,
+            ":lra.soi-crossings-examined": 8314634.0,
+            ":lra.soi-fallback-pivots": 355033.0,
+            ":lra.soi-fallback-rebuild-terms": 213488.0,
+            ":lra.soi-fallback-snapshot-terms": 2847915.0,
+            ":lra.soi-fallback-snapshots": 864.0,
+            ":lra.soi-fallback-untrailed-pivots": 355033.0,
+            ":lra.soi-growing-rows": 117.0,
+            ":lra.soi-minimize-calls": 12.0,
+            ":lra.soi-minimize-shrunk": 12.0,
+            ":lra.soi-multi-row-conflicts": 12.0,
+            ":lra.soi-objective-ns": 2602598885.0,
+            ":lra.soi-objective-occurrence-changes": 540487.0,
+            ":lra.soi-objective-terms": 55110066.0,
+            ":lra.soi-objective-updates": 258725.0,
+            ":lra.soi-predicate-calls": 169.0,
+            ":lra.soi-prefix-pivots": 53880.0,
+            ":lra.soi-selected-rows": 52.0,
+            ":lra.soi-selected-steps": 60279.0,
+            ":lra.soi-selection-ns": 10026999006.0,
+            ":lra.soi-self-zero-events-skipped": null,
+            ":lra.soi-zero-progress-steps": 7171.0,
+            ":lra.tableau-vars": 1448653.0,
+            ":lra.theory-checks": 642.0,
+            "profile.check_seconds": 364.0101909260001
+          },
+          "coverage": {
+            "complete": 958,
+            "prefix": 42
+          },
+          "successful": 958
+        },
+        "old-combined-g1-f1": {
+          "absent_common_inputs": {
+            ":lra.bland-fallbacks": 0,
+            ":lra.elimination-pivots": 0,
+            ":lra.fixed-variables": 0,
+            ":lra.online-check-calls": 0,
+            ":lra.pivot-row-updates": 0,
+            ":lra.pivot-term-ops": 0,
+            ":lra.pivots": 0,
+            ":lra.row-nonzeros": 0,
+            ":lra.rows": 0,
+            ":lra.soi-activity-updates": 0,
+            ":lra.soi-arithmetic-terms": 0,
+            ":lra.soi-candidates": 0,
+            ":lra.soi-conflict-lits": 0,
+            ":lra.soi-conflict-preferences": 0,
+            ":lra.soi-crossings": 0,
+            ":lra.soi-crossings-examined": 0,
+            ":lra.soi-fallback-pivots": 0,
+            ":lra.soi-fallback-rebuild-terms": 0,
+            ":lra.soi-fallback-snapshot-terms": 0,
+            ":lra.soi-fallback-snapshots": 0,
+            ":lra.soi-fallback-untrailed-pivots": 0,
+            ":lra.soi-growing-rows": 0,
+            ":lra.soi-minimize-calls": 0,
+            ":lra.soi-minimize-shrunk": 0,
+            ":lra.soi-multi-row-conflicts": 0,
+            ":lra.soi-objective-ns": 0,
+            ":lra.soi-objective-occurrence-changes": 0,
+            ":lra.soi-objective-terms": 0,
+            ":lra.soi-objective-updates": 0,
+            ":lra.soi-predicate-calls": 0,
+            ":lra.soi-prefix-pivots": 0,
+            ":lra.soi-selected-rows": 0,
+            ":lra.soi-selected-steps": 0,
+            ":lra.soi-selection-ns": 0,
+            ":lra.soi-self-zero-events-skipped": null,
+            ":lra.soi-zero-progress-steps": 0,
+            ":lra.tableau-vars": 0,
+            ":lra.theory-checks": 309,
+            "profile.check_seconds": 0
+          },
+          "common_sums": {
+            ":lra.bland-fallbacks": 568.0,
+            ":lra.elimination-pivots": 219624.0,
+            ":lra.fixed-variables": 442637.0,
+            ":lra.online-check-calls": 951.0,
+            ":lra.pivot-row-updates": 15141391.0,
+            ":lra.pivot-term-ops": 1758157486.0,
+            ":lra.pivots": 190551.0,
+            ":lra.row-nonzeros": 2524157.0,
+            ":lra.rows": 743773.0,
+            ":lra.soi-activity-updates": 75330955.0,
+            ":lra.soi-arithmetic-terms": 53509.0,
+            ":lra.soi-candidates": 710899.0,
+            ":lra.soi-conflict-lits": 334.0,
+            ":lra.soi-conflict-preferences": 7.0,
+            ":lra.soi-crossings": 6795419.0,
+            ":lra.soi-crossings-examined": 2208298.0,
+            ":lra.soi-fallback-pivots": 144657.0,
+            ":lra.soi-fallback-rebuild-terms": 236985.0,
+            ":lra.soi-fallback-snapshot-terms": 3802838.0,
+            ":lra.soi-fallback-snapshots": 568.0,
+            ":lra.soi-fallback-untrailed-pivots": 144657.0,
+            ":lra.soi-growing-rows": 154.0,
+            ":lra.soi-minimize-calls": 17.0,
+            ":lra.soi-minimize-shrunk": 15.0,
+            ":lra.soi-multi-row-conflicts": 17.0,
+            ":lra.soi-objective-ns": 2383206283.0,
+            ":lra.soi-objective-occurrence-changes": 569039.0,
+            ":lra.soi-objective-terms": 45545945.0,
+            ":lra.soi-objective-updates": 261981.0,
+            ":lra.soi-predicate-calls": 226.0,
+            ":lra.soi-prefix-pivots": 45894.0,
+            ":lra.soi-selected-rows": 72.0,
+            ":lra.soi-selected-steps": 50189.0,
+            ":lra.soi-selection-ns": 5230504077.0,
+            ":lra.soi-self-zero-events-skipped": null,
+            ":lra.soi-zero-progress-steps": 4844.0,
+            ":lra.tableau-vars": 1448653.0,
+            ":lra.theory-checks": 642.0,
+            "profile.check_seconds": 197.99194488099968
+          },
+          "coverage": {
+            "complete": 982,
+            "prefix": 18
+          },
+          "successful": 982
+        },
+        "sparse-g1-f0": {
+          "absent_common_inputs": {
+            ":lra.bland-fallbacks": 0,
+            ":lra.elimination-pivots": 0,
+            ":lra.fixed-variables": 0,
+            ":lra.online-check-calls": 0,
+            ":lra.pivot-row-updates": 0,
+            ":lra.pivot-term-ops": 0,
+            ":lra.pivots": 0,
+            ":lra.row-nonzeros": 0,
+            ":lra.rows": 0,
+            ":lra.soi-activity-updates": 951,
+            ":lra.soi-arithmetic-terms": 951,
+            ":lra.soi-candidates": 951,
+            ":lra.soi-conflict-lits": 0,
+            ":lra.soi-conflict-preferences": 951,
+            ":lra.soi-crossings": 951,
+            ":lra.soi-crossings-examined": 951,
+            ":lra.soi-fallback-pivots": 951,
+            ":lra.soi-fallback-rebuild-terms": 951,
+            ":lra.soi-fallback-snapshot-terms": 951,
+            ":lra.soi-fallback-snapshots": 951,
+            ":lra.soi-fallback-untrailed-pivots": 951,
+            ":lra.soi-growing-rows": 951,
+            ":lra.soi-minimize-calls": 0,
+            ":lra.soi-minimize-shrunk": 0,
+            ":lra.soi-multi-row-conflicts": 0,
+            ":lra.soi-objective-ns": 951,
+            ":lra.soi-objective-occurrence-changes": 951,
+            ":lra.soi-objective-terms": 951,
+            ":lra.soi-objective-updates": 951,
+            ":lra.soi-predicate-calls": 951,
+            ":lra.soi-prefix-pivots": 951,
+            ":lra.soi-selected-rows": 951,
+            ":lra.soi-selected-steps": 951,
+            ":lra.soi-selection-ns": 951,
+            ":lra.soi-self-zero-events-skipped": 951,
+            ":lra.soi-zero-progress-steps": 951,
+            ":lra.tableau-vars": 0,
+            ":lra.theory-checks": 309,
+            "profile.check_seconds": 0
+          },
+          "common_sums": {
+            ":lra.bland-fallbacks": 8.0,
+            ":lra.elimination-pivots": 0.0,
+            ":lra.fixed-variables": 0.0,
+            ":lra.online-check-calls": 951.0,
+            ":lra.pivot-row-updates": 4464480.0,
+            ":lra.pivot-term-ops": 214373691.0,
+            ":lra.pivots": 214705.0,
+            ":lra.row-nonzeros": 2524157.0,
+            ":lra.rows": 742822.0,
+            ":lra.soi-activity-updates": 0,
+            ":lra.soi-arithmetic-terms": 0,
+            ":lra.soi-candidates": 0,
+            ":lra.soi-conflict-lits": 0.0,
+            ":lra.soi-conflict-preferences": 0,
+            ":lra.soi-crossings": 0,
+            ":lra.soi-crossings-examined": 0,
+            ":lra.soi-fallback-pivots": 0,
+            ":lra.soi-fallback-rebuild-terms": 0,
+            ":lra.soi-fallback-snapshot-terms": 0,
+            ":lra.soi-fallback-snapshots": 0,
+            ":lra.soi-fallback-untrailed-pivots": 0,
+            ":lra.soi-growing-rows": 0,
+            ":lra.soi-minimize-calls": 0.0,
+            ":lra.soi-minimize-shrunk": 0.0,
+            ":lra.soi-multi-row-conflicts": 0.0,
+            ":lra.soi-objective-ns": 0,
+            ":lra.soi-objective-occurrence-changes": 0,
+            ":lra.soi-objective-terms": 0,
+            ":lra.soi-objective-updates": 0,
+            ":lra.soi-predicate-calls": 0,
+            ":lra.soi-prefix-pivots": 0,
+            ":lra.soi-selected-rows": 0,
+            ":lra.soi-selected-steps": 0,
+            ":lra.soi-selection-ns": 0,
+            ":lra.soi-self-zero-events-skipped": 0,
+            ":lra.soi-zero-progress-steps": 0,
+            ":lra.tableau-vars": 1447702.0,
+            ":lra.theory-checks": 642.0,
+            "profile.check_seconds": 17.486247488000007
+          },
+          "coverage": {
+            "complete": 996,
+            "prefix": 4
+          },
+          "successful": 996
+        },
+        "sparse-g1-f1": {
+          "absent_common_inputs": {
+            ":lra.bland-fallbacks": 0,
+            ":lra.elimination-pivots": 0,
+            ":lra.fixed-variables": 0,
+            ":lra.online-check-calls": 0,
+            ":lra.pivot-row-updates": 0,
+            ":lra.pivot-term-ops": 0,
+            ":lra.pivots": 0,
+            ":lra.row-nonzeros": 0,
+            ":lra.rows": 0,
+            ":lra.soi-activity-updates": 951,
+            ":lra.soi-arithmetic-terms": 951,
+            ":lra.soi-candidates": 951,
+            ":lra.soi-conflict-lits": 0,
+            ":lra.soi-conflict-preferences": 951,
+            ":lra.soi-crossings": 951,
+            ":lra.soi-crossings-examined": 951,
+            ":lra.soi-fallback-pivots": 951,
+            ":lra.soi-fallback-rebuild-terms": 951,
+            ":lra.soi-fallback-snapshot-terms": 951,
+            ":lra.soi-fallback-snapshots": 951,
+            ":lra.soi-fallback-untrailed-pivots": 951,
+            ":lra.soi-growing-rows": 951,
+            ":lra.soi-minimize-calls": 0,
+            ":lra.soi-minimize-shrunk": 0,
+            ":lra.soi-multi-row-conflicts": 0,
+            ":lra.soi-objective-ns": 951,
+            ":lra.soi-objective-occurrence-changes": 951,
+            ":lra.soi-objective-terms": 951,
+            ":lra.soi-objective-updates": 951,
+            ":lra.soi-predicate-calls": 951,
+            ":lra.soi-prefix-pivots": 951,
+            ":lra.soi-selected-rows": 951,
+            ":lra.soi-selected-steps": 951,
+            ":lra.soi-selection-ns": 951,
+            ":lra.soi-self-zero-events-skipped": 951,
+            ":lra.soi-zero-progress-steps": 951,
+            ":lra.tableau-vars": 0,
+            ":lra.theory-checks": 309,
+            "profile.check_seconds": 0
+          },
+          "common_sums": {
+            ":lra.bland-fallbacks": 9.0,
+            ":lra.elimination-pivots": 219624.0,
+            ":lra.fixed-variables": 442637.0,
+            ":lra.online-check-calls": 951.0,
+            ":lra.pivot-row-updates": 4079150.0,
+            ":lra.pivot-term-ops": 314402226.0,
+            ":lra.pivots": 141504.0,
+            ":lra.row-nonzeros": 2524157.0,
+            ":lra.rows": 742822.0,
+            ":lra.soi-activity-updates": 0,
+            ":lra.soi-arithmetic-terms": 0,
+            ":lra.soi-candidates": 0,
+            ":lra.soi-conflict-lits": 0.0,
+            ":lra.soi-conflict-preferences": 0,
+            ":lra.soi-crossings": 0,
+            ":lra.soi-crossings-examined": 0,
+            ":lra.soi-fallback-pivots": 0,
+            ":lra.soi-fallback-rebuild-terms": 0,
+            ":lra.soi-fallback-snapshot-terms": 0,
+            ":lra.soi-fallback-snapshots": 0,
+            ":lra.soi-fallback-untrailed-pivots": 0,
+            ":lra.soi-growing-rows": 0,
+            ":lra.soi-minimize-calls": 0.0,
+            ":lra.soi-minimize-shrunk": 0.0,
+            ":lra.soi-multi-row-conflicts": 0.0,
+            ":lra.soi-objective-ns": 0,
+            ":lra.soi-objective-occurrence-changes": 0,
+            ":lra.soi-objective-terms": 0,
+            ":lra.soi-objective-updates": 0,
+            ":lra.soi-predicate-calls": 0,
+            ":lra.soi-prefix-pivots": 0,
+            ":lra.soi-selected-rows": 0,
+            ":lra.soi-selected-steps": 0,
+            ":lra.soi-selection-ns": 0,
+            ":lra.soi-self-zero-events-skipped": 0,
+            ":lra.soi-zero-progress-steps": 0,
+            ":lra.tableau-vars": 1447702.0,
+            ":lra.theory-checks": 642.0,
+            "profile.check_seconds": 20.832608670999957
+          },
+          "coverage": {
+            "complete": 996,
+            "prefix": 4
+          },
+          "successful": 996
+        }
+      },
+      "hosts": {
+        "node-02.ciircluster": 279,
+        "node-03.ciircluster": 293,
+        "node-04.ciircluster": 187,
+        "node-05.ciircluster": 241
+      }
+    },
+    "models": {
+      "expected": {
+        "dantzig-g1-f0": 1953,
+        "dantzig-g1-f1": 2013,
+        "fixed-combined-g1-f0": 1935,
+        "fixed-combined-g1-f1": 2001,
+        "old-combined-g1-f0": 1935,
+        "old-combined-g1-f1": 2001,
+        "sparse-g1-f0": 2031,
+        "sparse-g1-f1": 2028
+      },
+      "passed": {
+        "dantzig-g1-f0": 1953,
+        "dantzig-g1-f1": 2013,
+        "fixed-combined-g1-f0": 1935,
+        "fixed-combined-g1-f1": 2001,
+        "old-combined-g1-f0": 1935,
+        "old-combined-g1-f1": 2001,
+        "sparse-g1-f0": 2031,
+        "sparse-g1-f1": 2028
+      },
+      "tools": {
+        "candidate": {
+          "sha256": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e",
+          "version": "0.10\n"
+        },
+        "original": {
+          "sha256": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e",
+          "version": "0.10\n"
+        }
+      }
+    }
+  },
+  "qualification_sha256": "73b180fdb0112bd6685390c8e258314ac3abbb28aa3f77e43fe68977f439569d",
+  "repeats": 3,
+  "summary_sha256": "1fbf7b1ab7e7c41e989addc8f4ffed247d04a2f6625031b726ce21d04a64e789",
+  "timeout_seconds": 15,
+  "timing_machines": [
+    {
+      "affinity_logical_cpus": 2,
+      "cpu_model": "Intel(R) Xeon(R) CPU E5-2690 v4 @ 2.60GHz",
+      "host": "node-02.ciircluster",
+      "shards": 231
+    },
+    {
+      "affinity_logical_cpus": 2,
+      "cpu_model": "Intel(R) Xeon(R) CPU E5-2690 v4 @ 2.60GHz",
+      "host": "node-03.ciircluster",
+      "shards": 236
+    },
+    {
+      "affinity_logical_cpus": 2,
+      "cpu_model": "Intel(R) Xeon(R) CPU E5-2690 v4 @ 2.60GHz",
+      "host": "node-04.ciircluster",
+      "shards": 245
+    },
+    {
+      "affinity_logical_cpus": 2,
+      "cpu_model": "Intel(R) Xeon(R) CPU E5-2690 v4 @ 2.60GHz",
+      "host": "node-05.ciircluster",
+      "shards": 288
+    }
+  ]
+}
