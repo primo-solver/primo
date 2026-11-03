@@ -409,7 +409,13 @@ crossing, dV/dt gains 1; in signed-step coordinates beta gains walk_sign.
 An inward zero event contributes no slope. The reference arm includes both
 forward own-bound events, including inward zero events, matching the literal
 Figure 3.4 tuples. Such a zero event can select a no-op; the retained finite
-fallback prevents an indefinite no-op prefix. We do not claim unrestricted
+fallback prevents an indefinite no-op prefix. The
+{ref}`stall drill-down <soi-stall-drilldown>` confirms repeated zero-distance
+self-updates in two selected corpus traces, while a third trace makes genuine
+degenerate basis exchanges. Treating both as one stall counter hides this
+difference. Handling self-events before selection remains an open operational
+boundary of this literal enumeration; the guard is not evidence that the
+source's degeneracy argument is implemented by those no-ops. We do not claim unrestricted
 paper-algorithm termination for this engineering profile. Historical code's `k == j` slope skip
 is therefore retained only for the capped historical arm. All other direction
 changes continue to use their crossing row coefficient. Selection minimizes

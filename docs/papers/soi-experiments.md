@@ -651,3 +651,70 @@ technique cannot become useful. A controlled whole-SMT comparison would be
 needed to distinguish workload effects from implementation and hybrid-policy
 choices. The zero-loss default-promotion gate is a separate policy decision
 from accepting an aggregate gain with some regressions.
+
+(soi-stall-drilldown)=
+### Stall drill-down: repeated no-ops and genuine basis exchanges
+
+The follow-up uses two distinct evidence sources. Existing unprofiled timing
+results supply per-input median counters over three repetitions; their common
+stable intersection across all 24 configurations contains 883 inputs. These
+are not the single-repetition call-profile sums used for the preceding pivot
+table and its 82.5% suffix fraction. In particular, the median-counter analysis
+gives 798/513 combined fallback inputs, while that separate profile aggregation
+reports 797/512 activations. The archived numbers remain unchanged.
+
+| Policy | Median fallback inputs, fixed off | Median fallback inputs, fixed on |
+| --- | ---: | ---: |
+| Dantzig | 0 | 0 |
+| Sparse | 7 | 9 |
+| Combined SOI | 798 | 513 |
+
+All common timing inputs have a median of one online check. Every combined
+fallback's median selected-step count does not exceed the common cap. This implicates
+the early stall handoff rather than cap exhaustion in those median paths.
+503/364 fallback inputs have exactly eight more selected steps than prefix
+pivots; this counts assignment-only moves, not necessarily no-ops. Aggregate
+counts do not reveal which moves repeat an identical state or the basis
+sequence of zero-distance pivots.
+
+SLURM job `339750` therefore traces three deliberately selected fixed-off
+examples using the existing Debug/ASAN build of `8faa775`, SHA
+`1f0846ca41320d4e60c66c0763c5cb28d33aa33fdddbd4173c28bd0c7e7c5360`.
+The callbacks read assignments, selections and bases without invoking inferior
+methods or changing solver state. Leak checking is disabled under GDB.
+All three solvers exit normally with the same answers as their qualified
+timing runs: two SAT and one UNSAT. This is diagnostic evidence, not a new
+timing comparison or a prevalence estimate.
+
+| Selected input (digest prefix) | SOI prefix at handoff | Last eight selected steps |
+| --- | ---: | --- |
+| `sal`, `f9874940` | 0 pivots, 8 steps | Assign variable 22 from zero to zero eight times; one unchanged basis. |
+| `sc`, `00f92b15` | 8 pivots, 16 steps | After eight progressing pivots, assign variable 3 from zero to zero eight times; one unchanged basis during the streak. |
+| `clock_synchro`, `02b44138` | 33 pivots, 33 steps | Eight actual zero-distance pivots, with eight distinct bases in the streak. |
+
+The first two select entering = leaving with step zero. The own-bound event is
+retained by {soifallbacksource}`soi_select <src/theory/arithmetic/lra_tableau.cpp#L722>`;
+objective, distance and ID
+ties can select it even though the assignment is already at that bound.
+{soifallbacksource}`check <src/theory/arithmetic/lra_tableau.cpp#L2213>`
+then takes its update-only branch, leaving both assignment and basis
+unchanged. The same logical state produces the same selection until the stall
+limit transfers control to ordinary repair. This is a concrete selector
+pathology, distinct from the degenerate basis exchanges used by the source's
+termination argument. The third example also shows that a streak of eight
+zero-progress steps does not by itself establish cycling.
+
+The [portable report](../coverage/soi-stalls-20261103.json) retains full input
+identities, per-family counters, exact trace events and hashes.
+{soistallsource}`analyze_soi_stalls.py <scripts/analyze_soi_stalls.py>` owns
+the analysis; the
+{soistallsource}`GDB callbacks <scripts/qualification/soi_stalls/trace.py>` and
+{soistallsource}`batch script <scripts/qualification/soi_stalls/trace.sbatch>`
+reproduce the trace. The run log records setup failures and superseded traces,
+including the repair of stale argument slots at function-entry breakpoints.
+
+This investigation changes no solver code or defaults. Resolving the
+zero-distance self-event before selection needs a design argument and focused
+regressions; switching to SOI-preserving Bland selection is a separate arm.
+Neither correction has been evaluated here. These findings limit conclusions
+about SOI itself drawn from the current hybrid's pivot totals.

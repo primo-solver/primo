@@ -338,3 +338,16 @@ they do not settle the performance of retaining SOI's objective and crossings
 while using Bland selection after stalls. This is an open conformance and
 evaluation question, not a newly observed wrong answer or a change to the
 archived benchmark results.
+
+### Observed self-update stalls (2026-11-03)
+
+The {ref}`stall drill-down <soi-stall-drilldown>` observes eight repetitions of
+the same zero-distance self-update in two selected fixed-off corpus examples.
+These leave the assignment and basis unchanged; a third example instead
+performs eight zero-distance pivots through distinct bases. Source `8faa775`
+counts both patterns as zero progress and hands off after the configured streak.
+The known self-event boundary in the literal Figure 3.4 enumeration therefore
+has a demonstrated operational effect. The finite guard prevents indefinite
+repetition but does not resolve that selection issue. No claim of corpus-wide
+prevalence, a repaired selector or a new performance result follows from these
+three diagnostic traces.

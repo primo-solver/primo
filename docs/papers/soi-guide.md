@@ -266,6 +266,10 @@ The measured combined arm therefore compares a guarded SOI/ordinary-Bland
 hybrid with the ordinary profiles. It does not isolate SOI versus Dantzig under
 identical fallback triggers, nor implement a measured SOI-preserving Bland
 mode after stalls.
+The {ref}`subsequent stall drill-down <soi-stall-drilldown>` distinguishes
+repeated zero-distance self-updates from actual degenerate pivots in selected
+traces. The former leave the basis unchanged and must not be used as evidence
+that the source's basis-exchange termination mechanism is operating.
 
 ## Thesis §3.3.4 and FMCAD §V-D: cached conflict preference
 

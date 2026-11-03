@@ -110,7 +110,17 @@
         "local_raw": "results/soi-fallback-20261102/stall-trace-bases",
         "remote_raw": "primo-soi-fallback-20261102/results/stall-drilldown-20261103/trace-bases"
       },
-      "verification": "Actual3-input SLURM callback run plus report regeneration pass;stable breakpoint argument ranges and exact small-rational comparisons checked;make lint and sbatch validator pass;independent documentation review/build/link/render checks follow in adjacent documentation milestone."
+      "verification": "Three-input SLURM339750 callbacks and actual report regeneration pass;stable argument ranges,exact small-rational comparisons,input SHA names and answers checked;make lint,explicit callback py_compile and sbatch validator pass;independent review ready after source-navigation repair;final documentation build/link/render recorded in adjacent documentation commit.",
+      "independent_review": {
+        "reviewer": "soi_drill_doc_review",
+        "baseline": "9a3854d10c5d5e3d71dde0e62744f934079afba5",
+        "scope": "Five-file documentation clarification plus committed analysis scripts/report,first ledger entry,raw traces,native owners at8faa775 and primary PDF sections.",
+        "finding": "SOISTALL-DOC-1 required native-owner links added to soi_select#L722 and check#L2213;rechecked resolved.",
+        "verdict": "Ready;no required findings remain.",
+        "accepted_documentation_patch_sha256": "786a61def308a92ad22f67d2ac45ba9b786b8b0c7018d8fdf86507496a6a6943",
+        "post_review_changes": "Only ledger verification/review metadata;no analytical changes.",
+        "unchecked": "No repaired solver,full-corpus trace prevalence,SOI-preserving fallback experiment,new speed/model/default qualification or external URL liveness check."
+      }
     },
     {
       "id": "2026-11-03-soi-portfolio-and-publication-interpretation",
