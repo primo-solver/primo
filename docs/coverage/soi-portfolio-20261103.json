@@ -1,0 +1,403 @@
+{
+  "analysis_sha256": "83b31cb7d24e17e8e753fd0f81eecc8481fa7abd8952f7e4b39ca9a0818607d6",
+  "coverage_definition": "Stable means successful SAT/UNSAT in all three original repetitions. Set differences compare current combined suspended SOI with current ordinary policies; Gaussian on, fixed settings separately and together.",
+  "inputs": 1000,
+  "native": {
+    "sha256": "18b3182d9f95698dc7684ade226cbdaf091e691c648640971ef20b34d5274bd0",
+    "source": "8faa775"
+  },
+  "plan_sha256": "caaa847b15803f2a537d8224bec6b2d996666ec6bd35dba54d58b46856e65db0",
+  "qualification_sha256": "549d0b4ac2c32d745bc3072a7f6edf569e398228a9505834e42969cf69443528",
+  "repeats": 3,
+  "results": {
+    "0": {
+      "comparisons": {
+        "bland": {
+          "baseline_only_count": 4,
+          "baseline_stable": 954,
+          "intersection": 950,
+          "soi_only": [
+            {
+              "family": "miplib",
+              "file": "cubes/044413f6ce001681c49644ec4de24cb473048690743a5f6b348c1f24bfc63615.smt2"
+            },
+            {
+              "family": "miplib",
+              "file": "cubes/15a775440f09e5843f6f3fd341d114004f720941355a387b0ef5010dc82acd85.smt2"
+            },
+            {
+              "family": "miplib",
+              "file": "cubes/30d2fb539c8c166f18549c38520f11d5d721ed2703aba68d894faf2deac1416d.smt2"
+            },
+            {
+              "family": "miplib",
+              "file": "cubes/4540e4215df7a561c2079d0cd1c49597e28cfb4f91587b043172bde7de6f47d4.smt2"
+            },
+            {
+              "family": "miplib",
+              "file": "cubes/98b884440d35b4dcf779ae4819d7ae992bb0fd165315dc254c9b2038dc0c7451.smt2"
+            },
+            {
+              "family": "miplib",
+              "file": "cubes/d09de35e25691e0f8424f80d3957ea0d5dd32d17b0608a1b3cba9880c0809c5d.smt2"
+            },
+            {
+              "family": "miplib",
+              "file": "cubes/d1e0eb2a0d6b476a388fc5d00da1364a1b16513daf92b826474e45ab028d6278.smt2"
+            },
+            {
+              "family": "miplib",
+              "file": "cubes/f946150c03f40c0320082f84e1b80d3df248def0d58e451a013b82e2a6ca74fe.smt2"
+            }
+          ],
+          "soi_stable": 958,
+          "union_stable": 962
+        },
+        "dantzig": {
+          "baseline_only_count": 15,
+          "baseline_stable": 968,
+          "intersection": 953,
+          "soi_only": [
+            {
+              "family": "miplib",
+              "file": "cubes/044413f6ce001681c49644ec4de24cb473048690743a5f6b348c1f24bfc63615.smt2"
+            },
+            {
+              "family": "miplib",
+              "file": "cubes/30d2fb539c8c166f18549c38520f11d5d721ed2703aba68d894faf2deac1416d.smt2"
+            },
+            {
+              "family": "miplib",
+              "file": "cubes/4540e4215df7a561c2079d0cd1c49597e28cfb4f91587b043172bde7de6f47d4.smt2"
+            },
+            {
+              "family": "miplib",
+              "file": "cubes/d09de35e25691e0f8424f80d3957ea0d5dd32d17b0608a1b3cba9880c0809c5d.smt2"
+            },
+            {
+              "family": "miplib",
+              "file": "cubes/f946150c03f40c0320082f84e1b80d3df248def0d58e451a013b82e2a6ca74fe.smt2"
+            }
+          ],
+          "soi_stable": 958,
+          "union_stable": 973
+        },
+        "ordinary_union": {
+          "baseline_only_count": 38,
+          "baseline_stable": 996,
+          "intersection": 958,
+          "soi_only": [],
+          "soi_stable": 958,
+          "union_stable": 996
+        },
+        "sparse": {
+          "baseline_only_count": 38,
+          "baseline_stable": 996,
+          "intersection": 958,
+          "soi_only": [],
+          "soi_stable": 958,
+          "union_stable": 996
+        }
+      },
+      "hindsight_selector": {
+        "max_median_seconds_saved": 0.005336999999999925,
+        "max_median_speedup": 1.0052416074716732,
+        "median_runtime_win_count": 13,
+        "median_runtime_wins": [
+          {
+            "file": "cubes/189c8bc0a333b882bc759b4710f1b884e0027e8251bf11e205018835bb583559.smt2",
+            "ratio": 1.0003620490240395,
+            "seconds_saved": 0.0003340000000000565
+          },
+          {
+            "file": "cubes/1950f12fe9d8152626d87dfd895a17f3718f368ff0822e755f6b7affc6d68d34.smt2",
+            "ratio": 1.0021600524284568,
+            "seconds_saved": 0.0037079999999998225
+          },
+          {
+            "file": "cubes/1997ee0dc1454fb4655a630c9fd4106a7280a71f078e714e25a461e647572536.smt2",
+            "ratio": 1.0047278614914832,
+            "seconds_saved": 0.0022280000000000078
+          },
+          {
+            "file": "cubes/2161b363abcb66ecec36e1a2aee456838d38fe198e0926e511f4b37b8d3396c5.smt2",
+            "ratio": 1.0004624238131254,
+            "seconds_saved": 0.00231099999999973
+          },
+          {
+            "file": "cubes/4cc0d2fcde1f94881a8b9078763e17ba914ea94d0e0b5bea000c4c3661a7eaff.smt2",
+            "ratio": 1.005138920316404,
+            "seconds_saved": 0.005336999999999925
+          },
+          {
+            "file": "cubes/4fac66cd5ff8e7ac9ea656833af95a92030bf5c6e3c1f1608d5e4de5757c9d38.smt2",
+            "ratio": 1.0001106530782184,
+            "seconds_saved": 0.0005309999999996151
+          },
+          {
+            "file": "cubes/7b46da10f9a1836bff594e18edd83385b84ab7634da08870f011913792915dbb.smt2",
+            "ratio": 1.0021137325566778,
+            "seconds_saved": 0.0050440000000002705
+          },
+          {
+            "file": "cubes/8d21f611b2f0c73131106a4798d44ab2a9445a80631a9446a2ca06fb9bec4dee.smt2",
+            "ratio": 1.0005685188412075,
+            "seconds_saved": 0.0006460000000001465
+          },
+          {
+            "file": "cubes/9566f7f2fb5b9e8169e777b9a5a7a9da7c01b8fbba14ba3c2428e4cc56fe1d75.smt2",
+            "ratio": 1.000477871531552,
+            "seconds_saved": 0.002201999999999593
+          },
+          {
+            "file": "cubes/9c398f1549c77e6aa2e75a2f23b5090be2ff36ed2b70bc36c33e0f16f741ead9.smt2",
+            "ratio": 1.0052416074716732,
+            "seconds_saved": 0.0015400000000000413
+          },
+          {
+            "file": "cubes/9f40e94fc1b68f3e4387e4c4a097796a13f69115c0112b8925524c070e5c91d2.smt2",
+            "ratio": 1.000972095299252,
+            "seconds_saved": 0.004872999999999905
+          },
+          {
+            "file": "cubes/a0e14a5c6a8486786c074123096eb4c9e8b19df1bb06e3a241df0c271acd37f3.smt2",
+            "ratio": 1.0005249714530118,
+            "seconds_saved": 0.0023640000000000327
+          },
+          {
+            "file": "cubes/edd53fc1ae04622a32029306d4ad08db6b8bbc6b70ab1e0ffd43400949a3ec16.smt2",
+            "ratio": 1.0021287103421264,
+            "seconds_saved": 0.0002500000000000002
+          }
+        ],
+        "ordinary_par2": 526.368638,
+        "ordinary_plus_soi_par2": 526.3082753333333,
+        "reduction_percent": 0.011467755164151636,
+        "reduction_seconds": 0.06036266666671963
+      }
+    },
+    "1": {
+      "comparisons": {
+        "bland": {
+          "baseline_only_count": 4,
+          "baseline_stable": 970,
+          "intersection": 966,
+          "soi_only": [
+            {
+              "family": "miplib",
+              "file": "cubes/0d6e4ad55b5cedd356b5a6c45f4e5138f28ce50b2ed45ccae7c34dc069a641ba.smt2"
+            },
+            {
+              "family": "miplib",
+              "file": "cubes/15a775440f09e5843f6f3fd341d114004f720941355a387b0ef5010dc82acd85.smt2"
+            },
+            {
+              "family": "miplib",
+              "file": "cubes/166dd9b45c018a304a5b7578d7d8315eea09be14c567d42f3a63fb9ec8f0164c.smt2"
+            },
+            {
+              "family": "miplib",
+              "file": "cubes/30d2fb539c8c166f18549c38520f11d5d721ed2703aba68d894faf2deac1416d.smt2"
+            },
+            {
+              "family": "miplib",
+              "file": "cubes/4540e4215df7a561c2079d0cd1c49597e28cfb4f91587b043172bde7de6f47d4.smt2"
+            },
+            {
+              "family": "miplib",
+              "file": "cubes/51553c46f5cdc3f2bea7874b82621a61c2deae5e3989a4b50528536842f34ed8.smt2"
+            },
+            {
+              "family": "miplib",
+              "file": "cubes/70b5e05ab7ea61c5ba3744399f1b23e2b2804bad3c710edb466f330cd86ec8d9.smt2"
+            },
+            {
+              "family": "miplib",
+              "file": "cubes/70ca7635cfc675c1bf2cc36a4cfa69d8e0eb1c5cdea0277c9457b8c2b9aa4b13.smt2"
+            },
+            {
+              "family": "miplib",
+              "file": "cubes/79014ab070945164c9bcc45e3b936b860a90206179ea9edf1414ba41da758a9a.smt2"
+            },
+            {
+              "family": "miplib",
+              "file": "cubes/98b884440d35b4dcf779ae4819d7ae992bb0fd165315dc254c9b2038dc0c7451.smt2"
+            },
+            {
+              "family": "miplib",
+              "file": "cubes/b46d5be5b61e8207cf376f261fb544ce404a8c805f063775b0c92983fe3ed392.smt2"
+            },
+            {
+              "family": "miplib",
+              "file": "cubes/bb817a1f96ea97b51dcfd67a7b669a5b895012db850a569acc169b699b22f143.smt2"
+            },
+            {
+              "family": "miplib",
+              "file": "cubes/c6f79fa866c703e1219c559ae50c47f87f2e804937de11fa4f7d43d556f27c5c.smt2"
+            },
+            {
+              "family": "miplib",
+              "file": "cubes/d09de35e25691e0f8424f80d3957ea0d5dd32d17b0608a1b3cba9880c0809c5d.smt2"
+            },
+            {
+              "family": "miplib",
+              "file": "cubes/d1e0eb2a0d6b476a388fc5d00da1364a1b16513daf92b826474e45ab028d6278.smt2"
+            },
+            {
+              "family": "miplib",
+              "file": "cubes/f364dbf7c892e229db8ca6edbe56b20c0a181aaae912cd5ae65f2df13e659ad4.smt2"
+            }
+          ],
+          "soi_stable": 982,
+          "union_stable": 986
+        },
+        "dantzig": {
+          "baseline_only_count": 9,
+          "baseline_stable": 991,
+          "intersection": 982,
+          "soi_only": [],
+          "soi_stable": 982,
+          "union_stable": 991
+        },
+        "ordinary_union": {
+          "baseline_only_count": 14,
+          "baseline_stable": 996,
+          "intersection": 982,
+          "soi_only": [],
+          "soi_stable": 982,
+          "union_stable": 996
+        },
+        "sparse": {
+          "baseline_only_count": 14,
+          "baseline_stable": 996,
+          "intersection": 982,
+          "soi_only": [],
+          "soi_stable": 982,
+          "union_stable": 996
+        }
+      },
+      "hindsight_selector": {
+        "max_median_seconds_saved": 0.02426600000000001,
+        "max_median_speedup": 1.2857479304294581,
+        "median_runtime_win_count": 19,
+        "median_runtime_wins": [
+          {
+            "file": "cubes/163f8de4c6559213bf458b51b1f6ceaad5ab0ecc852c5d4ba706573d035231d9.smt2",
+            "ratio": 1.2714877822455923,
+            "seconds_saved": 0.021943000000000004
+          },
+          {
+            "file": "cubes/1b28c90a58b97152841021e1d311d243e20fae4fe807fd800500755c6a7eb61a.smt2",
+            "ratio": 1.2170736114561922,
+            "seconds_saved": 0.019221000000000002
+          },
+          {
+            "file": "cubes/22c520d5a2470087c677d38f6ad45cdc0ae9b1b4f3b6448045a3677819e4cb3b.smt2",
+            "ratio": 1.2653068501943445,
+            "seconds_saved": 0.022320000000000007
+          },
+          {
+            "file": "cubes/3d81b62c6109f72615f6c64f1ac2c252cd6e8abe92e10f9997e42f81ea7184d8.smt2",
+            "ratio": 1.1728872361170948,
+            "seconds_saved": 0.015248999999999999
+          },
+          {
+            "file": "cubes/4592a7aa9a3d4a5433520f4255913f5a857ef7f1c8bc8c5df437aa1abaf7e6ac.smt2",
+            "ratio": 1.2593198592162724,
+            "seconds_saved": 0.022029999999999994
+          },
+          {
+            "file": "cubes/5b824262259a8b51e9b4d289bd4acef7f2f31af7228b61bf2e7e26bdc3e3b36e.smt2",
+            "ratio": 1.1488757840798658,
+            "seconds_saved": 0.013481000000000007
+          },
+          {
+            "file": "cubes/69808f554c1444794d30c4fe2f8aa29460bfb3f19af1036d1569e99fa3e469bb.smt2",
+            "ratio": 1.214669836360699,
+            "seconds_saved": 0.018602000000000007
+          },
+          {
+            "file": "cubes/7a072e71f85069d77c1d5a0327c759060d0281b351a5df952d0390ecc88c9856.smt2",
+            "ratio": 1.000683746933194,
+            "seconds_saved": 0.0002889999999999837
+          },
+          {
+            "file": "cubes/8bb69621f167955d1e9ad056a4230c7b568fb852ba6a1a2a0e892ce4b8fcf4f0.smt2",
+            "ratio": 1.0028284832776164,
+            "seconds_saved": 0.006145999999999763
+          },
+          {
+            "file": "cubes/a75dcd70ffb6902ef1322f58bb3f7394b78cf09e4432e97858af7b44c26b65bd.smt2",
+            "ratio": 1.0037789834660709,
+            "seconds_saved": 0.008083000000000062
+          },
+          {
+            "file": "cubes/ae2464542c8d7520cfddf953976890d2c8a419b2eb36b7ded504447499694ab2.smt2",
+            "ratio": 1.266402487349875,
+            "seconds_saved": 0.021848999999999993
+          },
+          {
+            "file": "cubes/b307fc6fb519271ca48a305832e9527d7618b07c28c7836464ea4db8a2665b4b.smt2",
+            "ratio": 1.0005152458873632,
+            "seconds_saved": 0.0004969999999999697
+          },
+          {
+            "file": "cubes/b321d1051e6285be0ecf51250f05eecfb7ec495a8f15b94b5fe2e64038a3639e.smt2",
+            "ratio": 1.0003839417617788,
+            "seconds_saved": 0.0019049999999998235
+          },
+          {
+            "file": "cubes/b9a9ad99bb8653f2841746fd38b0071f475438e2b5f7fefad0ed12d96d081391.smt2",
+            "ratio": 1.0040655167029475,
+            "seconds_saved": 0.0035410000000000164
+          },
+          {
+            "file": "cubes/d57b52cf4427f294e6071c10454bb2c3e59c4544e5184c459d9abf33dca07f24.smt2",
+            "ratio": 1.2857479304294581,
+            "seconds_saved": 0.02426600000000001
+          },
+          {
+            "file": "cubes/dd320f6dd83e7da7152b19d8c49815b3858a3928e6822b845debea08f5b4a138.smt2",
+            "ratio": 1.181948552478265,
+            "seconds_saved": 0.016240000000000004
+          },
+          {
+            "file": "cubes/ddc6fb6460565a89064c2916f89e14f075ffdb87eec5a1cc61327b3259b22b0c.smt2",
+            "ratio": 1.0035559828839709,
+            "seconds_saved": 0.0037280000000001756
+          },
+          {
+            "file": "cubes/f4ef69106aa56c52ef981811d0852d1dc3be978c98a3a50747fa9c9162290259.smt2",
+            "ratio": 1.0329575021682569,
+            "seconds_saved": 0.002356000000000011
+          },
+          {
+            "file": "cubes/fef61f511041369dcc6fcd6bd841be02be8596888be39bb1093fde03b1215c79.smt2",
+            "ratio": 1.0040852407559728,
+            "seconds_saved": 0.012963000000000058
+          }
+        ],
+        "ordinary_par2": 500.00094533333333,
+        "ordinary_plus_soi_par2": 499.7741843333334,
+        "reduction_percent": 0.045352114254260036,
+        "reduction_seconds": 0.22676099999995358
+      }
+    },
+    "across_fixed_settings": {
+      "ordinary_plus_soi_union_stable": 996,
+      "ordinary_union_stable": 996,
+      "soi_only": [],
+      "soi_union_stable": 986,
+      "uncovered": [
+        "cubes/2cc8e805e52c410677ed5e4792c0f6c43054198448df4c8a3175640a523a108f.smt2",
+        "cubes/8bdfb0f1be6618513675d519f5d48c3ac4c4e34d90cf223c6aa958bd4dcb803f.smt2",
+        "cubes/ec117837697250f63f4e96949199a51c495e30e3b69e1930f24b59cdf2e531f0.smt2",
+        "cubes/f9c4f0cde5245b21ead3c5188eb9251861fe65a4677d6fc6c33b5fc1459c7940.smt2"
+      ]
+    }
+  },
+  "schema": 1,
+  "selector_definition": "For each input take the minimum mean-repeat PAR2 among named profiles, then sum. Median-runtime wins are separately computed on stable solved overlaps. This is hindsight profile selection, not an executed parallel race, budget-sharing schedule, confidence interval or proven speedup.",
+  "summary_sha256": "d0c6dda4070162aac8d07dbd92f7c2f71bf564eda0b25e918ef0ae478356ded5",
+  "timeout_seconds": 15
+}
