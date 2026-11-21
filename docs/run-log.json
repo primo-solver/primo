@@ -3,6 +3,150 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-11-21-gcc-clang-compiler-ci",
+      "date": "2026-11-21",
+      "recorded_utc": "2026-11-21T09:41:52.622478+00:00",
+      "branch": "lia-integrality",
+      "kind": "Configure quick hosted compiler build/test checks; no benchmark workflow or solver behavior change",
+      "baseline": "79192a2c424c94645678e2ba5e9906517fb8154a",
+      "evidence_status": "Workflow syntax and compiler-identity steps verified; independent documentation review accepted the configuration. First hosted GCC13/Clang18 matrix execution remains pending a push. No full Clang code-generation/link/runtime qualification claimed.",
+      "implementation": {
+        "workflow": ".github/workflows/ci.yml",
+        "sha256": "a590fbf018ada7e6eee5f22975e7346772e896e94cef6a1f8398f5e03d33ff47",
+        "runner": "ubuntu-24.04 standard GitHub-hosted runner",
+        "profiles": [
+          {
+            "compiler": "gcc-13",
+            "CXX": "g++-13",
+            "apt_package": "g++-13",
+            "check_name": "build-and-test"
+          },
+          {
+            "compiler": "clang-18",
+            "CXX": "clang++-18",
+            "apt_package": "clang-18",
+            "check_name": "build-and-test-clang-18"
+          }
+        ],
+        "commands": [
+          "make check",
+          "python3 scripts/check_doc_examples.py --solver build/primo"
+        ],
+        "configuration": "Existing CMake default Release with C++20 and owned warnings as errors. Fresh VMs choose CXX before CMake configuration; both profiles use the runner-selected libstdc++, not a libc++ qualification.",
+        "failure_policy": "fail-fast false; no continue-on-error. Existing GCC check name preserved. These are workflow check names, not a claim about repository branch-protection settings.",
+        "resources": {
+          "cmake_parallel_level": 2,
+          "job_timeout_minutes": 45,
+          "artifact_retention_days": 14
+        },
+        "artifacts": "Per-compiler test-diagnostics names, uploaded on every outcome: compiler-version.txt (compiler, include search paths, standard-library macros), CMakeCache.txt, compile_commands.json, available CTest logs. No native binary or corpus upload.",
+        "unchanged": "Existing workflow triggers, pinned actions, contents-read permission, checkout credential setting, docs job and cancellation concurrency. No self-hosted runner, benchmark, fuzz campaign or new schedule configured."
+      },
+      "local_verification": {
+        "actionlint": {
+          "version": "1.7.12",
+          "command_template": "$PRIMO_ACTIONLINT .github/workflows/*.yml",
+          "exit_code": 0,
+          "diagnostics": 0,
+          "release": "https://github.com/rhysd/actionlint/releases/tag/v1.7.12",
+          "release_archive_sha256": "8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8",
+          "executable_sha256": "c872d6db8c6bf83a8eaa704fc93999f027d55dffbc63b8a6abdccb47df5f4cd4",
+          "provenance": "Downloaded official release asset; archive SHA256 matched GitHub release API asset digest.",
+          "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "identity_steps": {
+          "source": "Actual workflow run block selected by step name, executed with Bash -e -o pipefail for each selected compiler. Preprocessing only, no solver batch.",
+          "gcc13": {
+            "exit_code": 0,
+            "compiler": "GCC13.4.0 local Ubuntu26",
+            "stdlib": "libstdc++13, __GLIBCXX__20260327",
+            "log_sha256": "cd7afc71305cce979f423ca8a5e3447216e416bbe62128cb3abf64c810d732e7"
+          },
+          "clang18": {
+            "exit_code": 0,
+            "compiler": "Clang18.1.8 local Ubuntu26",
+            "stdlib": "libstdc++15, __GLIBCXX__20260321",
+            "log_sha256": "2f07465da5782ad0ee0ffb6c08f3928a8b382e8f88aaf0689f0446b704380244"
+          },
+          "scope": "These local identity checks do not identify hosted Ubuntu24 tools or establish their build/test result."
+        },
+        "bounded_clang_compile": {
+          "compiler": "Ubuntu clang18.1.8 (20ubuntu8)",
+          "source": "tests/tools/preprocess_bound_probe.cpp",
+          "flags": "Project strict Release flags, C++20 -O3 -DNDEBUG -Werror; isolated translation-unit compile only, bounded120seconds",
+          "exit_code": 0,
+          "diagnostics": 0,
+          "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "scope": "No full project linking, tests or model validation with Clang ran locally or on SLURM. A single compile does not fill that qualification gap."
+        },
+        "other_checks": [
+          "make lint",
+          "git diff --check",
+          "make docs",
+          "make docs-check-external (strict/local checks pass; external access failures below)"
+        ]
+      },
+      "native_scope": "No src/, test-source, CMake or Makefile content changed by this CI milestone. The immediately preceding source-fix commit has completed GCC11 SLURM Release/ASan and full static verification under its own run entry. Those results are not relabeled as hosted GCC13 or Clang18 results. No new solver fuzz/performance claim.",
+      "documentation": {
+        "pages": [
+          "docs/development/correctness.md",
+          "docs/development/static-analysis.md"
+        ],
+        "scope": "Compiler selection, job names, resources, diagnostics/artifacts, standard-library boundary and pending-first-run qualification are documented in the existing correctness owner, linked from static-analysis coverage. No new documentation page introduced.",
+        "independent_initial_review": {
+          "reviewer": "external_links_docs_review",
+          "baseline": "7c52f085b58e696e3e82d65e8570f4e902d73990",
+          "three_file_identity": "d2785a3d9cc20d8bb70222fb52c393bfc3cde38d78a9fb50b93f2372d212fe60",
+          "findings": "No required findings; hosted execution/check names/artifact availability, official page contents and final writer rendering were outside that review. Final ledger-only metadata review recorded in commit."
+        },
+        "external_check": {
+          "command": "make docs-check-external",
+          "exit_code": 2,
+          "strict_books_and_local_git_links": "passed",
+          "new_GitHub_documentation_links": "Both working in Sphinx output.json",
+          "failures": [
+            {
+              "book": "docs",
+              "uri": "https://raw.githubusercontent.com/SMT-COMP/smt-comp.github.io/master/data/results-sq-2026.json.gz",
+              "status": "timeout",
+              "info": "HTTPSConnectionPool(host='raw.githubusercontent.com', port=443): Read timed out. (read timeout=15)"
+            },
+            {
+              "book": "docs",
+              "uri": "https://raw.githubusercontent.com/arminbiere/cadical/rel-3.0.0/NEWS.md",
+              "status": "timeout",
+              "info": "HTTPSConnectionPool(host='raw.githubusercontent.com', port=443): Read timed out. (read timeout=15)"
+            },
+            {
+              "book": "docs",
+              "uri": "https://www.cs.utexas.edu/~isil/fmsd.pdf",
+              "status": "broken",
+              "info": "HTTPSConnectionPool(host='www.cs.utexas.edu', port=443): Max retries exceeded with url: /~isil/fmsd.pdf (Caused by NewConnectionError(\"HTTPSConnection(host='www.cs.utexas.edu', port=443): Failed to establish a new connection: [Errno 111] Connection refused\"))"
+            },
+            {
+              "book": "docs-history",
+              "uri": "https://github.com/Gbury/dolmen/blob/5c9161a691872cee9ed0c58fe820a8b0b9e485ab/tests/parsing/smtlib/v2.7/errors/xxx_lexing_invalid_char_in_quoted_symbol.smt2",
+              "status": "broken",
+              "info": "429 Client Error: Too Many Requests for url: https://github.com/Gbury/dolmen/blob/5c9161a691872cee9ed0c58fe820a8b0b9e485ab/tests/parsing/smtlib/v2.7/errors/xxx_lexing_invalid_char_in_quoted_symbol.smt2"
+            }
+          ],
+          "log_sha256": "7b954fde54b5dde08a16ff6f46629d555e7015c3d5dcf4f09049bc854b3ca28d",
+          "policy": "No ignore patterns or request checks relaxed. Timeouts, connection refusal and HTTP429 are retained as access failures, not proof that targets are obsolete."
+        }
+      },
+      "hosting_basis": {
+        "matrix_reference": "https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/run-job-variations",
+        "runner_reference": "https://docs.github.com/en/actions/reference/runners/github-hosted-runners",
+        "checked": "2026-11-21",
+        "scope": "Official docs describe matrix variations and free standard hosted runners for public repositories. No claim of unrestricted private-repository compute or artifact storage."
+      },
+      "artifacts": {
+        "root": "results/probe-gcc13-20261121/",
+        "CI_scratch_template": "$PRIMO_SCRATCH/{actionlint.log,actionlint-release.json,identity-gcc13/compiler-version.txt,identity-clang18/compiler-version.txt,clang18-probe.log,docs-ci.log}",
+        "pending": "Push committed workflow to trigger existing PR CI; record actual compiler/runtime results separately after execution."
+      }
+    },
+    {
       "id": "2026-11-21-gcc13-bound-probe-stream-input",
       "date": "2026-11-21",
       "recorded_utc": "2026-11-21T09:38:50.926522+00:00",

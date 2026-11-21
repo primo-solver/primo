@@ -69,6 +69,31 @@ build of each affected book. Execute changed examples separately; notebook
 execution is disabled in the book builds. An infrastructure check that could
 not run remains incomplete, with its failed command and reason recorded.
 
+## Compiler checks in GitHub Actions
+
+The {download}`CI workflow <../../.github/workflows/ci.yml>` configures separate
+GCC 13 (`g++-13`) and Clang 18 (`clang++-18`) jobs on Ubuntu 24.04. Each clean
+runner selects its compiler through `CXX`, builds the default Release
+configuration with warnings as errors, runs `make check`, and executes
+`scripts/check_doc_examples.py --solver build/primo`. Both use the runner's
+libstdc++; this matrix does not test libc++. The documentation build remains a
+single separate job.
+
+The jobs run independently when one fails. The GCC check retains the name
+`build-and-test`; the Clang check is `build-and-test-clang-18`. Each uploads its
+own compiler/library identity, include search paths, CMake cache, compilation
+database and available CTest diagnostics for 14 days, including successful runs.
+These are build and test checks; fuzzing, model-validation campaigns and
+performance comparisons keep their separate qualification requirements.
+Adding a compiler job does not establish a passing qualification until that
+job succeeds on the candidate revision. Clang static-analysis results alone
+do not establish a successful Clang build or test run.
+
+GitHub's [matrix workflow documentation](https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/run-job-variations)
+describes this scheduling mechanism. Standard GitHub-hosted runners are
+[free for public repositories](https://docs.github.com/en/actions/reference/runners/github-hosted-runners).
+No self-hosted runner is required by this workflow.
+
 ## Choose a fuzz gate
 
 ### Fuzzing and reduction sources

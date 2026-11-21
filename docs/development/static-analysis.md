@@ -105,7 +105,7 @@ instantiations or feature configurations compile.
 | Tool or check | Current use | Remaining boundary |
 | --- | --- | --- |
 | clang-format | Mandatory owned C++ formatting in `make lint` | Formatting alone checks no behavior |
-| Clang compiler diagnostics | Local parsing through clang-tidy and header checks | Full Clang code-generation/link/test qualification remains separate |
+| Clang compiler diagnostics | Local parsing through clang-tidy and header checks | The [compiler CI jobs](correctness.md#compiler-checks-in-github-actions) separately build, link and test; static parsing does not establish their success |
 | clang-tidy / Static Analyzer | Broad local whole-source profile | Findings require triage; cross-translation-unit analysis is not configured |
 | misc-include-cleaner | Both static targets reject unused includes, retain paired headers and report missing providers | Other intentional includes require source review; direct-provider cleanup remains advisory |
 | clangd | Can use the configured build compilation database in editors | No clangd executable was available in the recorded local audit; no editor diagnostics claimed |
