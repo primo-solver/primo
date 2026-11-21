@@ -22,6 +22,16 @@ std::size_t lit_index(sat::Lit lit) {
   return (var << 1U) + (lit.value < 0 ? 1U : 0U);
 }
 
+struct ConflictTraceScope {
+  explicit ConflictTraceScope(bool* enabled) : flag(enabled) {
+    if (flag) *flag = true;
+  }
+  ~ConflictTraceScope() {
+    if (flag) *flag = false;
+  }
+  bool* flag;
+};
+
 }  // namespace
 
 std::size_t FlatCongruenceClosure::ApplyKeyHash::operator()(const ApplyKey& key) const {
@@ -50,7 +60,69 @@ FlatCongruenceClosure::FlatCongruenceClosure(std::size_t node_count,
   ensure_node_count(node_count);
 }
 
+void FlatCongruenceClosure::enable_conflict_congruence_trace(std::size_t limit) {
+  if (!checkpoints_.empty() || conflict_ || conflict_trace_)
+    throw std::logic_error("conflict congruence tracing must start before checkpoints/conflicts");
+  if (explanation_search_mode_ == FlatExplanationSearchMode::ReorientedProofForest ||
+      explanation_search_mode_ == FlatExplanationSearchMode::StructuralProofForest)
+    throw std::invalid_argument(
+        "conflict Ackermann prototype requires BFS or proof-forest explanations");
+  // Explicit aggregate construction avoids Clang/libstdc++'s default-
+  // constructibility trait issue for this private nested state type.
+  if (limit > 64) throw std::invalid_argument("conflict witness limit exceeds 64");
+  conflict_trace_ = ConflictTraceState{};
+  conflict_trace_->limit = limit;
+  conflict_trace_->seen.resize(128);
+}
+
+const ConflictCongruenceTrace* FlatCongruenceClosure::conflict_congruence_trace() const {
+  return conflict_ && conflict_trace_ ? &conflict_trace_->current : nullptr;
+}
+
+void FlatCongruenceClosure::set_conflict_trace_semantic_results(
+    std::vector<unsigned char> complete_results) {
+  if (!conflict_trace_ || conflict_ || !checkpoints_.empty())
+    throw std::logic_error("trace metadata requires an enabled consistent closure");
+  conflict_trace_->semantic_results = std::move(complete_results);
+}
+
+void FlatCongruenceClosure::trace_conflict_congruence(const Edge& edge) const {
+  if (!conflict_trace_ || !conflict_trace_->collecting) return;
+  auto& state = *conflict_trace_;
+  auto& trace = state.current;
+  ++trace.visited_steps;
+  FlatTermId lhs = edge.lhs_definition.result, rhs = edge.rhs_definition.result;
+  if (!state.semantic_results.empty() &&
+      (lhs >= state.semantic_results.size() || rhs >= state.semantic_results.size() ||
+       !state.semantic_results[lhs] || !state.semantic_results[rhs])) {
+    ++trace.prefix_steps;
+    return;
+  }
+  // After the retained budget fills, count raw/filtered visits without further hashing.
+  if (trace.steps.size() == state.limit) {
+    ++trace.budget_full_visits;
+    return;
+  }
+  if (rhs < lhs) std::swap(lhs, rhs);
+  auto bucket = (lhs * 0x9e3779b97f4a7c15ULL ^ rhs) & 127U;
+  for (std::size_t probe = 0; probe < 128; ++probe) {
+    auto& slot = state.seen[bucket];
+    if (slot.generation != state.generation) {
+      slot = {lhs, rhs, state.generation};
+      trace.steps.push_back({lhs, rhs});
+      return;
+    }
+    if (slot.lhs == lhs && slot.rhs == rhs) {
+      ++trace.duplicate_steps;
+      return;
+    }
+    bucket = (bucket + 1) & 127U;
+  }
+  throw std::logic_error("bounded conflict witness table is unexpectedly full");
+}
+
 std::size_t FlatCongruenceClosure::push() {
+  if (conflict_trace_) conflict_trace_->checkpoints.push_back(conflict_trace_->current);
   checkpoints_.push_back(
       Checkpoint{parent_.size(), definitions_.size(), pending_.size(), disequalities_.size(),
                  edges_.size(), changed_terms_.size(), changed_terms_generation_, trail_.size(),
@@ -105,6 +177,15 @@ void FlatCongruenceClosure::pop(std::size_t checkpoint) {
   reoriented_proof_forest_.pop(checkpoint);
   structural_proof_forest_.pop(checkpoint);
   conflict_ = std::move(state.conflict);
+  if (conflict_trace_) {
+    const auto& saved = conflict_trace_->checkpoints.at(checkpoint);
+    conflict_trace_->current.visited_steps = saved.visited_steps;
+    conflict_trace_->current.prefix_steps = saved.prefix_steps;
+    conflict_trace_->current.duplicate_steps = saved.duplicate_steps;
+    conflict_trace_->current.budget_full_visits = saved.budget_full_visits;
+    conflict_trace_->current.steps.assign(saved.steps.begin(), saved.steps.end());
+    conflict_trace_->checkpoints.resize(checkpoint);
+  }
   stats_ = state.stats;
   ++stats_.backtracks;
 }
@@ -479,6 +560,8 @@ void FlatCongruenceClosure::merge_classes(PendingMerge pending) {
     return;
   }
   process_use_list(lhs_repr, rhs_repr);
+  // Union with the empty losing list changes no state and needs no undo payload.
+  if (disequality_lists_[lhs_repr].empty()) return;
   std::vector<std::size_t> merged_disequalities;
   merged_disequalities.reserve(disequality_lists_[rhs_repr].size() +
                                disequality_lists_[lhs_repr].size());
@@ -509,22 +592,27 @@ void FlatCongruenceClosure::merge_classes(PendingMerge pending) {
 
 void FlatCongruenceClosure::process_use_list(FlatTermId old_repr, FlatTermId new_repr) {
   std::vector<FlatTermId> affected;
+  if (checkpoints_.empty()) affected.swap(use_lists_[old_repr]);
   if (!checkpoints_.empty()) {
     TrailEntry entry;
     entry.kind = TrailKind::UseListRestore;
     entry.index = old_repr;
     entry.payload_index = flat_vector_trail_.size();
-    flat_vector_trail_.push_back(use_lists_[old_repr]);
+    flat_vector_trail_.push_back(std::move(use_lists_[old_repr]));
+    use_lists_[old_repr].clear();
     trail_.push_back(std::move(entry));
     ++stats_.trail_entries;
   }
-  affected.swap(use_lists_[old_repr]);
+  // enqueue_congruence only queues: the payload arena cannot grow during this loop.
+  // Save its index rather than retaining a reference across the insertion above.
+  const auto& affected_uses =
+      checkpoints_.empty() ? affected : flat_vector_trail_[trail_.back().payload_index];
   ++use_list_generation_;
   if (use_list_generation_ == 0) {
     std::fill(use_list_marks_.begin(), use_list_marks_.end(), 0);
     ++use_list_generation_;
   }
-  for (const FlatTermId result : affected) {
+  for (const FlatTermId result : affected_uses) {
     if (use_list_marks_[result] == use_list_generation_) {
       ++stats_.affected_use_list_dedup;
       ++stats_.use_list_duplicate_skips;
@@ -645,6 +733,19 @@ bool FlatCongruenceClosure::check_disequality(const Disequality& disequality) {
   }
   std::vector<sat::Lit> reason;
   begin_reason_collection(reason);
+  if (conflict_trace_) {
+    auto& state = *conflict_trace_;
+    state.current.visited_steps = 0;
+    state.current.prefix_steps = 0;
+    state.current.duplicate_steps = 0;
+    state.current.budget_full_visits = 0;
+    state.current.steps.clear();
+    if (++state.generation == 0) {
+      for (auto& slot : state.seen) slot.generation = 0;
+      ++state.generation;
+    }
+  }
+  ConflictTraceScope trace_scope(conflict_trace_ ? &conflict_trace_->collecting : nullptr);
   if (!explain_equal_into(disequality.lhs, disequality.rhs, reason, edges_.size())) {
     throw std::logic_error("flat congruence closure failed to explain disequality conflict");
   }
@@ -748,6 +849,7 @@ bool FlatCongruenceClosure::append_edge_reason(std::size_t edge_index,
                                                std::vector<sat::Lit>& reason) const {
   const Edge& edge = edges_[edge_index];
   if (edge.congruence) {
+    trace_conflict_congruence(edge);
     ++stats_.explain_congruence_edges;
     return explain_equal_into(edge.lhs_definition.function, edge.rhs_definition.function, reason,
                               edge_index) &&
@@ -857,6 +959,7 @@ void FlatCongruenceClosure::append_proof_edge_label(
     std::vector<ProofObligation>& pending_proofs) const {
   const Edge& edge = edges_[edge_index];
   if (edge.congruence) {
+    trace_conflict_congruence(edge);
     ++stats_.explain_congruence_edges;
     pending_proofs.push_back(
         ProofObligation{edge.lhs_definition.function, edge.rhs_definition.function, edge_index});

@@ -11,10 +11,24 @@ concurrency:
   cancel-in-progress: true
 jobs:
   build-and-test:
+    name: ${{ matrix.check_name }}
     runs-on: ubuntu-24.04
     timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - compiler: gcc-13
+            cxx: g++-13
+            package: g++-13
+            check_name: build-and-test
+          - compiler: clang-18
+            cxx: clang++-18
+            package: clang-18
+            check_name: build-and-test-clang-18
     env:
       CMAKE_BUILD_PARALLEL_LEVEL: 2
+      CXX: ${{ matrix.cxx }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -22,17 +36,29 @@ jobs:
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.12'
-      - run: sudo apt-get update && sudo apt-get install -y build-essential cmake clang-format clang-format-18 ripgrep
+      - run: sudo apt-get update && sudo apt-get install -y build-essential cmake clang-format clang-format-18 ripgrep ${{ matrix.package }}
+      - name: Compiler and standard library
+        run: |
+          {
+            "$CXX" --version
+            "$CXX" -std=c++20 -E -x c++ -v /dev/null -o /dev/null
+            printf '#include <version>\n' | "$CXX" -std=c++20 -dM -E -x c++ - |
+              grep -E '^#define (__GLIBCXX__|_GLIBCXX_RELEASE|_LIBCPP_VERSION|__cplusplus) '
+          } 2>&1 | tee compiler-version.txt
       - run: python3 -m venv .venv && .venv/bin/pip install ruff==0.16.1
       - name: Build, lint and tests
         run: make check
       - name: Documented examples and CLI contract
         run: python3 scripts/check_doc_examples.py --solver build/primo
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        if: failure()
+        if: always()
         with:
-          name: test-diagnostics
-          path: build/Testing/Temporary/
+          name: test-diagnostics-${{ matrix.compiler }}
+          path: |
+            compiler-version.txt
+            build/CMakeCache.txt
+            build/compile_commands.json
+            build/Testing/Temporary/
           retention-days: 14
   docs:
     runs-on: ubuntu-24.04

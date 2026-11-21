@@ -19,6 +19,13 @@ Use classic Jupyter Book, matching the `llm2smt` `lra` branch documentation setu
 
 ## Documentation types
 
+Keep current behavior, unresolved questions, completed evidence, and project
+work distinct. Follow the placement rules in `docs/development/documentation.md`.
+Close completed investigations in the research index; preserve their stable
+paths as clearly labeled records under evidence navigation. Prefer extending an
+existing topic's evidence page over adding one page per run. Current default
+claims belong to the implementation/reference owner, with linked summaries.
+
 ### Architecture docs
 
 Explain:
@@ -120,6 +127,32 @@ or publishing changes.
 
 Use `python3 scripts/check_doc_links.py docs/_build/site` after an incremental
 build; use `make docs-check-links` for a full strict build and link check.
+Before committing a change that touches documentation, run
+`make docs-check-external`. This is the same target used by
+`.github/workflows/external-links.yml`; it includes both strict books, assembled
+local/Git links and Sphinx's external-link check for each book. An incremental
+HTML build or local/Git-only check does not replace it. Inspect the two
+`_build/linkcheck/output.json` reports. Classify failed requests by their actual
+status and diagnostics; a timeout, HTTP 403/429 or certificate failure alone
+does not prove that a paper URL is obsolete. Recheck the affected request when
+feasible and record unresolved access failures explicitly. Do not disable TLS
+verification, add blanket ignore patterns or silently make the check advisory
+to obtain a green result. Local success does not guarantee access from GitHub's
+runner, and a browser download need not behave like the automated checker.
+Owner-requested exceptions for confirmed access failures may use exact URL
+patterns in both book configs, with a reason, review date and evidence record.
+Keep the lists synchronized. Sphinx skips listed URLs completely and reports
+`ignored`; do not describe them as verified or suppress new failures by status
+or publisher. Keep unlisted missing-target errors active. An owner-requested
+policy permits treating later automated access failures for a previously
+verified DOI as advisory: record when it resolved to the intended paper and
+the destination, then use an exact-URL exception in both configs. Preserve
+that verification as historical evidence, not proof of current availability;
+new or never-verified DOIs still need checking. An owner-requested
+deferral for a known publication issue may cover that paper's exact publisher
+and DOI URLs; record it separately from general access failures.
+
+
 Missing reviewer tools or primary evidence must be reported explicitly. Continue
 authorized, useful work, but do not label an incomplete review as passed.
 
@@ -160,6 +193,12 @@ For term documentation specifically, cover:
 - how applications, equalities, and Boolean connectives are represented
 
 ## Paper Traceability
+
+Prefer DOI URLs as primary paper citation links whenever a DOI exists. Keep
+publisher/author PDFs as optional reading copies. A bot's HTTP 403, rate limit
+or timeout does not justify replacing a DOI with a personal webpage. For a work
+without a DOI, prefer a stable publisher or institutional repository before a
+personal page.
 
 Every page that mentions a paper-backed component must include a "Paper Traceability" or "Sources and Implementation Status" section:
 

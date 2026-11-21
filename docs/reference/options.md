@@ -2,8 +2,9 @@
 
 Run `./build/primo --help` for the complete option inventory of your binary.
 The {download}`captured help <../examples/primo-help.txt>` belongs to the
-documented implementation; source metadata is centralized in the review ledger. This page explains the
-common controls; the complete captured inventory below supplies accepted values and defaults.
+documented implementation; its binary/source identity is recorded in the
+review ledger. This page explains common controls; the captured inventory
+below supplies accepted values and defaults.
 [Effective policies](policies.md) explains automatic selection and option dependencies.
 
 ## Everyday use
@@ -17,10 +18,22 @@ common controls; the complete captured inventory below supplies accepted values 
 | `--check-model` | Off | Check original assertions against a requested model. Set `:produce-models true` separately; see [](../guide/models.md). |
 | `--incremental-mode` | `rebuild` | Choose `rebuild` or the restricted `assumptions` session engine. See [](../guide/sessions.md). |
 | `--preprocessing-mode` | `auto` | Choose `auto`, `off`, `basic`, or `strong`. `off` does not bypass required lowering. Assumptions mode admits only `auto` or `off`. |
-| `--lra-model-phase`, `--no-lra-model-phase` | `auto` | Enable or disable arithmetic phase hints; see {ref}`automatic-lra-heuristics`. |
+| `--initial-theory-phase=MODE` | `negative` | Initial SAT truth-value preference: `negative`, `positive`, `none`, `polarity`, or `auto`. See [phase policies](policies.md#initial-phase-hints) for route coverage. |
+| `--arithmetic-model-phase=MODE` | `auto` | Refresh arithmetic truth-value preferences from the tableau: `on`, `off`, or `auto`; see {ref}`automatic-lra-heuristics`. |
 | `--monotone-elimination`, `--no-monotone-elimination` | `auto` | Enable or disable one-sided Real elimination under the same policy; assumptions sessions reject explicit enabling. |
 | `--max-theory-conflicts=N` | Unlimited | Positive budget, up to 1,000,000,000. Counts aggregate SMT-reported conflicts across supported routes; see [conflict-limit accounting](statistics.md#uniform-conflict-budget-implementation-contract). Exhaustion returns `unknown` with `ResourceLimit`. |
+| `--qf-uflia-tableau-equalities[=MODE]` | Off | Experimental pre-integer equality delivery: `off`, `scan`, `names`, `fixed`, or `all`. Bare flag selects `all`; use `=MODE` for explicit values. See [policy meanings and limitations](../implementation/uflia-equality-ablation.md) and [prior results](../implementation/uflia-equality-propagation.md). |
+| `--qf-uflia-lia-equality-producer=MODE` | `legacy` | Select `legacy` exact-offset rules or `model-unit` current-model-filtered unit rows from CAV 2024 §3.2. Requires equality delivery to be enabled separately; see [integration checklist](../implementation/uflia-equality-propagation.md#cav-2024-model-unit-discovery-integration-checklist). |
+| `--lia-cube=MODE` | `uniform` for QF_LIA | Pure QF_LIA model attempt: `off`, `uniform`, or `difference`. QF_UFLIA is unaffected. See {ref}`lia-cubes`. |
+| `--lia-cube-steps=N` | `1000` | Repair-step cap for the optional cube LP; exhaustion resumes existing integer search. |
 | `--lia-branch-limit=N` | `100000` | Bound integer branch-and-bound nodes; reaching the bound can return `unknown`. See [](../implementation/lia.md). |
+| `--lia-branching=MODE` | `hybrid` for QF_LIA; `private` for QF_UFLIA | `hybrid` hands bounded private integer exploration to SAT; see {ref}`lia-hybrid-branching`. Applies to QF_LIA and QF_UFLIA. |
+| `--lia-private-branch-factor=N` | `1` | Hybrid private-node factor per original Int term; zero hands off after the preceding integer stages. |
+| `--lia-split-atom-limit=N` | `0` | Fresh hybrid SAT-bound cap per solve; zero is unlimited, exhaustion returns `unknown`. |
+| `--euf-conflict-ackermann` | Off | Emit bounded conflict-selected congruence clauses in QF_UF and online QF_UFLIA; ordinary checking remains authoritative. |
+| `--euf-conflict-ackermann-diagnostics` | Off | Inspect full missing-atom opportunities; alone it emits no clauses. |
+| `--euf-conflict-ackermann-atoms=MODE` | `existing` | Opt-in `demand` can name missing non-Boolean equalities at a detached driver boundary; see [scope and ownership](../implementation/euf.md#conflict-selected-ackermann-prototype). |
+| `--euf-conflict-ackermann-atom-limit=N` | `4096` | Per-query fresh equality-atom budget in demand mode; zero is unlimited. Whole instances over budget are skipped; this optional cap does not return `unknown`. Auxiliary encoding atoms are excluded. |
 | `--cancel-grace-seconds=N` | `1` | Cooperative cancellation grace period after SIGINT/SIGTERM, from 1 to 3600 seconds. This is not a solve-time limit. |
 
 For example:
@@ -45,7 +58,40 @@ characters and overflow are CLI errors detected before solving by
 {repairsource}`parse_auto_budget <src/main.cpp>`. The options'
 different zero meanings are described in [effective policies](policies.md).
 
-## Preprocessing diagnostic
+## Phase option names and compatibility
+
+`--initial-theory-phase` chooses the policy installed at initialization;
+`--arithmetic-model-phase` controls later tableau-based preferences for
+arithmetic atoms. Both control truth values, while SAT keeps variable
+selection. Neither option introduces numeric assumptions or a target-value
+search policy. The rename preserves defaults and route behavior.
+
+The arithmetic option already uses the current assignment without additional
+pivots for phase selection. Its [implementation and paper basis](../implementation/arithmetic/lra/search.md#model-phase-hints)
+describe this existing mechanism and its delivery differences from the literature.
+
+The old `--theory-phase` spelling is an alias of
+`--initial-theory-phase`. Legacy `--lra-model-phase` (including
+`--lra-model-phase=false`) and `--no-lra-model-phase` remain accepted in the
+help's compatibility section. If both legacy flags are supplied, the negative
+form retains precedence. Do not mix the new arithmetic policy with either
+legacy flag: this is a command-line error, even when their values agree.
+Use `--arithmetic-model-phase=auto` explicitly to request automatic selection.
+C++ policy fields and existing statistic keys keep their names. The
+{phaseclisource}`CLI implementation <src/main.cpp>` performs the rename
+and compatibility resolution; [phase-control literature](../papers/arithmetic-phase-control.md)
+explains the separate heuristic investigation.
+
+## Preprocessing strengthening and diagnostics
+
+`--preprocess-bound-tightening` (default off) enables actual unconditional bound
+strengthening after required lowering in rebuild sessions. Its
+`--preprocess-bound-work-limit=N` defaults to 100,000 operations; zero emits no
+new bounds. Exhaustion continues normal solving with sound partial deductions.
+At most 4,096 improved endpoints are emitted. Assumptions sessions reject the
+option. See [the implementation](../implementation/preprocessing.md).
+This option is experimental; [end-to-end acceptance is blocked](../leads/preprocessing-bound-tightening.md#qualification-is-blocked)
+by a memory-exhaustion cleanup abort reproduced on both the baseline and candidate.
 
 `--preprocess-only` stops before search. Use it with `--stats` to inspect
 preprocessing cost and formula-size counters independently of solving. It
@@ -55,6 +101,21 @@ print the transformed formula. With quantified `UF` input it stops after the
 frontend: ground preprocessing does not support binders, and neither
 instantiation nor SAT/theory search runs. Unsupported inputs remain unsupported.
 The option defaults off and is not accepted in assumptions mode.
+
+For numeric bound opportunities in the original unconditional arithmetic input,
+add `--arithmetic-bound-diagnostics` (also default off):
+
+```sh
+./build/primo --quiet --arithmetic-bound-diagnostics --preprocess-only --stats input.smt2
+```
+
+This reads explicit input bounds before rewriting and counts stronger bounds
+derivable from one constraint at a time, including integer rounding. It only
+records statistics; it does not add bounds or change solving decisions. See
+[the detector's scope](../implementation/preprocessing.md) and
+[counter definitions](statistics.md#root-bound-opportunity-counters).
+`--preprocess-only` avoids SAT search; `--max-theory-conflicts=N` instead allows
+search but limits reported theory conflicts, not all SAT conflicts or wall time.
 
 ## Output and exit status
 
@@ -100,3 +161,8 @@ as explained in [tactics](tactics.md).
 ```{literalinclude} ../examples/primo-help.txt
 :language: text
 ```
+
+The QF_UFLIA component route enforces all registered EUF assignments online,
+including both polarities of demand atoms. `--pure-theory-filter` does not
+weaken that component contract; standalone UF retains its documented filtering
+and filtered-fact model reconstruction. See [EUF filtering](../implementation/euf.md#when-pure-theory-filtering-is-sound).

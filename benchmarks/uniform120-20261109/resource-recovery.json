@@ -1,0 +1,303 @@
+{
+  "status": "complete and correctness-qualified: all timing rows audited and all successful native SAT rows direct-Dolmen validated",
+  "owner_clarification": "Memory-outs are normal unsolved benchmark outcomes. The initial stop was too strict after exact resource attribution; no solver fix is required to resume.",
+  "native_binary_sha256": "9f04d52de397d03b65439b18b35d172e55cffb037a16340860f33a9f9fb19318",
+  "native_implementation": "cab1ebc45fdf5d93940b36f574e2675be7ef4b4b",
+  "scope": "Benchmark metadata/orchestration only; no C++ changes, new corpus reference runs or altered solver options.",
+  "smoke": {
+    "job": "370776",
+    "prior_job": "370775",
+    "status": "pass",
+    "metrics": {
+      "inputs": 2,
+      "solved": 1,
+      "sat": 1,
+      "unsat": 0,
+      "timeouts": 0,
+      "unknown": 0,
+      "memory_out": 1,
+      "confirmed_cleanup_memory_out": 1,
+      "raw_error_exits": 1,
+      "unsupported": 0,
+      "errors": 0,
+      "par2_sum": 240.012975
+    },
+    "input": "nec-smt/large/getoption_user/prp-42-49.smt2",
+    "input_sha256": "eae1898b95df0fec3544ab4365e6e7dfc76c0057ffc1c5071cdeadf2db3a60ab",
+    "solver_arguments": [
+      "--quiet"
+    ],
+    "address_space_bytes": 8589934592,
+    "raw_row_status": "error",
+    "raw_exit_code": "-6",
+    "summary_sha256": "31d8c42a3ce4a797971b59a1934624dd23dbd339985895f2258d24271891ca6c",
+    "proof_sha256": "b4662475bfe498bf525c9b0a02c7b6d3b5ad4ebc0b030b37c98a197304fd181c",
+    "classifier_sha256": "9f25472e1aa0c46298fb4f11cb8282b950767fad4d5ff444a883d5320cc0c9ed",
+    "debugger_commands_sha256": "2ccda1e3f37a1ebe203a8118e752c4afe8582b9d6caec033212e31be7068ad84",
+    "limitation": "Two-input harness integration only; timings are not added to the corpus curves. Its SAT row is not claimed as a separate model-validation result."
+  },
+  "policy": "Explicit or exact-replay-confirmed memory-outs remain unsolved and receive240s PAR2. Matching cleanup diagnostic alone is pending, not proof. Missing/different replay evidence, unexplained crashes, wrong answers and concrete disagreements still stop the campaign.",
+  "raw_evidence": "results/uniform120-20261109/resource-smoke-370776 locally; dedicated SLURM workspace retained privately",
+  "verification": "31metadata tests(9uniform+22legacy),make lint,sbatchvalidator/bash-n,independentreviewwith3requiredfindingsfixed,make docs-site and287pages40062locallinks1222Gitlinks0failures; builtchangedsectionrendered/inspected.",
+  "historical_initial_stop": "benchmarks/uniform120-20261109/blocker.json",
+  "workflow_commit": "17f499a7",
+  "preparation_job": "370777",
+  "gate_audit_job": "370778",
+  "recovery_sha256": "88ae50aa183dc1ffb69ccaa9c82c49f6d0076e52a15293c629a6d5f6c301beb7",
+  "certified_reused_timing_shards": 42,
+  "pending_timing_shards_at_resume": 3166,
+  "jobs": {
+    "plan_sha256": "2515c8c7f6d10cadf797a03530d3b713ce99f38b2172dab3a31f8ad048dd7ac3",
+    "timing": [
+      "370779",
+      "370812",
+      "370850",
+      "370897"
+    ],
+    "models": [
+      "370937",
+      "370938",
+      "370939",
+      "370940"
+    ],
+    "gate_audit": "370778",
+    "chunks": [
+      {
+        "phase": "timing",
+        "job": "370779",
+        "offset": 0,
+        "tasks": 1000,
+        "throttle": 32
+      },
+      {
+        "phase": "timing",
+        "job": "370812",
+        "offset": 1000,
+        "tasks": 1000,
+        "throttle": 32
+      },
+      {
+        "phase": "timing",
+        "job": "370850",
+        "offset": 2000,
+        "tasks": 1000,
+        "throttle": 32
+      },
+      {
+        "phase": "timing",
+        "job": "370897",
+        "offset": 3000,
+        "tasks": 166,
+        "throttle": 32
+      },
+      {
+        "phase": "models",
+        "job": "370937",
+        "offset": 0,
+        "tasks": 1000,
+        "throttle": 24
+      },
+      {
+        "phase": "models",
+        "job": "370938",
+        "offset": 1000,
+        "tasks": 1000,
+        "throttle": 24
+      },
+      {
+        "phase": "models",
+        "job": "370939",
+        "offset": 2000,
+        "tasks": 1000,
+        "throttle": 24
+      },
+      {
+        "phase": "models",
+        "job": "370940",
+        "offset": 3000,
+        "tasks": 208,
+        "throttle": 24
+      }
+    ],
+    "recovery_sha256": "88ae50aa183dc1ffb69ccaa9c82c49f6d0076e52a15293c629a6d5f6c301beb7",
+    "timing_audit": "370935",
+    "final_report": "370941"
+  },
+  "timing_task_wall_minutes": 90,
+  "wall_budget_note": "Up to12native120s timings plus independent240s resource diagnostics; diagnostic time is excluded from performance metrics.",
+  "throttle_adjustments": [
+    {
+      "utc": "2026-11-09T18:59:48.811621+00:00",
+      "phase": "timing",
+      "job": "370779",
+      "old_limit": 32,
+      "new_limit": 42,
+      "active_arrays": 3,
+      "phase_maximum": 128,
+      "command_exit": null,
+      "note": "Active parent limit verified. scontrol may reject already-finished child tasks while updating the active array parent."
+    },
+    {
+      "utc": "2026-11-09T18:59:53.738729+00:00",
+      "phase": "timing",
+      "job": "370812",
+      "old_limit": 32,
+      "new_limit": 42,
+      "active_arrays": 3,
+      "phase_maximum": 128,
+      "command_exit": 1,
+      "note": "Active parent limit verified. scontrol may reject already-finished child tasks while updating the active array parent."
+    },
+    {
+      "utc": "2026-11-09T18:59:58.652540+00:00",
+      "phase": "timing",
+      "job": "370850",
+      "old_limit": 32,
+      "new_limit": 42,
+      "active_arrays": 3,
+      "phase_maximum": 128,
+      "command_exit": 1,
+      "note": "Active parent limit verified. scontrol may reject already-finished child tasks while updating the active array parent."
+    },
+    {
+      "utc": "2026-11-09T19:55:04.328711+00:00",
+      "phase": "timing",
+      "job": "370850",
+      "old_limit": 42,
+      "new_limit": 116,
+      "pending_arrays": 1,
+      "draining_workers": 12,
+      "phase_maximum": 128,
+      "command_exit": 1,
+      "note": "Active parent limit verified; finished-child update errors do not change active-parent verification. Budget reserves all draining workers."
+    },
+    {
+      "utc": "2026-11-09T19:56:57.025447+00:00",
+      "phase": "timing",
+      "job": "370850",
+      "old_limit": 116,
+      "new_limit": 126,
+      "pending_arrays": 1,
+      "draining_workers": 2,
+      "phase_maximum": 128,
+      "command_exit": 1,
+      "note": "Active parent limit verified; finished-child update errors do not change active-parent verification. Budget reserves all draining workers."
+    },
+    {
+      "utc": "2026-11-09T20:00:23.372527+00:00",
+      "phase": "timing",
+      "job": "370850",
+      "old_limit": 126,
+      "new_limit": 128,
+      "pending_arrays": 1,
+      "draining_workers": 0,
+      "phase_maximum": 128,
+      "command_exit": 1,
+      "note": "Active parent limit verified; finished-child update errors do not change active-parent verification. Budget reserves all draining workers."
+    },
+    {
+      "utc": "2026-11-09T20:28:14.846324+00:00",
+      "phase": "models",
+      "job": "370937",
+      "old_limit": 24,
+      "new_limit": 32,
+      "pending_arrays": 3,
+      "draining_workers": 0,
+      "phase_maximum": 96,
+      "command_exit": 1,
+      "note": "Active parent limit verified; finished-child update errors do not change active-parent verification. Budget reserves all draining workers."
+    },
+    {
+      "utc": "2026-11-09T20:28:19.760595+00:00",
+      "phase": "models",
+      "job": "370938",
+      "old_limit": 24,
+      "new_limit": 32,
+      "pending_arrays": 3,
+      "draining_workers": 0,
+      "phase_maximum": 96,
+      "command_exit": 1,
+      "note": "Active parent limit verified; finished-child update errors do not change active-parent verification. Budget reserves all draining workers."
+    },
+    {
+      "utc": "2026-11-09T20:28:25.074558+00:00",
+      "phase": "models",
+      "job": "370939",
+      "old_limit": 24,
+      "new_limit": 32,
+      "pending_arrays": 3,
+      "draining_workers": 0,
+      "phase_maximum": 96,
+      "command_exit": 1,
+      "note": "Active parent limit verified; finished-child update errors do not change active-parent verification. Budget reserves all draining workers."
+    },
+    {
+      "utc": "2026-11-09T20:48:23.255337+00:00",
+      "phase": "models",
+      "job": "370939",
+      "old_limit": 32,
+      "new_limit": 96,
+      "pending_arrays": 1,
+      "draining_workers": 0,
+      "phase_maximum": 96,
+      "command_exit": 1,
+      "note": "Active parent limit verified; finished-child update errors do not change active-parent verification. Budget reserves all draining workers."
+    }
+  ],
+  "concurrency_policy": "As arrays drain, rebalance their limits within the original128timing/96model worker maxima; CPU/memory/solver arguments unchanged.",
+  "timing_completion": {
+    "status": "timing complete and globally audited (historical phase checkpoint; final qualification in completion)",
+    "timing_audit_job": "370935",
+    "timing_audit_sha256": "a2162b18251a1a2bef7b24d6af906050829446f5d48e5a4a2481bf46ded3d652",
+    "native_profile_input_rows": 38470,
+    "SAT_rows_selected_for_validation": 20351,
+    "memory_out_rows": 782,
+    "confirmed_cleanup_memory_out_rows": 409,
+    "raw_error_exits": 782,
+    "unclassified_native_errors": 0,
+    "note": "Profile/input rows include optional integer profile and are not distinct files. Historical checkpoint preceded model validation; see completion for final qualified status."
+  },
+  "completion": {
+    "status": "complete and correctness-qualified: all timing rows audited and all successful native SAT rows direct-Dolmen validated",
+    "timing_audit_job": "370935",
+    "final_audit_job": "370941",
+    "public_export_job": "371623",
+    "qualified_audit_sha256": "02025b267fa5a23b28b0885f0e88cf50ced50973d3870c7df009a9cb90bd0019",
+    "native_profile_input_rows": 38470,
+    "native_successful_SAT_timing_rows": 20351,
+    "direct_Dolmen_validated_rows": 20351,
+    "model_coverage_by_logic_profile": {
+      "QF_UF": {
+        "primo": 3142
+      },
+      "QF_LRA": {
+        "primo": 983
+      },
+      "QF_LIA": {
+        "primo": 7024,
+        "primo-integer": 7656
+      },
+      "QF_UFLRA": {
+        "primo": 760
+      },
+      "QF_UFLIA": {
+        "primo": 407,
+        "primo-integer": 379
+      }
+    },
+    "invalid_or_missing_models": 0,
+    "unclassified_native_errors": 0,
+    "memory_out_profile_input_rows": 782,
+    "confirmed_cleanup_memory_out_rows": 409,
+    "explicit_allocation_failure_rows": 373,
+    "memory_out_scoring": "Unsolved;240seconds PAR2 per row; raw error exits preserved. Profile/input rows are not distinct files.",
+    "reference_corpus_benchmark_executions": 0,
+    "public_report_directory": "benchmarks/uniform120-20261109/report",
+    "plot_gallery": "docs/_static/uniform120-20261109/index.html",
+    "comparisons": "benchmarks/uniform120-20261109/report/comparisons.json",
+    "export_archive_bytes": 8002784,
+    "export_archive_sha256": "4acd4807b1b1a746377fb2edbc577858c7dc6c150e0c5144128041525f8775be",
+    "export_archive_retention": "Full archive retained in private execution results; portable public members committed separately.",
+    "descriptive_limits": "References reused from a different date; matched bytes, hardware generation and enforced resources. No controlled A/B speedup or native1200s prediction. Optional integer profiles remain separate; no default promotion."
+  }
+}

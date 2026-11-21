@@ -57,7 +57,7 @@ backtracking requirements.
     </article>
     <article class="primo-map-card">
       <p class="primo-map-label">Arithmetic</p>
-      <h3><a href="implementation/lra.html">Real and integer solving</a></h3>
+      <h3><a href="implementation/arithmetic/index.html">Real and integer solving</a></h3>
       <p>Exact linear arithmetic; <a href="implementation/lia.html">integer completion</a> adds patching, cuts, and branching.</p>
       <p class="primo-map-lead">Open leads · <a href="leads/lra-floating-point.html">Guide the Real basis</a> · <a href="leads/lia-patching.html">Improve integer patching</a></p>
     </article>
@@ -118,5 +118,5 @@ is small or ready for implementation.
 - **Use the solver:** [input](guide/input.md), [models](guide/models.md), and [sessions](guide/sessions.md).
 - **Look up exact behavior:** [options](reference/options.md), [effective policies](reference/policies.md), and [tactic inventory](reference/tactics.md).
 - **Understand the design:** [architecture](implementation/architecture.md) and [primary literature](literature.md).
-- **Find proposals and ongoing work:** [open leads](leads/index.md), [documentation work](work/documentation.md), and [results storage](work/results-storage.md).
-- **Assess claims and history:** [evaluation evidence](evidence/evaluation-refresh.md), [documentation review](review.md), and [preservation map](coverage/index.md).
+- **Find remaining questions and project work:** [open leads](leads/index.md), [documentation work](work/documentation.md), and [results storage](work/results-storage.md).
+- **Assess claims and history:** [completed investigations](evidence/index.md), [documentation review](review.md), and [preservation map](coverage/index.md).

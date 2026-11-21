@@ -3,7 +3,9 @@
 
 Sphinx's linkcheck builder handles other HTTP(S) URLs. This check validates
 the generated HTML, including assets, and resolves Primo source links in Git.
-It checks source existence and line bounds, not the meaning of the cited code.
+It checks source existence, reachability from HEAD or an explicitly pinned canonical
+archive tag, and line bounds, not the meaning of the cited code. Unrelated local
+history must not hide missing CI inputs.
 In the current book, concrete src/ filenames in article prose must be linked.
 Code blocks and archive/original are exempt from this prose check, not from
 link validation. Symbol names and references without a full path need review.
@@ -20,6 +22,7 @@ from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
 SOURCE_PATH = re.compile(r"(?<![\w/])src/(?:[\w.+-]+/)*[\w.+-]+\.(?:hpp|cpp|h|cc)\b")
+CANONICAL_REPOSITORY = "https://github.com/primo-solver/primo.git"
 
 
 class Page(HTMLParser):
@@ -79,6 +82,63 @@ class Checker:
         self.pages = 0
         self._pages: dict[Path, Page] = {}
         self._git_results: dict[str, str | None] = {}
+        self._checked_revisions: set[str] = set()
+        self._history_roots = ["HEAD"]
+        self._history_error: str | None = None
+        manifest = self.repo / "docs/source-history.json"
+        if manifest.exists():
+            try:
+                self._history_roots.extend(self.archive_roots(manifest))
+            except (OSError, TypeError, ValueError, subprocess.SubprocessError) as exc:
+                self._history_error = f"invalid canonical source history: {exc}"
+                self.failures.append(
+                    {
+                        "page": str(manifest),
+                        "line": 0,
+                        "uri": "",
+                        "error": self._history_error,
+                    }
+                )
+
+    def archive_roots(self, manifest: Path) -> list[str]:
+        data = json.loads(manifest.read_text(encoding="utf-8"))
+        if not isinstance(data, dict) or data.get("schema_version") != 1:
+            raise ValueError("source-history schema_version must be 1")
+        archives = data.get("archives")
+        if not isinstance(archives, list):
+            raise TypeError("source-history archives must be a list")
+        roots = []
+        for archive in archives:
+            if (
+                not isinstance(archive, dict)
+                or archive.get("repository") != CANONICAL_REPOSITORY
+            ):
+                raise ValueError(
+                    "source-history archives must use the canonical Primo repository"
+                )
+            ref, commit = archive.get("ref"), archive.get("commit")
+            if not isinstance(ref, str) or not ref.startswith("refs/tags/"):
+                raise ValueError("source-history ref must be a fully qualified tag")
+            self.git("check-ref-format", ref)
+            if not isinstance(commit, str) or not re.fullmatch(r"[0-9a-f]{40}", commit):
+                raise ValueError("source-history commit must be a full lowercase SHA-1")
+            try:
+                actual = (
+                    self.git("rev-parse", "--verify", f"{ref}^{{commit}}")
+                    .decode()
+                    .strip()
+                )
+            except subprocess.CalledProcessError as exc:
+                raise ValueError(
+                    f"required canonical archive tag is missing: {ref}; "
+                    f"fetch it from {CANONICAL_REPOSITORY}"
+                ) from exc
+            if actual != commit:
+                raise ValueError(
+                    f"canonical archive tag {ref} points to {actual}, expected {commit}"
+                )
+            roots.append(commit)
+        return roots
 
     def page(self, path: Path) -> Page:
         if path not in self._pages:
@@ -91,6 +151,8 @@ class Checker:
         )
 
     def check_git(self, uri: str) -> str | None:
+        if self._history_error:
+            return self._history_error
         url = urlsplit(uri)
         parts = unquote(url.path).split("/", 5)
         kind = parts[3]
@@ -98,7 +160,21 @@ class Checker:
             return "Primo source links must name a commit hash"
         revision = parts[4]
         try:
-            self.git("rev-parse", "--verify", f"{revision}^{{commit}}")
+            if revision not in self._checked_revisions:
+                self.git("rev-parse", "--verify", f"{revision}^{{commit}}")
+                for root in self._history_roots:
+                    try:
+                        self.git("merge-base", "--is-ancestor", revision, root)
+                        break
+                    except subprocess.CalledProcessError as exc:
+                        if exc.returncode != 1:
+                            raise
+                else:
+                    return (
+                        "source commit is not reachable from HEAD or declared canonical "
+                        f"archive history: {revision}"
+                    )
+                self._checked_revisions.add(revision)
             if kind == "commit":
                 if len(parts) != 5 or url.fragment:
                     return "unsupported commit URL suffix or fragment"
@@ -155,6 +231,8 @@ class Checker:
         return None
 
     def check_book(self, root: Path) -> None:
+        if self._history_error:
+            return
         root = root.resolve()
         if not (root / "index.html").is_file():
             self.failures.append(
@@ -169,7 +247,11 @@ class Checker:
         for path in sorted(root.rglob("*.html")):
             # Theme templates and downloaded examples are assets, not book pages.
             # A page linking to one still has its target checked below.
-            if set(path.relative_to(root).parts) & {"_static", "_downloads", "_sources"}:
+            if set(path.relative_to(root).parts) & {
+                "_static",
+                "_downloads",
+                "_sources",
+            }:
                 continue
             self.pages += 1
             # Keep frozen historical prose out of the new writing convention.
@@ -177,8 +259,12 @@ class Checker:
             if path.relative_to(root).parts[:2] != ("archive", "original"):
                 for line, source in self.page(path).unlinked_sources:
                     self.failures.append(
-                        {"page": str(path), "line": line, "uri": source,
-                         "error": "unlinked source filename; use the MyST source role"}
+                        {
+                            "page": str(path),
+                            "line": line,
+                            "uri": source,
+                            "error": "unlinked source filename; use the MyST source role",
+                        }
                     )
             for line, uri in self.page(path).links:
                 try:

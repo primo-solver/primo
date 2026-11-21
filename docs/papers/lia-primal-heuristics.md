@@ -140,9 +140,12 @@ Primo can find $(6,3,2)$ by moving farther.
 
 The shared stage owner is
 {integersource}`complete_integer_assignment <src/theory/arithmetic/lia_completion.cpp#L13-L35>`,
-called through the [standalone and combined LIA component routes](../implementation/lia.md#when-integer-reasoning-runs).
-Future option wiring also touches {source}`CheckSatOptions
-<src/smt/check_sat.hpp>`. SAT continues to receive theory-valid explanations,
+called through the [standalone and combined LIA component routes](../implementation/arithmetic/lia/repair.md#when-integer-reasoning-runs).
+A new LIA setting goes into `LiaSettings`, its override, the route policy,
+its CLI flag (`main.cpp`) and its strategy parameter
+(`lia_strategy_parameters`); see {ref}`lia-settings`. A switch whose
+default differs by route takes its `--help` default from
+`lia_route_default_text`. SAT continues to receive theory-valid explanations,
 not heuristic restrictions. Model acceptance remains with the pure or combined
 completion caller.
 

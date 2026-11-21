@@ -184,6 +184,34 @@ void paper_example_3_patches_x_to_an_integer_point() {
   assert_feasible(tableau);
 }
 
+// Records the integrality gap tracked in docs/implementation/lia.md: with
+// s1 = s2 = (2/3)y and y in [1,2], moving y to 3/2 makes both basic rows
+// integral, so the fractional count drops from two to one even though the
+// integer nonbasic y becomes fractional. The counter makes that visible.
+void fractional_nonbasic_move_is_counted() {
+  LraTableau tableau;
+  const LraVarId y = tableau.add_variable();
+  const LraVarId s1 = tableau.add_variable();
+  const LraVarId s2 = tableau.add_variable();
+  tableau.add_row(s1, {{y, Rational(2, 3)}});
+  tableau.add_row(s2, {{y, Rational(2, 3)}});
+  assert(!tableau.assert_lower(y, rat(1), Lit{1}).has_value());
+  assert(!tableau.assert_upper(y, rat(2), Lit{2}).has_value());
+  assert(!tableau.check().has_value());
+  assert(tableau.assignment(y) == rat(1));
+  assert(tableau.assignment(s1) == rat(Rational(2, 3)));
+
+  LiaPatchingStats stats;
+  const std::size_t patched = patch_integer_variables(tableau, {y, s1, s2}, 100, &stats);
+  assert(patched == 1);
+  assert(tableau.assignment(y) == rat(Rational(3, 2)));
+  assert(is_integer_valued(tableau.assignment(s1)));
+  assert(is_integer_valued(tableau.assignment(s2)));
+  assert(stats.fractional_nonbasic_moves == 1);
+  assert(!stats.fully_integral);
+  assert_feasible(tableau);
+}
+
 // The case the paper does not have to describe, because in its setting
 // nonbasic variables are always at their bounds and therefore already
 // integral. Primo's scale-canonicalization stores a fractional bound on an
@@ -352,11 +380,325 @@ void indexed_scoring_matches_full_scan_oracle() {
   }
 }
 
+// --- Integral patch moves (--lia-patch-integral-moves, gap 4 of
+// docs/papers/mip-presolve-integrality.md) ---
+
+std::size_t fractional_count(const LraTableau& tableau, const std::vector<LraVarId>& vars) {
+  return static_cast<std::size_t>(std::count_if(vars.begin(), vars.end(), [&](LraVarId var) {
+    return !is_integer_valued(tableau.assignment(var));
+  }));
+}
+
+// The s1 = s2 = (2/3)y case from fractional_nonbasic_move_is_counted: with
+// integral moves, y = 3/2 is rejected, and no integral value of y in [1, 2]
+// makes both rows integral, so nothing moves.
+void integral_moves_reject_the_fractional_nonbasic_move() {
+  LraTableau tableau;
+  const LraVarId y = tableau.add_variable();
+  const LraVarId s1 = tableau.add_variable();
+  const LraVarId s2 = tableau.add_variable();
+  tableau.add_row(s1, {{y, Rational(2, 3)}});
+  tableau.add_row(s2, {{y, Rational(2, 3)}});
+  assert(!tableau.assert_lower(y, rat(1), Lit{1}).has_value());
+  assert(!tableau.assert_upper(y, rat(2), Lit{2}).has_value());
+  assert(!tableau.check().has_value());
+
+  LiaPatchingStats stats;
+  const std::size_t patched =
+      patch_integer_variables(tableau, {y, s1, s2}, 100, &stats, /*integral_moves=*/true);
+  assert(patched == 0);
+  assert(tableau.assignment(y) == rat(1));
+  assert(stats.fractional_nonbasic_moves == 0);
+  assert(stats.fractional_candidates_rejected > 0);
+  assert_feasible(tableau);
+}
+
+// With s = (11/3)y and y = 1, the target window around s = 11/3 reaches
+// s in {0, ..., 8}; s is integral only for y a multiple of 3, i.e. s a
+// multiple of 11, so the window offers only fractional y. The lattice
+// proposes y = 3 (s = 11) directly.
+void lattice_finds_a_move_the_window_misses() {
+  const auto build = [](LraTableau& tableau, LraVarId& y, LraVarId& s) {
+    y = tableau.add_variable();
+    s = tableau.add_variable();
+    tableau.add_row(s, {{y, Rational(11, 3)}});
+    assert(!tableau.assert_lower(y, rat(1), Lit{1}).has_value());
+    assert(!tableau.assert_upper(y, rat(10), Lit{2}).has_value());
+    assert(!tableau.assert_lower(s, rat(-100), Lit{3}).has_value());
+    assert(!tableau.assert_upper(s, rat(100), Lit{4}).has_value());
+    assert(!tableau.check().has_value());
+  };
+  LraTableau window_only;
+  LraVarId y = 0;
+  LraVarId s = 0;
+  build(window_only, y, s);
+  assert(patch_integer_variables(window_only, {y, s}, 100) == 0);
+
+  LraTableau lattice;
+  build(lattice, y, s);
+  LiaPatchingStats stats;
+  assert(patch_integer_variables(lattice, {y, s}, 100, &stats, /*integral_moves=*/true) == 1);
+  assert(lattice.assignment(y) == rat(3));
+  assert(lattice.assignment(s) == rat(11));
+  assert(stats.lattice_moves_accepted == 1);
+  assert(stats.fractional_nonbasic_moves == 0);
+  assert_feasible(lattice);
+}
+
+// An offset with an infinitesimal part cannot be cancelled by an integer
+// value of y, so the lattice proposes nothing for y; s is fixed by moving the
+// continuous z instead, and y stays integral.
+void lattice_skips_an_infinitesimal_offset() {
+  LraTableau tableau;
+  const LraVarId y = tableau.add_variable();
+  const LraVarId z = tableau.add_variable();
+  const LraVarId s = tableau.add_variable();
+  tableau.add_row(s, {{y, Rational(2, 3)}, {z, Rational(1)}});
+  assert(!tableau.assert_lower(y, rat(1), Lit{1}).has_value());
+  assert(!tableau.assert_upper(y, rat(5), Lit{2}).has_value());
+  assert(!tableau.assert_lower(z, DeltaRational{Rational(0), Rational(1)}, Lit{3}).has_value());
+  assert(!tableau.check().has_value());
+  assert(!tableau.assignment(s).infinitesimal.is_zero());
+
+  LiaPatchingStats stats;
+  patch_integer_variables(tableau, {y, s}, 100, &stats, /*integral_moves=*/true);
+  assert(stats.lattice_candidates_scored == 0);
+  assert(is_integer_valued(tableau.assignment(y)));
+  assert(stats.fractional_nonbasic_moves == 0);
+  assert_feasible(tableau);
+}
+
+// Brute-force check of the lattice arithmetic. Row s = (p/q)y + b*w with y an
+// integer in [lower, lower + width], w a fixed continuous offset, and s wide
+// open: some integer k in y's range makes s integral iff integral patching
+// makes s integral, and y always ends on an integer.
+void lattice_agrees_with_brute_force() {
+  unsigned state = 0x4c415454U;
+  const auto next = [&state]() {
+    state = state * 1664525U + 1013904223U;
+    return state >> 8U;
+  };
+  int solvable = 0;
+  int unsolvable = 0;
+  for (int trial = 0; trial < 500; ++trial) {
+    const long p = static_cast<long>(next() % 61U) - 30;
+    const long q = static_cast<long>(next() % 7U) + 1;
+    if (p == 0) {
+      continue;
+    }
+    const Rational a(p, q);
+    const Rational b(static_cast<long>(next() % 9U) + 1, static_cast<long>(next() % 5U) + 1);
+    const Rational w(static_cast<long>(next() % 21U) - 10, static_cast<long>(next() % 6U) + 1);
+    const long lower = static_cast<long>(next() % 11U) - 5;
+    const long width = static_cast<long>(next() % 12U);
+
+    LraTableau tableau;
+    const LraVarId y = tableau.add_variable();
+    const LraVarId offset = tableau.add_variable();
+    const LraVarId s = tableau.add_variable();
+    tableau.add_row(s, {{y, a}, {offset, b}});
+    assert(!tableau.assert_lower(y, rat(lower), Lit{1}).has_value());
+    assert(!tableau.assert_upper(y, rat(lower + width), Lit{2}).has_value());
+    assert(!tableau.assert_lower(offset, rat(w), Lit{3}).has_value());
+    assert(!tableau.assert_upper(offset, rat(w), Lit{4}).has_value());
+    assert(!tableau.check().has_value());
+    if (is_integer_valued(tableau.assignment(s)) || !is_integer_valued(tableau.assignment(y))) {
+      continue;
+    }
+    bool exists = false;
+    for (long k = lower; k <= lower + width; ++k) {
+      exists = exists || (a * Rational(k) + b * w).is_integer();
+    }
+    LiaPatchingStats stats;
+    patch_integer_variables(tableau, {y, s}, 100, &stats, /*integral_moves=*/true);
+    assert(is_integer_valued(tableau.assignment(s)) == exists);
+    assert(is_integer_valued(tableau.assignment(y)));
+    assert(stats.fractional_nonbasic_moves == 0);
+    assert_feasible(tableau);
+    (exists ? solvable : unsolvable) += 1;
+  }
+  // Both outcomes must actually be exercised.
+  assert(solvable > 50 && unsolvable > 50);
+}
+
+// Randomized invariants of integral patching on three-row tableaus with
+// coefficients up to +-12 over denominators up to 5.
+void integral_moves_keep_integer_nonbasics_integral() {
+  unsigned state = 0x494e5447U;
+  const auto next = [&state]() {
+    state = state * 1664525U + 1013904223U;
+    return state >> 8U;
+  };
+  for (int trial = 0; trial < 300; ++trial) {
+    LraTableau tableau;
+    const LraVarId x = tableau.add_variable();
+    const LraVarId y = tableau.add_variable();
+    const LraVarId z = tableau.add_variable();
+    const LraVarId b0 = tableau.add_variable();
+    const LraVarId b1 = tableau.add_variable();
+    const LraVarId b2 = tableau.add_variable();
+    const auto coefficient = [&next]() {
+      const long numerator = static_cast<long>(next() % 25U) - 12;
+      return Rational(numerator == 0 ? 1 : numerator, static_cast<long>(next() % 5U) + 1);
+    };
+    for (const LraVarId basic : {b0, b1, b2}) {
+      tableau.add_row(basic, {{x, coefficient()}, {y, coefficient()}, {z, coefficient()}});
+    }
+    for (const LraVarId var : {x, y, z}) {
+      const long lower = static_cast<long>(next() % 9U) - 4;
+      assert(
+          !tableau.assert_lower(var, rat(lower), Lit{static_cast<int>(var * 2 + 1)}).has_value());
+      assert(!tableau
+                  .assert_upper(var, rat(lower + static_cast<long>(next() % 12U)),
+                                Lit{static_cast<int>(var * 2 + 2)})
+                  .has_value());
+    }
+    assert(!tableau.check().has_value());
+    // z is continuous in half of the trials.
+    std::vector<LraVarId> integer_vars{x, y, b0, b1, b2};
+    if (next() % 2U == 0) {
+      integer_vars.push_back(z);
+    }
+    std::vector<bool> integral_nonbasic(tableau.variable_count(), false);
+    for (const LraVarId var : integer_vars) {
+      integral_nonbasic[var] = !tableau.is_basic(var) && is_integer_valued(tableau.assignment(var));
+    }
+    const std::size_t before = fractional_count(tableau, integer_vars);
+
+    LiaPatchingStats stats;
+    const std::size_t patched =
+        patch_integer_variables(tableau, integer_vars, 50, &stats, /*integral_moves=*/true);
+    const std::size_t after = fractional_count(tableau, integer_vars);
+    assert(after <= before && patched == before - after);
+    assert(stats.fractional_nonbasic_moves == 0);
+    for (const LraVarId var : integer_vars) {
+      if (integral_nonbasic[var]) {
+        assert(is_integer_valued(tableau.assignment(var)));
+      }
+    }
+    assert_feasible(tableau);
+  }
+}
+
+// Passing integral_moves = false explicitly is exactly the established
+// patcher (whose full-scan oracle test is above).
+void explicit_default_matches_the_established_patcher() {
+  LraTableau base;
+  const LraVarId y = base.add_variable();
+  const LraVarId s1 = base.add_variable();
+  const LraVarId s2 = base.add_variable();
+  base.add_row(s1, {{y, Rational(2, 3)}});
+  base.add_row(s2, {{y, Rational(2, 3)}});
+  assert(!base.assert_lower(y, rat(1), Lit{1}).has_value());
+  assert(!base.assert_upper(y, rat(2), Lit{2}).has_value());
+  assert(!base.check().has_value());
+  LraTableau implicit = base;
+  LraTableau explicit_default = base;
+  LiaPatchingStats implicit_stats;
+  LiaPatchingStats explicit_stats;
+  assert(patch_integer_variables(implicit, {y, s1, s2}, 100, &implicit_stats) ==
+         patch_integer_variables(explicit_default, {y, s1, s2}, 100, &explicit_stats, false));
+  for (LraVarId var = 0; var < base.variable_count(); ++var) {
+    assert(implicit.assignment(var) == explicit_default.assignment(var));
+  }
+  assert(implicit_stats.candidates_scored == explicit_stats.candidates_scored);
+  assert(explicit_stats.fractional_candidates_rejected == 0);
+  assert(explicit_stats.lattice_candidates_scored == 0);
+}
+
+// Two targets request the same moved variable. Freeze the established move
+// and scoring counters as well as counting all interval queries, including
+// infeasible lattice candidates and fractional candidates rejected afterwards.
+void intervals_are_shared_across_targets_and_candidate_families() {
+  for (const bool integral_moves : {false, true}) {
+    LraTableau tableau;
+    const LraVarId y = tableau.add_variable();
+    const LraVarId s1 = tableau.add_variable();
+    const LraVarId s2 = tableau.add_variable();
+    tableau.add_row(s1, {{y, Rational(2, 3)}});
+    tableau.add_row(s2, {{y, Rational(2, 3)}});
+    assert(!tableau.assert_lower(y, rat(1), Lit{1}).has_value());
+    assert(!tableau.assert_upper(y, rat(2), Lit{2}).has_value());
+    assert(!tableau.check().has_value());
+    LiaPatchingStats stats;
+    assert(patch_integer_variables(tableau, {y, s1, s2}, 100, &stats, integral_moves) ==
+           (integral_moves ? 0U : 1U));
+    assert(tableau.assignment(y) == rat(integral_moves ? Rational(1) : Rational(3, 2)));
+    assert(tableau.assignment(s1) == rat(integral_moves ? Rational(2, 3) : Rational(1)));
+    assert(tableau.assignment(s2) == tableau.assignment(s1));
+    assert(!stats.fully_integral);
+    assert(stats.occurrence_entries == 2);
+    assert(stats.candidates_scored == (integral_moves ? 0U : 4U));
+    assert(stats.affected_rows_inspected == (integral_moves ? 0U : 8U));
+    assert(stats.full_scan_equivalent == (integral_moves ? 0U : 12U));
+    assert(stats.fractional_nonbasic_moves == (integral_moves ? 0U : 1U));
+    assert(stats.fractional_candidates_rejected == (integral_moves ? 2U : 0U));
+    assert(stats.lattice_candidates_scored == 0);
+    assert(stats.lattice_moves_accepted == 0);
+    // One distinct moved variable in each of two default attempts, or one
+    // attempt with both eight-element candidate families for both targets.
+    assert(stats.interval_requests == (integral_moves ? 32U : 24U));
+    assert(stats.interval_computations == (integral_moves ? 1U : 2U));
+    assert(stats.interval_cache_hits == stats.interval_requests - stats.interval_computations);
+    assert_feasible(tableau);
+  }
+}
+
+// Start at x=z=1/2 with continuous s=x+z. With s>=1 the first move x:=1
+// lowers z's feasible endpoint from 1/2 to 0. Retaining z's old interval
+// would choose z:=1 instead of the frozen second move z:=0. Also cover a
+// strict endpoint, unbounded intervals, and every accepted-move prefix.
+void accepted_moves_invalidate_other_variables_intervals() {
+  for (const int bound_kind : {0, 1, 2}) {
+    for (const std::size_t limit : {0U, 1U, 2U, 10U}) {
+      LraTableau tableau;
+      const LraVarId x = tableau.add_variable();
+      const LraVarId z = tableau.add_variable();
+      const LraVarId s = tableau.add_variable();
+      tableau.add_row(s, {{x, Rational(1)}, {z, Rational(1)}});
+      const DeltaRational epsilon{Rational(0), Rational(bound_kind == 2 ? 1 : 0)};
+      tableau.set_nonbasic_value(x, rat(Rational(1, 2)) + epsilon);
+      tableau.set_nonbasic_value(z, rat(Rational(1, 2)));
+      if (bound_kind != 0) {
+        assert(!tableau.assert_lower(s, rat(1) + epsilon, Lit{1}).has_value());
+      }
+      assert(!tableau.check().has_value());
+      LiaPatchingStats stats;
+      assert(patch_integer_variables(tableau, {x, z}, limit, &stats) == std::min(limit, 2UL));
+      const DeltaRational expected_x =
+          limit == 0 ? rat(Rational(1, 2)) + epsilon : rat(bound_kind == 0 ? 0 : 1);
+      const DeltaRational expected_z =
+          limit < 2 ? rat(Rational(1, 2)) : rat(bound_kind == 2 ? 1 : 0);
+      assert(tableau.assignment(x) == expected_x);
+      assert(tableau.assignment(z) == expected_z);
+      assert(tableau.assignment(s) == expected_x + expected_z);
+      assert(stats.interval_requests == (limit == 0 ? 0U : limit == 1 ? 16U : 24U));
+      assert(stats.interval_computations == (limit == 0 ? 0U : limit == 1 ? 2U : 3U));
+      assert(stats.interval_cache_hits == stats.interval_requests - stats.interval_computations);
+      assert(stats.occurrence_entries == 0);
+      assert(stats.affected_rows_inspected == 0);
+      const std::size_t scored = bound_kind == 0 ? (limit == 1 ? 16U : 24U)
+                                                 : (limit == 1        ? 8U
+                                                    : bound_kind == 1 ? 13U
+                                                                      : 12U);
+      assert(stats.candidates_scored == (limit == 0 ? 0U : scored));
+      assert(stats.full_scan_equivalent == stats.candidates_scored * 2);
+      assert(stats.fractional_nonbasic_moves == 0);
+      assert(stats.fractional_candidates_rejected == 0);
+      assert(stats.lattice_candidates_scored == 0);
+      assert(stats.lattice_moves_accepted == 0);
+      assert(stats.fully_integral == (limit >= 2));
+      assert_feasible(tableau);
+    }
+  }
+}
+
 }  // namespace
 
 int main() {
   paper_example_3_patches_x_to_an_integer_point();
   fractional_nonbasic_is_rounded_in_place();
+  fractional_nonbasic_move_is_counted();
   unpatchable_variable_is_left_untouched();
   fixed_variable_is_not_moved();
   strict_bound_rounds_up_past_the_infinitesimal();
@@ -364,5 +706,13 @@ int main() {
   already_integral_assignment_reports_no_progress();
   a_sweep_with_no_improving_move_changes_nothing();
   indexed_scoring_matches_full_scan_oracle();
+  integral_moves_reject_the_fractional_nonbasic_move();
+  lattice_finds_a_move_the_window_misses();
+  lattice_skips_an_infinitesimal_offset();
+  lattice_agrees_with_brute_force();
+  integral_moves_keep_integer_nonbasics_integral();
+  explicit_default_matches_the_established_patcher();
+  intervals_are_shared_across_targets_and_candidate_families();
+  accepted_moves_invalidate_other_variables_intervals();
   return 0;
 }

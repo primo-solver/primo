@@ -40,22 +40,39 @@ attempts, inspected candidates, deliveries, and cutoffs.
 
 ## Initial phase hints
 
-`--theory-phase` defaults to `negative`. `positive` prefers equalities, `none`
-leaves backend phases unchanged, and `polarity` sets a hint only for atoms with
-one syntactic polarity. These are hints before SAT search, not theory-selected
-decision variables.
+`--initial-theory-phase` defaults to `negative`. `positive` prefers the
+positive literal of each theory atom, `none` leaves backend phases unchanged,
+and `polarity` sets a preference only for atoms with one syntactic polarity.
+This installs preferred truth values; it does not select decision variables.
+The old `--theory-phase` spelling remains an alias.
 
-The explicit `auto` heuristic chooses polarity only when finite-domain or UF
-symmetry structure exists, there are **1–25** pure-negative atoms, and at least
-100 pure-positive atoms. Otherwise it chooses negative. The nonzero lower bound
-matters; zero pure-negative atoms do not select polarity. See
-{source}`resolve_theory_phase_mode <src/smt/solver_engines.cpp#L555-L587>`.
+Current route coverage is explicit:
 
-Separately, automatic basic preprocessing can select polarity hints for its
-multi-assertion profile or its narrower single-assertion predicate profile.
-An explicitly supplied `--theory-phase` disables these overrides;
+| Route | Initial-policy installation |
+|---|---|
+| QF_UF rebuild and supported QF_UF assumptions sessions | Installs the selected policy. Explicit `auto` uses the structural rule below. |
+| Dedicated QF_UFLRA rebuild route | Installs the selected policy; `auto` is handled directly as `negative`, without the UF structural selector. |
+| Pure QF_LRA rebuild/assumptions, and shared-driver QF_LIA/QF_UFLIA queries | Does not currently install this policy. The rename preserves that coverage. |
+
+On the UF routes, explicit `auto` chooses polarity only when finite-domain or
+UF symmetry structure exists, there are **1–25** pure-negative atoms, and at
+least 100 pure-positive atoms. Otherwise it chooses negative. Zero
+pure-negative atoms do not select polarity. See
+{settingssource}`resolve_theory_phase_mode and route consumers <src/smt/solver_engines.cpp>`.
+
+Separately, automatic basic preprocessing on QF_UF rebuild queries can select
+polarity hints for its multi-assertion profile or its narrower
+single-assertion predicate profile. An explicitly supplied
+`--initial-theory-phase` disables these overrides;
 `--no-auto-basic-multi-polarity` also disables the multi-assertion override.
 The `:sat.phase.auto-*` counters report which policy actually ran.
+
+Arithmetic model preferences are separate. On QF_UFLIA their output requires
+online components and incremental EUF, the default combination path.
+On routes supporting both mechanisms, model preferences can update values
+previously installed by an initial policy. Disabling model preferences does
+not disable the initial policy. Legacy spellings and arithmetic policy
+resolution are listed in [option compatibility](options.md#phase-option-names-and-compatibility).
 
 ## Structural preprocessing selection
 
@@ -98,12 +115,14 @@ remains historical evidence.
 (automatic-lra-heuristics)=
 ## Automatic QF_LRA heuristics
 
-The unspecified `--lra-model-phase` and `--monotone-elimination` policies resolve
+The `auto` value of `--arithmetic-model-phase` and the unspecified
+`--monotone-elimination` policy resolve
 to enabled only when the declared logic is `QF_LRA`, the session mode is
 `rebuild`, and preprocessing is `auto`. Other routes and explicit preprocessing
-profiles resolve them to disabled. Use `--no-lra-model-phase` and
-`--no-monotone-elimination` to disable either policy explicitly; the positive
-flags explicitly enable them. Explicitly enabling monotone elimination remains
+profiles resolve them to disabled. Use `--arithmetic-model-phase=off` and
+`--no-monotone-elimination` to disable them explicitly;
+`--arithmetic-model-phase=on` and `--monotone-elimination` explicitly enable
+them. Explicitly enabling monotone elimination remains
 an error in assumptions mode, whose assertions can later be popped.
 
 The {lrapolicysource}`query policy resolution
@@ -145,6 +164,12 @@ form dependent groups:
   and instance budgets are listed in [CLI help](options.md#complete-cli-inventory)
   and explained in [LIA](../implementation/lia.md) and
   [quantifiers](../implementation/quantifiers.md).
+- The `--lia-*` and `--no-lia-*` flags are overrides. Each integer route
+  (QF_LIA and QF_UFLIA) takes its LIA defaults from `default_lia_settings`,
+  as described in {ref}`settings and who sets them <lia-settings>`. QF_LIA
+  uses M124 (rounding, primitive rows and integral patch moves on; integer-slack
+  obligations off), uniform cubes and hybrid branching. QF_UFLIA retains its
+  baseline settings. See the [default-profile update](../evidence/qf-lia-defaults-20261119.md).
 
 Before tuning a parameter, confirm its call path and compare mechanism counters
 at two admissible values. A flag's presence in help does not establish that it

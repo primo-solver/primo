@@ -1,0 +1,982 @@
+[
+  {
+    "call": "src/smt/component_model_assembler.cpp:increment_dynamic(\":time.model.reconstruction-us\")",
+    "count": 1,
+    "reason": "ComponentModelAssembler publishes the complete reconstruction duration after producing a candidate model; no per-term updates."
+  },
+  {
+    "call": "src/smt/component_solver.cpp:set_dynamic(key)",
+    "count": 1,
+    "reason": "Atom installation publishes owner-specific registry sizes once per growth boundary, with callbacks detached; not per assigned literal or kernel operation."
+  },
+  {
+    "call": "src/smt/component_solver.cpp:set_dynamic(\":no.mixed.\"+id+\"-atoms\")",
+    "count": 1,
+    "reason": "Atom installation publishes owner-specific registry sizes once per growth boundary, with callbacks detached; not per assigned literal or kernel operation."
+  },
+  {
+    "call": "src/smt/component_solver.cpp:increment_dynamic(\":combination.components.incremental-\"+id+\"-atoms\")",
+    "count": 1,
+    "reason": "Atom installation publishes owner-specific registry sizes once per growth boundary, with callbacks detached; not per assigned literal or kernel operation."
+  },
+  {
+    "call": "src/smt/experimental_tactics.cpp:increment_dynamic(\":experimental.split-bools.input-goals\")",
+    "count": 1,
+    "reason": "split-bools tactic publishes input, selected and output goal counts once per tactic invocation."
+  },
+  {
+    "call": "src/smt/experimental_tactics.cpp:increment_dynamic(\":experimental.split-bools.selected\")",
+    "count": 1,
+    "reason": "split-bools tactic publishes input, selected and output goal counts once per tactic invocation."
+  },
+  {
+    "call": "src/smt/experimental_tactics.cpp:increment_dynamic(\":experimental.split-bools.output-goals\")",
+    "count": 1,
+    "reason": "split-bools tactic publishes input, selected and output goal counts once per tactic invocation."
+  },
+  {
+    "call": "src/smt/preprocess_bound_tightening.cpp:set_dynamic(std::string(\":preprocessing.bounds.\")+key)",
+    "count": 1,
+    "reason": "The bound pass publishes numeric aggregates after preprocessing completes, outside row/term worklists."
+  },
+  {
+    "call": "src/smt/preprocessing_strategy.cpp:set_dynamic(\":no.purification.definitions\")",
+    "count": 1,
+    "reason": "Strategy selection publishes preparation features and initializes absent-stage summaries once per frontend boundary."
+  },
+  {
+    "call": "src/smt/preprocessing_strategy.cpp:set_dynamic(\":no.purification.arithmetic-uf-definitions\")",
+    "count": 1,
+    "reason": "Strategy selection publishes preparation features and initializes absent-stage summaries once per frontend boundary."
+  },
+  {
+    "call": "src/smt/preprocessing_strategy.cpp:set_dynamic(\":no.purification.euf-real-term-definitions\")",
+    "count": 1,
+    "reason": "Strategy selection publishes preparation features and initializes absent-stage summaries once per frontend boundary."
+  },
+  {
+    "call": "src/smt/preprocessing_strategy.cpp:set_dynamic(\":no.purification.reused-applications\")",
+    "count": 1,
+    "reason": "Strategy selection publishes preparation features and initializes absent-stage summaries once per frontend boundary."
+  },
+  {
+    "call": "src/smt/preprocessing_strategy.cpp:set_dynamic(\":no.purification.reused-real-terms\")",
+    "count": 1,
+    "reason": "Strategy selection publishes preparation features and initializes absent-stage summaries once per frontend boundary."
+  },
+  {
+    "call": "src/smt/preprocessing_strategy.cpp:set_dynamic(\":no.purification.memoized-formula-rewrites\")",
+    "count": 1,
+    "reason": "Strategy selection publishes preparation features and initializes absent-stage summaries once per frontend boundary."
+  },
+  {
+    "call": "src/smt/preprocessing_strategy.cpp:set_dynamic(\":no.purification.memoized-arithmetic-rewrites\")",
+    "count": 1,
+    "reason": "Strategy selection publishes preparation features and initializes absent-stage summaries once per frontend boundary."
+  },
+  {
+    "call": "src/smt/preprocessing_strategy.cpp:set_dynamic(\":no.purification.memoized-euf-rewrites\")",
+    "count": 1,
+    "reason": "Strategy selection publishes preparation features and initializes absent-stage summaries once per frontend boundary."
+  },
+  {
+    "call": "src/smt/preprocessing_strategy.cpp:set_dynamic(\":no.purification.skipped-no-sites\")",
+    "count": 1,
+    "reason": "Strategy selection publishes preparation features and initializes absent-stage summaries once per frontend boundary."
+  },
+  {
+    "call": "src/smt/preprocessing_strategy.cpp:set_dynamic(\":preprocessing.boolean-flatten-post.attempts\")",
+    "count": 1,
+    "reason": "Strategy selection publishes preparation features and initializes absent-stage summaries once per frontend boundary."
+  },
+  {
+    "call": "src/smt/preprocessing_strategy.cpp:set_dynamic(\":preprocessing.boolean-flatten-post.accepted\")",
+    "count": 1,
+    "reason": "Strategy selection publishes preparation features and initializes absent-stage summaries once per frontend boundary."
+  },
+  {
+    "call": "src/smt/preprocessing_strategy.cpp:set_dynamic(\":preprocessing.boolean-flatten-post.threshold-stops\")",
+    "count": 1,
+    "reason": "Strategy selection publishes preparation features and initializes absent-stage summaries once per frontend boundary."
+  },
+  {
+    "call": "src/smt/preprocessing_strategy.cpp:set_dynamic(\":preprocessing.boolean-flatten-post.rewrites\")",
+    "count": 1,
+    "reason": "Strategy selection publishes preparation features and initializes absent-stage summaries once per frontend boundary."
+  },
+  {
+    "call": "src/smt/preprocessing_strategy.cpp:set_dynamic(\":preprocessing.boolean-flatten-post.max-arity\")",
+    "count": 1,
+    "reason": "Strategy selection publishes preparation features and initializes absent-stage summaries once per frontend boundary."
+  },
+  {
+    "call": "src/smt/preprocessing_strategy.cpp:set_dynamic(\":preprocessing.auto.structural.conjunct-occurrences\")",
+    "count": 1,
+    "reason": "Strategy selection publishes preparation features and initializes absent-stage summaries once per frontend boundary."
+  },
+  {
+    "call": "src/smt/preprocessing_strategy.cpp:set_dynamic(\":preprocessing.auto.structural.unique-conjuncts\")",
+    "count": 1,
+    "reason": "Strategy selection publishes preparation features and initializes absent-stage summaries once per frontend boundary."
+  },
+  {
+    "call": "src/smt/preprocessing_strategy.cpp:set_dynamic(\":preprocessing.auto.structural.clause-like-conjuncts\")",
+    "count": 1,
+    "reason": "Strategy selection publishes preparation features and initializes absent-stage summaries once per frontend boundary."
+  },
+  {
+    "call": "src/smt/preprocessing_strategy.cpp:set_dynamic(\":preprocessing.auto.structural.implication-clause-candidates\")",
+    "count": 1,
+    "reason": "Strategy selection publishes preparation features and initializes absent-stage summaries once per frontend boundary."
+  },
+  {
+    "call": "src/smt/preprocessing_strategy.cpp:set_dynamic(\":preprocessing.auto.selector.structural\")",
+    "count": 1,
+    "reason": "Strategy selection publishes preparation features and initializes absent-stage summaries once per frontend boundary."
+  },
+  {
+    "call": "src/smt/preprocessing_strategy.cpp:set_dynamic(\":preprocessing.auto.limit.large-conjuncts\")",
+    "count": 1,
+    "reason": "Strategy selection publishes preparation features and initializes absent-stage summaries once per frontend boundary."
+  },
+  {
+    "call": "src/smt/preprocessing_strategy.cpp:set_dynamic(\":preprocessing.auto.limit.compact-terms\")",
+    "count": 1,
+    "reason": "Strategy selection publishes preparation features and initializes absent-stage summaries once per frontend boundary."
+  },
+  {
+    "call": "src/smt/preprocessing_strategy.cpp:set_dynamic(\":preprocessing.auto.limit.compact-min-conjuncts\")",
+    "count": 1,
+    "reason": "Strategy selection publishes preparation features and initializes absent-stage summaries once per frontend boundary."
+  },
+  {
+    "call": "src/smt/preprocessing_strategy.cpp:set_dynamic(\":preprocessing.auto.limit.finite-domain-terms\")",
+    "count": 1,
+    "reason": "Strategy selection publishes preparation features and initializes absent-stage summaries once per frontend boundary."
+  },
+  {
+    "call": "src/smt/preprocessing_strategy.cpp:set_dynamic(\":preprocessing.auto.limit.finite-domain-min-domains\")",
+    "count": 1,
+    "reason": "Strategy selection publishes preparation features and initializes absent-stage summaries once per frontend boundary."
+  },
+  {
+    "call": "src/smt/preprocessing_strategy.cpp:set_dynamic(\":preprocessing.auto.limit.finite-domain-max-symmetry-terms\")",
+    "count": 1,
+    "reason": "Strategy selection publishes preparation features and initializes absent-stage summaries once per frontend boundary."
+  },
+  {
+    "call": "src/smt/preprocessing_strategy.cpp:set_dynamic(\":preprocessing.auto.selector.shadow-evaluated\")",
+    "count": 1,
+    "reason": "Strategy selection publishes preparation features and initializes absent-stage summaries once per frontend boundary."
+  },
+  {
+    "call": "src/smt/preprocessing_strategy.cpp:set_dynamic(\":preprocessing.auto.selector.legacy-disagreement\")",
+    "count": 1,
+    "reason": "Strategy selection publishes preparation features and initializes absent-stage summaries once per frontend boundary."
+  },
+  {
+    "call": "src/smt/preprocessing_strategy.cpp:set_dynamic(\":preprocessing.auto.profile.large-skip\")",
+    "count": 1,
+    "reason": "Strategy selection publishes preparation features and initializes absent-stage summaries once per frontend boundary."
+  },
+  {
+    "call": "src/smt/preprocessing_strategy.cpp:set_dynamic(\":preprocessing.auto.profile.finite-domain-basic\")",
+    "count": 1,
+    "reason": "Strategy selection publishes preparation features and initializes absent-stage summaries once per frontend boundary."
+  },
+  {
+    "call": "src/smt/preprocessing_strategy.cpp:set_dynamic(\":preprocessing.auto.profile.compact-clause-basic\")",
+    "count": 1,
+    "reason": "Strategy selection publishes preparation features and initializes absent-stage summaries once per frontend boundary."
+  },
+  {
+    "call": "src/smt/preprocessing_strategy.cpp:set_dynamic(\":preprocessing.auto.profile.strong\")",
+    "count": 1,
+    "reason": "Strategy selection publishes preparation features and initializes absent-stage summaries once per frontend boundary."
+  },
+  {
+    "call": "src/smt/preprocessing_strategy.cpp:set_dynamic(\":preprocessing.auto.analysis.finite-domain-domains\")",
+    "count": 1,
+    "reason": "Strategy selection publishes preparation features and initializes absent-stage summaries once per frontend boundary."
+  },
+  {
+    "call": "src/smt/preprocessing_strategy.cpp:set_dynamic(\":preprocessing.auto.analysis.finite-domain-choices\")",
+    "count": 1,
+    "reason": "Strategy selection publishes preparation features and initializes absent-stage summaries once per frontend boundary."
+  },
+  {
+    "call": "src/smt/preprocessing_strategy.cpp:set_dynamic(\":preprocessing.auto.analysis.predicted-amo-clauses\")",
+    "count": 1,
+    "reason": "Strategy selection publishes preparation features and initializes absent-stage summaries once per frontend boundary."
+  },
+  {
+    "call": "src/smt/preprocessing_strategy.cpp:set_dynamic(\":preprocessing.finite-domain.explicit-disequality-choices\")",
+    "count": 1,
+    "reason": "Strategy selection publishes preparation features and initializes absent-stage summaries once per frontend boundary."
+  },
+  {
+    "call": "src/smt/preprocessing_strategy.cpp:set_dynamic(\":preprocessing.finite-domain.integer-numeral-choices\")",
+    "count": 1,
+    "reason": "Strategy selection publishes preparation features and initializes absent-stage summaries once per frontend boundary."
+  },
+  {
+    "call": "src/smt/preprocessing_strategy.cpp:set_dynamic(\":preprocessing.finite-domain.rejected-missing-distinctness\")",
+    "count": 1,
+    "reason": "Strategy selection publishes preparation features and initializes absent-stage summaries once per frontend boundary."
+  },
+  {
+    "call": "src/smt/preprocessing_strategy.cpp:increment_dynamic(\":tactic.preprocessing-pass.invocations\")",
+    "count": 1,
+    "reason": "Strategy selection publishes preparation features and initializes absent-stage summaries once per frontend boundary."
+  },
+  {
+    "call": "src/smt/preprocessing_tactics.cpp:increment_dynamic(\":preprocessing.symmetry.cache-hits\")",
+    "count": 1,
+    "reason": "A tactic publishes the returned pass aggregate (or one cache access result) after that whole pass; pass-internal term visits use numeric fields."
+  },
+  {
+    "call": "src/smt/preprocessing_tactics.cpp:increment_dynamic(\":preprocessing.symmetry.cache-refreshes\")",
+    "count": 1,
+    "reason": "A tactic publishes the returned pass aggregate (or one cache access result) after that whole pass; pass-internal term visits use numeric fields."
+  },
+  {
+    "call": "src/smt/preprocessing_tactics.cpp:increment_dynamic(\":preprocessing.finite-domain.raw-cache-refreshes\")",
+    "count": 1,
+    "reason": "A tactic publishes the returned pass aggregate (or one cache access result) after that whole pass; pass-internal term visits use numeric fields."
+  },
+  {
+    "call": "src/smt/preprocessing_tactics.cpp:increment_dynamic(\":preprocessing.finite-domain.raw-cache-hits\")",
+    "count": 1,
+    "reason": "A tactic publishes the returned pass aggregate (or one cache access result) after that whole pass; pass-internal term visits use numeric fields."
+  },
+  {
+    "call": "src/smt/preprocessing_tactics.cpp:set_dynamic(\":preprocessing.finite-domain.explicit-disequality-choices\")",
+    "count": 1,
+    "reason": "A tactic publishes the returned pass aggregate (or one cache access result) after that whole pass; pass-internal term visits use numeric fields."
+  },
+  {
+    "call": "src/smt/preprocessing_tactics.cpp:set_dynamic(\":preprocessing.finite-domain.integer-numeral-choices\")",
+    "count": 1,
+    "reason": "A tactic publishes the returned pass aggregate (or one cache access result) after that whole pass; pass-internal term visits use numeric fields."
+  },
+  {
+    "call": "src/smt/preprocessing_tactics.cpp:set_dynamic(\":preprocessing.finite-domain.rejected-missing-distinctness\")",
+    "count": 1,
+    "reason": "A tactic publishes the returned pass aggregate (or one cache access result) after that whole pass; pass-internal term visits use numeric fields."
+  },
+  {
+    "call": "src/smt/preprocessing_tactics.cpp:set_dynamic(\":preprocessing.boolean-nnf.visited\")",
+    "count": 1,
+    "reason": "A tactic publishes the returned pass aggregate (or one cache access result) after that whole pass; pass-internal term visits use numeric fields."
+  },
+  {
+    "call": "src/smt/preprocessing_tactics.cpp:set_dynamic(\":preprocessing.boolean-nnf.rewritten\")",
+    "count": 1,
+    "reason": "A tactic publishes the returned pass aggregate (or one cache access result) after that whole pass; pass-internal term visits use numeric fields."
+  },
+  {
+    "call": "src/smt/preprocessing_tactics.cpp:set_dynamic(\":preprocessing.boolean-nnf.terms-created\")",
+    "count": 1,
+    "reason": "A tactic publishes the returned pass aggregate (or one cache access result) after that whole pass; pass-internal term visits use numeric fields."
+  },
+  {
+    "call": "src/smt/preprocessing_tactics.cpp:set_dynamic(\":preprocessing.boolean-implies.visited\")",
+    "count": 1,
+    "reason": "A tactic publishes the returned pass aggregate (or one cache access result) after that whole pass; pass-internal term visits use numeric fields."
+  },
+  {
+    "call": "src/smt/preprocessing_tactics.cpp:set_dynamic(\":preprocessing.boolean-implies.clause-candidates\")",
+    "count": 1,
+    "reason": "A tactic publishes the returned pass aggregate (or one cache access result) after that whole pass; pass-internal term visits use numeric fields."
+  },
+  {
+    "call": "src/smt/preprocessing_tactics.cpp:set_dynamic(\":preprocessing.boolean-implies.rewritten\")",
+    "count": 1,
+    "reason": "A tactic publishes the returned pass aggregate (or one cache access result) after that whole pass; pass-internal term visits use numeric fields."
+  },
+  {
+    "call": "src/smt/preprocessing_tactics.cpp:set_dynamic(\":preprocessing.boolean-implies.all-mode-rewrites\")",
+    "count": 1,
+    "reason": "A tactic publishes the returned pass aggregate (or one cache access result) after that whole pass; pass-internal term visits use numeric fields."
+  },
+  {
+    "call": "src/smt/preprocessing_tactics.cpp:set_dynamic(\":preprocessing.boolean-implies.widened-operands\")",
+    "count": 1,
+    "reason": "A tactic publishes the returned pass aggregate (or one cache access result) after that whole pass; pass-internal term visits use numeric fields."
+  },
+  {
+    "call": "src/smt/preprocessing_tactics.cpp:set_dynamic(\":preprocessing.boolean-implies.threshold-stops\")",
+    "count": 1,
+    "reason": "A tactic publishes the returned pass aggregate (or one cache access result) after that whole pass; pass-internal term visits use numeric fields."
+  },
+  {
+    "call": "src/smt/preprocessing_tactics.cpp:set_dynamic(\":preprocessing.boolean-implies.terms-created\")",
+    "count": 1,
+    "reason": "A tactic publishes the returned pass aggregate (or one cache access result) after that whole pass; pass-internal term visits use numeric fields."
+  },
+  {
+    "call": "src/smt/preprocessing_tactics.cpp:set_dynamic(prefix+\"attempts\")",
+    "count": 1,
+    "reason": "A tactic publishes the returned pass aggregate (or one cache access result) after that whole pass; pass-internal term visits use numeric fields."
+  },
+  {
+    "call": "src/smt/preprocessing_tactics.cpp:set_dynamic(prefix+\"accepted\")",
+    "count": 1,
+    "reason": "A tactic publishes the returned pass aggregate (or one cache access result) after that whole pass; pass-internal term visits use numeric fields."
+  },
+  {
+    "call": "src/smt/preprocessing_tactics.cpp:set_dynamic(prefix+\"threshold-stops\")",
+    "count": 1,
+    "reason": "A tactic publishes the returned pass aggregate (or one cache access result) after that whole pass; pass-internal term visits use numeric fields."
+  },
+  {
+    "call": "src/smt/preprocessing_tactics.cpp:set_dynamic(prefix+\"operands-copied\")",
+    "count": 1,
+    "reason": "A tactic publishes the returned pass aggregate (or one cache access result) after that whole pass; pass-internal term visits use numeric fields."
+  },
+  {
+    "call": "src/smt/preprocessing_tactics.cpp:set_dynamic(prefix+\"rewrites\")",
+    "count": 1,
+    "reason": "A tactic publishes the returned pass aggregate (or one cache access result) after that whole pass; pass-internal term visits use numeric fields."
+  },
+  {
+    "call": "src/smt/preprocessing_tactics.cpp:set_dynamic(prefix+\"max-arity\")",
+    "count": 1,
+    "reason": "A tactic publishes the returned pass aggregate (or one cache access result) after that whole pass; pass-internal term visits use numeric fields."
+  },
+  {
+    "call": "src/smt/quantifiers/pool_export.cpp:set_dynamic(\":quant.export.constants\")",
+    "count": 1,
+    "reason": "Quantifier pool export publishes aggregate exported records once after formatting the requested export."
+  },
+  {
+    "call": "src/smt/quantifiers/pool_export.cpp:set_dynamic(\":quant.export.skolem-lemmas\")",
+    "count": 1,
+    "reason": "Quantifier pool export publishes aggregate exported records once after formatting the requested export."
+  },
+  {
+    "call": "src/smt/quantifiers/pool_export.cpp:set_dynamic(\":quant.export.skolem-roots\")",
+    "count": 1,
+    "reason": "Quantifier pool export publishes aggregate exported records once after formatting the requested export."
+  },
+  {
+    "call": "src/smt/quantifiers/pool_export.cpp:set_dynamic(\":quant.export.skipped-lemmas\")",
+    "count": 1,
+    "reason": "Quantifier pool export publishes aggregate exported records once after formatting the requested export."
+  },
+  {
+    "call": "src/smt/quantifiers/pool_export.cpp:set_dynamic(\":quant.export.tuples\")",
+    "count": 1,
+    "reason": "Quantifier pool export publishes aggregate exported records once after formatting the requested export."
+  },
+  {
+    "call": "src/smt/quantifiers/pool_export.cpp:set_dynamic(\":quant.export.skipped-tuples\")",
+    "count": 1,
+    "reason": "Quantifier pool export publishes aggregate exported records once after formatting the requested export."
+  },
+  {
+    "call": "src/smt/quantifiers/pool_export.cpp:set_dynamic(\":quant.export.pools\")",
+    "count": 1,
+    "reason": "Quantifier pool export publishes aggregate exported records once after formatting the requested export."
+  },
+  {
+    "call": "src/smt/root_bound_diagnostics.cpp:set_dynamic(std::string(\":arithmetic.root-bounds.\")+key)",
+    "count": 1,
+    "reason": "The diagnostic pass initializes/publishes summary fields and elapsed time outside its row loop; row-loop increments use StatKey."
+  },
+  {
+    "call": "src/smt/root_bound_diagnostics.cpp:set_dynamic(\":arithmetic.root-bounds.cancelled\")",
+    "count": 1,
+    "reason": "The diagnostic pass initializes/publishes summary fields and elapsed time outside its row loop; row-loop increments use StatKey."
+  },
+  {
+    "call": "src/smt/root_bound_diagnostics.cpp:set_dynamic(\":arithmetic.root-bounds.time-us\")",
+    "count": 1,
+    "reason": "The diagnostic pass initializes/publishes summary fields and elapsed time outside its row loop; row-loop increments use StatKey."
+  },
+  {
+    "call": "src/smt/session_portfolio.cpp:set_dynamic(\":portfolio.qf-uf.attempts\")",
+    "count": 2,
+    "reason": "The portfolio annotates the completed first/fallback result once per query, outside each solver attempt."
+  },
+  {
+    "call": "src/smt/session_portfolio.cpp:set_dynamic(\":portfolio.qf-uf.basic-polarity.attempted\")",
+    "count": 2,
+    "reason": "The portfolio annotates the completed first/fallback result once per query, outside each solver attempt."
+  },
+  {
+    "call": "src/smt/session_portfolio.cpp:set_dynamic(\":portfolio.qf-uf.basic-polarity.conflict-budget\")",
+    "count": 2,
+    "reason": "The portfolio annotates the completed first/fallback result once per query, outside each solver attempt."
+  },
+  {
+    "call": "src/smt/session_portfolio.cpp:set_dynamic(\":portfolio.qf-uf.basic-polarity.first-conflicts\")",
+    "count": 2,
+    "reason": "The portfolio annotates the completed first/fallback result once per query, outside each solver attempt."
+  },
+  {
+    "call": "src/smt/session_portfolio.cpp:set_dynamic(\":portfolio.qf-uf.basic-polarity.solved\")",
+    "count": 1,
+    "reason": "The portfolio annotates the completed first/fallback result once per query, outside each solver attempt."
+  },
+  {
+    "call": "src/smt/session_portfolio.cpp:set_dynamic(\":portfolio.qf-uf.basic-polarity.fell-back\")",
+    "count": 1,
+    "reason": "The portfolio annotates the completed first/fallback result once per query, outside each solver attempt."
+  },
+  {
+    "call": "src/smt/smt_session.cpp:set_dynamic(\":time.model.check-and-print-us\")",
+    "count": 1,
+    "reason": "Session/query completion merges preparation summaries and publishes elapsed times after the solve; no callbacks or term loops."
+  },
+  {
+    "call": "src/smt/smt_session.cpp:set_dynamic(\":session.engine-builds\")",
+    "count": 1,
+    "reason": "Session/query completion merges preparation summaries and publishes elapsed times after the solve; no callbacks or term loops."
+  },
+  {
+    "call": "src/smt/smt_session.cpp:set_dynamic(\":session.translated-assertions\")",
+    "count": 1,
+    "reason": "Session/query completion merges preparation summaries and publishes elapsed times after the solve; no callbacks or term loops."
+  },
+  {
+    "call": "src/smt/smt_session.cpp:set_dynamic(\":session.incremental-assumptions\")",
+    "count": 1,
+    "reason": "Session/query completion merges preparation summaries and publishes elapsed times after the solve; no callbacks or term loops."
+  },
+  {
+    "call": "src/smt/smt_session.cpp:set_dynamic(\":session.safe-rewrite-pipeline\")",
+    "count": 1,
+    "reason": "Session/query completion merges preparation summaries and publishes elapsed times after the solve; no callbacks or term loops."
+  },
+  {
+    "call": "src/smt/smt_session.cpp:set_dynamic(\":session.pipeline.lower-extended-terms\")",
+    "count": 1,
+    "reason": "Session/query completion merges preparation summaries and publishes elapsed times after the solve; no callbacks or term loops."
+  },
+  {
+    "call": "src/smt/smt_session.cpp:set_dynamic(\":session.pipeline.lower-real-equalities\")",
+    "count": 1,
+    "reason": "Session/query completion merges preparation summaries and publishes elapsed times after the solve; no callbacks or term loops."
+  },
+  {
+    "call": "src/smt/smt_session.cpp:set_dynamic(key)",
+    "count": 1,
+    "reason": "Session/query completion merges preparation summaries and publishes elapsed times after the solve; no callbacks or term loops."
+  },
+  {
+    "call": "src/smt/smt_session.cpp:get(key)",
+    "count": 1,
+    "reason": "Session/query completion merges preparation summaries and publishes elapsed times after the solve; no callbacks or term loops."
+  },
+  {
+    "call": "src/smt/smt_session.cpp:set_dynamic(\":time.preprocessing-us\")",
+    "count": 1,
+    "reason": "Session/query completion merges preparation summaries and publishes elapsed times after the solve; no callbacks or term loops."
+  },
+  {
+    "call": "src/smt/smt_session.cpp:set_dynamic(\":time.total-us\")",
+    "count": 2,
+    "reason": "Session/query completion merges preparation summaries and publishes elapsed times after the solve; no callbacks or term loops."
+  },
+  {
+    "call": "src/smt/smt_session.cpp:set_dynamic(\":session.queries\")",
+    "count": 1,
+    "reason": "Session/query completion merges preparation summaries and publishes elapsed times after the solve; no callbacks or term loops."
+  },
+  {
+    "call": "src/smt/smt_session.cpp:set_dynamic(\":session.frontend-builds\")",
+    "count": 1,
+    "reason": "Session/query completion merges preparation summaries and publishes elapsed times after the solve; no callbacks or term loops."
+  },
+  {
+    "call": "src/smt/smt_session.cpp:set_dynamic(\":time.parse-us\")",
+    "count": 1,
+    "reason": "Session/query completion merges preparation summaries and publishes elapsed times after the solve; no callbacks or term loops."
+  },
+  {
+    "call": "src/smt/smt_session.cpp:set_dynamic(\":time.frontend-us\")",
+    "count": 1,
+    "reason": "Session/query completion merges preparation summaries and publishes elapsed times after the solve; no callbacks or term loops."
+  },
+  {
+    "call": "src/smt/smt_session.cpp:get(\":time.total-us\")",
+    "count": 1,
+    "reason": "Session/query completion merges preparation summaries and publishes elapsed times after the solve; no callbacks or term loops."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(kStatTimeTotalUs)",
+    "count": 5,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(kStatTimeParseUs)",
+    "count": 2,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(kStatTimeFrontendUs)",
+    "count": 2,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(kStatTimePreprocessingUs)",
+    "count": 6,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(kStatTimeSolveUs)",
+    "count": 3,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(\":preprocessing.boolean-flatten.attempts\")",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(\":preprocessing.boolean-flatten.accepted\")",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(\":preprocessing.boolean-flatten.threshold-stops\")",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(\":preprocessing.boolean-flatten.operands-copied\")",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(\":preprocessing.boolean-flatten.rewrites\")",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(\":preprocessing.boolean-flatten.max-arity\")",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(\":preprocessing.boolean-implies.visited\")",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(\":preprocessing.boolean-implies.clause-candidates\")",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(\":preprocessing.boolean-implies.rewritten\")",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(\":preprocessing.boolean-implies.all-mode-rewrites\")",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(\":preprocessing.boolean-implies.widened-operands\")",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(\":preprocessing.boolean-implies.threshold-stops\")",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(\":preprocessing.boolean-implies.terms-created\")",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(kStatEufDiseqPropAssignedAppDisequalities)",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(kStatEufDiseqPropSourceUnaryCandidates)",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(kStatEufDiseqPropSourceUnaryExistingArgAtom)",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(kStatEufDiseqPropSourceUnaryArgAtomTrue)",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(kStatEufDiseqPropSourceUnaryArgAtomFalse)",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(kStatEufDiseqPropFlatSameFunctionCandidates)",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(kStatEufDiseqPropFlatSameFunctionExistingArgAtom)",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(kStatEufDiseqPropFlatSameFunctionArgAtomTrue)",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(kStatEufDiseqPropFlatSameFunctionArgAtomFalse)",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(kStatEufDiseqPropGuardedFunctionGuardCandidates)",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(kStatEufDiseqPropGuardedArgumentGuardCandidates)",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(kStatEufAckermannApplications)",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(kStatEufAckermannFunctionSymbols)",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(kStatEufAckermannEligibleSymbols)",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(kStatEufAckermannUnarySymbols)",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(kStatEufAckermannNarySymbols)",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(kStatEufAckermannEstimatedConstraints)",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(kStatEufAckermannEstimatedEqualities)",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(kStatEufAckermannEstimatedClauseLits)",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(kStatEufAckermannMaxSymbolApplications)",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(kStatEufAckermannMaxSymbolArity)",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(kStatEufAckermannSymbolsCostLe100)",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(kStatEufAckermannSymbolsCostLe1000)",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(kStatEufAckermannSymbolsCostLe10000)",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(kStatEufDynamicAckShadowInvocations)",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(kStatEufDynamicAckShadowResultPairs)",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(kStatEufDynamicAckShadowArgAtomsMissing)",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(kStatEufDynamicAckShadowSatVisibleClauses)",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(kStatEufDynamicAckShadowSatisfied)",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(kStatEufDynamicAckShadowUnit)",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(kStatEufDynamicAckShadowConflicting)",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(kStatEufDynamicAckShadowResultDiseqAssigned)",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(kStatEufDynamicAckShadowAllArgsEqAssigned)",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(kStatEufDynamicAckShadowWidthTotal)",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(kStatEufDynamicAckShadowMaxWidth)",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(kStatEufDynamicAckShadowWidthLe3)",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(kStatEufDynamicAckShadowWidthGt3)",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(kStatEufDiseqAckCandidates)",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(kStatEufDiseqAckQueuePushes)",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(kStatEufDiseqAckQueuePops)",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(kStatEufDiseqAckWidthSkips)",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(kStatEufDiseqAckMissingArgAtom)",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(kStatEufDiseqAckSatisfiedSkips)",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(kStatEufDiseqAckUnit)",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(kStatEufDiseqAckConflict)",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(kStatEufDiseqAckPropagated)",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(kStatEufDiseqAckReturned)",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(kStatEufDiseqAckPendingCleared)",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(kStatEufDiseqAckReasonLits)",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(kStatEufDiseqAckQueueBudgetCutoffs)",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(kStatEufDiseqAckPerSymbolCutoffs)",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(\":frontend.define-fun.nullary-direct-uses\")",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(\":frontend.define-fun.nullary-eager-compiles\")",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(\":frontend.define-fun.nullary-side-assertions\")",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(\":frontend.define-fun.nullary-cache-hits\")",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(\":frontend.define-fun.nullary-cache-misses\")",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(\":frontend.define-fun.nullary-cache-entries\")",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(\":time.model.check-us\")",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(\":time.model.serialization-us\")",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(\":no.interface.terms\")",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(\":no.interface.sorts\")",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(\":no.interface.candidate-pairs\")",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(\":no.interface.registry-entries\")",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(\":no.interface.visible-equalities\")",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(\":no.interface.missing-visible-equalities\")",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(\":no.purification.sites\")",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(\":no.purification.euf-real-terms\")",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(\":no.purification.arithmetic-uf-apps\")",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(\":preprocessing.boolean-shape.or-nodes\")",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(\":preprocessing.boolean-shape.not-nodes\")",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(\":preprocessing.boolean-shape.top-level-or-nodes\")",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:set_dynamic(\":preprocessing.boolean-shape.max-top-level-or-children\")",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/solver_session.cpp:increment_dynamic(\":sat.top-level-or-tseitin.auto\")",
+    "count": 1,
+    "reason": "Frontend/query phase completion publishes already computed pipeline and Boolean-shape summaries; numeric work is collected by the pass."
+  },
+  {
+    "call": "src/smt/tactic.cpp:increment_dynamic(implementation_->invocation_stat)",
+    "count": 1,
+    "reason": "Tactic::operator() publishes cached tactic-name invocation and duration fields once per complete tactic invocation, outside the tactic implementation worklists."
+  },
+  {
+    "call": "src/smt/tactic.cpp:increment_dynamic(implementation_->time_stat)",
+    "count": 1,
+    "reason": "Tactic::operator() publishes cached tactic-name invocation and duration fields once per complete tactic invocation, outside the tactic implementation worklists."
+  },
+  {
+    "call": "src/smt/typed_model_builder.cpp:increment_dynamic(\":model.congruence.disequality-checks\")",
+    "count": 1,
+    "reason": "Model completion publishes aggregate congruence-disequality checks and reconstruction duration once per candidate model, outside congruence/term loops."
+  },
+  {
+    "call": "src/smt/typed_model_builder.cpp:increment_dynamic(\":time.model.reconstruction-us\")",
+    "count": 1,
+    "reason": "Model completion publishes aggregate congruence-disequality checks and reconstruction duration once per candidate model, outside congruence/term loops."
+  }
+]
