@@ -3,6 +3,281 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-11-21-gcc13-bound-probe-stream-input",
+      "date": "2026-11-21",
+      "recorded_utc": "2026-11-21T09:38:50.926522+00:00",
+      "branch": "lia-integrality",
+      "kind": "Test-tool compiler portability repair; production solver sources and algorithms unchanged",
+      "baseline": "7c52f085b58e696e3e82d65e8570f4e902d73990",
+      "qualification_snapshot": "bcbdb35e6cc4f8bdb179d187603db2d212463bf0",
+      "evidence_status": "Owner diagnostic reproduced with Ubuntu24 compiler/headers; patched translation unit compiles strictly. SLURM Release/ASan, exporter equivalence/refutation and whole-tree static checks complete. Hosted full-project compiler verification remains pending a push; external documentation access failures are retained.",
+      "scope": "Use existing Parser(std::istream&) directly instead of constructing an intermediate string with istreambuf_iterator. parse_commands still parses the whole file before processing stops at the first check-sat. The open ifstream outlives parsing, returned Commands own their contents, and bound analysis/export code is unchanged. No warning suppression added.",
+      "source_identity": {
+        "native_file": "tests/tools/preprocess_bound_probe.cpp",
+        "baseline_sha256": "dcc50bbe94f1904ad49b4c76c8c27609efb8b1830592d5ff7a077456f0fb6f6d",
+        "candidate_sha256": "66fbf6402f211da1607d3544a7a073a0d5ff3f10cc277d9034e2b38ea15387af",
+        "equivalence": "Candidate native file exactly matches the frozen qualification snapshot. All 250 static-manifest C++ input hashes match current source; the only native input different from the previous statistics qualification is this test tool. Later documentation/source-link and evidence edits do not change native code. Snapshot is a local Git banner label; reproduction uses committed contents and hashes, not a public temporary Git object."
+      },
+      "compiler_reproduction": {
+        "compiler": "g++-13 (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+        "owner_log_sha256": "d6378d21dfd7b489e3dbe8114921ec6782bb6ae06ca26258728add6951e9f0c8",
+        "baseline_exit": 1,
+        "candidate_exit": 0,
+        "owner_distinct_errors": [
+          "streambuf:492:30: error: potential null pointer dereference [-Werror=null-dereference]",
+          "streambuf:495:30: error: potential null pointer dereference [-Werror=null-dereference]"
+        ],
+        "baseline_error_occurrences": 4,
+        "candidate_diagnostics": 0,
+        "scope": "Isolated compile of the full probe translation unit using Ubuntu24 compiler and matching libstdc++ headers on Ubuntu26 host; not a whole Ubuntu24 container or full-project GCC13 build.",
+        "local_default_pair": {
+          "compiler": "GCC13.4.0",
+          "baseline_exit": 0,
+          "candidate_exit": 0
+        },
+        "cross_checks": [
+          {
+            "compiler": "GCC13.4.0",
+            "headers": "Ubuntu24 libstdc++13.3",
+            "baseline_exit": 1
+          },
+          {
+            "compiler": "GCC13.3.0",
+            "headers": "local libstdc++13.4",
+            "baseline_exit": 0
+          }
+        ],
+        "decisive_difference": "Local streambuf contains diagnostic push/ignored -Wnull-dereference/pop around gptr/egptr/gbump. Downloaded Ubuntu24 header does not. Suppression provenance has not been established; do not attribute it solely to the compiler frontend release.",
+        "header_sha256": {
+          "streambuf": {
+            "local": "243f2407787ad27273d9e862e6046822de3dc3971be91068bdce438e14661f79",
+            "ubuntu24": "1274e0d5eb1a1c08ec8d10106841305949c7262fffca99e8e676b7acdd59b998"
+          },
+          "bits/streambuf_iterator.h": {
+            "local": "1b20252887ebac43f9ce07b5a8b08a82c65d677518015623e1f40711044b4694",
+            "ubuntu24": "1b20252887ebac43f9ce07b5a8b08a82c65d677518015623e1f40711044b4694"
+          },
+          "bits/basic_string.tcc": {
+            "local": "f98bb3939ab623912042fb4226d21cec2b0e79c2d1b0e43bbdb12d1dc99f46c1",
+            "ubuntu24": "f98bb3939ab623912042fb4226d21cec2b0e79c2d1b0e43bbdb12d1dc99f46c1"
+          }
+        },
+        "native_compile_only": true,
+        "per_compile_timeout_seconds": 120,
+        "flags": [
+          "-DPRIMO_CADICAL_EXTERNAL_NOTIFY_SCALAR=0",
+          "-DPRIMO_CADICAL_EXTERNAL_NOTIFY_VECTOR=1",
+          "-DPRIMO_CADICAL_HAS_DECLARE_MORE_VARIABLES=1",
+          "-DPRIMO_CADICAL_HAS_RESERVE=0",
+          "-DPRIMO_CADICAL_HAS_RESIZE=1",
+          "-DPRIMO_HAVE_IPASIR=1",
+          "-O3",
+          "-DNDEBUG",
+          "-std=c++20",
+          "-Wall",
+          "-Wextra",
+          "-Wpedantic",
+          "-Wconversion",
+          "-Wsign-conversion",
+          "-Wshadow",
+          "-Wold-style-cast",
+          "-Wcast-align",
+          "-Wunused",
+          "-Woverloaded-virtual",
+          "-Wnull-dereference",
+          "-Wdouble-promotion",
+          "-Wformat=2",
+          "-Wimplicit-fallthrough",
+          "-Werror"
+        ],
+        "diagnostics_sha256": {
+          "owner-rr.txt": "d6378d21dfd7b489e3dbe8114921ec6782bb6ae06ca26258728add6951e9f0c8",
+          "before.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "after.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "before13_3.log": "c6e677430b1ee917997cc73b61939100afe32f744cc32296b830220cbbcdf1e8",
+          "after13_3.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "cross13_4-oldheaders.log": "c6e677430b1ee917997cc73b61939100afe32f744cc32296b830220cbbcdf1e8",
+          "cross13_3-newheaders.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "root_cause_limit": "The header suppression explains the original local false negative. Its provenance was not established; no claim that a GCC frontend patch alone fixes the diagnostic. Downloaded packages were extracted into a temporary prefix; installed tools/headers were not changed.",
+        "package_provenance": {
+          "index": "https://archive.ubuntu.com/ubuntu/dists/noble-updates/main/binary-amd64/Packages.xz",
+          "download_mirror": "https://mirrors.kernel.org/ubuntu/",
+          "validation": "Each package SHA256 matched the published index fetched over HTTPS; no separate Release.gpg verification. Archive package-download requests returned HTTP403, then the checksum-matching mirror succeeded.",
+          "packages": [
+            {
+              "Package": "g++-13",
+              "Version": "13.3.0-6ubuntu2~24.04.1",
+              "Filename": "pool/main/g/gcc-13/g++-13_13.3.0-6ubuntu2~24.04.1_amd64.deb",
+              "SHA256": "0f3ef964b8a91a9cd7bebfd126839a21941c55547cadcf4aa00204bc8cc43985",
+              "Size": "16048"
+            },
+            {
+              "Package": "g++-13-x86-64-linux-gnu",
+              "Version": "13.3.0-6ubuntu2~24.04.1",
+              "Filename": "pool/main/g/gcc-13/g++-13-x86-64-linux-gnu_13.3.0-6ubuntu2~24.04.1_amd64.deb",
+              "SHA256": "0bd6af6164252d4ea9170d201ee4c10a3120fe0fc04985a00be3bc9076353844",
+              "Size": "12161938"
+            },
+            {
+              "Package": "gcc-13",
+              "Version": "13.3.0-6ubuntu2~24.04.1",
+              "Filename": "pool/main/g/gcc-13/gcc-13_13.3.0-6ubuntu2~24.04.1_amd64.deb",
+              "SHA256": "7438ff160b020a74970672189ecae25d0ca650de6d7f543f12a3134192cffbd9",
+              "Size": "494262"
+            },
+            {
+              "Package": "libgcc-13-dev",
+              "Version": "13.3.0-6ubuntu2~24.04.1",
+              "Filename": "pool/main/g/gcc-13/libgcc-13-dev_13.3.0-6ubuntu2~24.04.1_amd64.deb",
+              "SHA256": "cd689db2691edaa10f37329307292796bb599e722e0505c79e14caaa1fe9a93a",
+              "Size": "2680642"
+            },
+            {
+              "Package": "libstdc++-13-dev",
+              "Version": "13.3.0-6ubuntu2~24.04.1",
+              "Filename": "pool/main/g/gcc-13/libstdc++-13-dev_13.3.0-6ubuntu2~24.04.1_amd64.deb",
+              "SHA256": "ee5633e863e19c3381ed97842ce35ed32ede96a3d1ae4e94c051d3036fe21347",
+              "Size": "2419834"
+            }
+          ]
+        },
+        "command_template": "$PRIMO_GCC13_ROOT/usr/bin/g++-13 -B$PRIMO_GCC13_ROOT/usr/lib/gcc/x86_64-linux-gnu/13 -nostdinc++ -isystem $PRIMO_GCC13_ROOT/usr/include/c++/13 -isystem $PRIMO_GCC13_ROOT/usr/include/x86_64-linux-gnu/c++/13 -isystem $PRIMO_GCC13_ROOT/usr/include/c++/13/backward $PRIMO_RELEASE_WARNING_FLAGS -I src -c tests/tools/preprocess_bound_probe.cpp -o $PRIMO_SCRATCH/candidate.o"
+      },
+      "preparation": {
+        "command_template": "python3 scripts/slurm_prepare_benchmark_workspace.py --ssh-config \"$PRIMO_SSH_CONFIG\" --remote \"$PRIMO_REMOTE\" --remote-dir \"$PRIMO_WORKDIR\" --local-dir \"$PRIMO_QUALIFICATION_SOURCE\" --cmake \"$PRIMO_CMAKE\" --cxx-header-manifest \"$PRIMO_HEADER_MANIFEST\" --reuse-dependencies --build-via-slurm --jobs 4 --extra-target primo_preprocess_bound_probe",
+        "job": "438282",
+        "state": "COMPLETED 0:0",
+        "build_log_sha256": "a368c39576713d4fc861ddb804b6c43bc634b1280ccdd2c86d779cc47b38550d",
+        "preflight": "Helper --check-only --no-sync --require-tool contrib/local/bin/z3 passed before submission.",
+        "SLURM_compiler": "GCC11.4.1; Release; CaDiCaL cadical-3.0.0-7b99c07",
+        "native_sha256": "41363a289a978f52fb9bc82ea79e1134e1b002ed917b8c6260930c254c7dac97",
+        "probe_sha256": "944df86a2b681999c3b7b6bb728caf2772a4555a2976a8c592905eda1819a759"
+      },
+      "verification": {
+        "driver": "scripts/qualification/euf_performance/verify.sbatch; expected Git banner bcbdb35e",
+        "release": {
+          "job": "438283_0",
+          "state": "COMPLETED 0:0",
+          "command_template": "make -o contrib-required check BUILD_DIR=build-slurm-rel PYTHON=python3.11 RUFF=\"$PRIMO_VERIFY_BIN/ruff\"",
+          "native_groups": 49,
+          "python_tests": 408,
+          "log_sha256": "177b5554c3536db9c9ed870f614d2b759867cd5b809efcf551c4065bb26375d2"
+        },
+        "asan": {
+          "job": "438283_1",
+          "state": "COMPLETED 0:0",
+          "command_template": "make -o contrib-required asan-test ASAN_BUILD_DIR=\"$PRIMO_PINNED_ASAN_BUILD\"",
+          "native_groups": 49,
+          "log_sha256": "40c327a8a0d56ceed99572ac2716357c1f23b92a67ddb59c8156fc595dcf33b5"
+        }
+      },
+      "exporter_equivalence": {
+        "job": "438285",
+        "source": "bcbdb35e",
+        "binary_sha256": {
+          "baseline": "738714f61d424be04ea0045451a03498d1fe6ca5af437032ad0f9d1a254d8927",
+          "candidate": "944df86a2b681999c3b7b6bb728caf2772a4555a2976a8c592905eda1819a759",
+          "asan": "221a08d948e5de7308248babd65b64c1aacd51abdcfd395b2f1065cb8cccd993"
+        },
+        "cases": 9,
+        "export_successes": 7,
+        "expected_input_errors": 2,
+        "missing_argument_checks": 3,
+        "profiles": [
+          "baseline",
+          "candidate",
+          "asan"
+        ],
+        "all_output_and_exit_codes_match": true,
+        "all_successful_exports_refuted_by_z3": true,
+        "script_sha256": "eae16018a8c74ee9bfb1ba057d4bb573dc3b1c0ba5062e3442db4c4571d96c97",
+        "job_state": "COMPLETED 0:0",
+        "baseline_identity": "Frozen prior qualification tool from 9dbef4aa, whose native input contents match baseline 7c52f085.",
+        "timeout_seconds_per_probe": 30,
+        "reference_timeout_seconds": 15,
+        "reference": "Z3 5.1.0",
+        "reference_sha256": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+        "cases_detail": "Four tracked LIA/LRA/UFLIA/UFLRA smoke inputs, quoted identifiers/final comment, empty input, multiple queries, malformed trailing syntax after a query, and missing file. All three binaries also reject a missing argument. Successful exported conjunction-negation queries are refuted with Z3, not counted as SAT model validation.",
+        "rows_sha256": "bdfddab8b4d1f7d60748daf7b7143116002ffcfddb2fc0dc30ed5a9a0eb6e201",
+        "summary_sha256": "99efa6a42d2cc719f60345c5a2738dad9ae9bd7f3b6de769fa582aa45f02908a",
+        "script_artifact": "results/probe-gcc13-20261121/collected/tmp/probe-equivalence.py"
+      },
+      "static_analysis": {
+        "job": "438287",
+        "state": "COMPLETED 0:0",
+        "driver": "scripts/qualification/bound_repairs/static.sbatch",
+        "source_inputs": 250,
+        "translation_units": 141,
+        "scans": {
+          "tidy": {
+            "status": "complete-with-findings",
+            "expected_translation_units": 141,
+            "analyzed_translation_units": 141,
+            "missing": [],
+            "changed_inputs": [],
+            "tool_exit_code": 0,
+            "unique_diagnostics": 879,
+            "unused_include_gate": {
+              "status": "passed",
+              "blocking": [],
+              "paired_self_includes": [],
+              "policy": "Retain the implementation's own header; other unused includes fail. Missing direct includes remain advisory."
+            },
+            "summary_sha256": "7206cd16f8d6aff439b72374d8d0bd07972edd5fef43e6356235c3f78ebc0821"
+          },
+          "includes": {
+            "status": "complete-with-findings",
+            "expected_translation_units": 141,
+            "analyzed_translation_units": 141,
+            "missing": [],
+            "changed_inputs": [],
+            "tool_exit_code": 0,
+            "unique_diagnostics": 406,
+            "unused_include_gate": {
+              "status": "passed",
+              "blocking": [],
+              "paired_self_includes": [],
+              "policy": "Retain the implementation's own header; other unused includes fail. Missing direct includes remain advisory."
+            },
+            "summary_sha256": "12f62484a339643a5c1dc2c75e31ea5e36e0810a84a77d88d7cc9820a975d98f"
+          }
+        },
+        "comparison": "Against results/statistics-simple-20261120/static-source-inventory: identical normalized file/message/check signatures (741 tidy, 398 includes); no additions or removals. Existing 879 located tidy/406 include diagnostics remain advisory, not a clean whole-tree claim.",
+        "manifest_sha256": "41695a665b9e99d36e53a7682ee950a95eb58f5fee78b215a65d1a43974d7694",
+        "earlier_attempt": {
+          "job": "438284",
+          "state": "FAILED 1:0",
+          "cause": "results/ parent directory absent at static output creation; failed before analysis. Created parent and reran unchanged source/inventory. No solver failure inferred."
+        }
+      },
+      "qualification_scope": "No production solver, parser implementation, preprocessing algorithm, solver option or model code changed. This repair uses an existing parser overload only in a qualification utility. Fresh solver fuzzing and performance benchmarking were not run or claimed for this test-tool change. Earlier solver correctness/performance records retain their own source identities.",
+      "documentation_and_review": {
+        "current_page": "docs/evidence/bound-behavior.md reproduction section; current source download is distinct from historical pinned diagnostics",
+        "initial_review": "external_links_docs_review required R3 current source navigation; repaired with a download link. Two-file unit accepted with identity 0c03e1e22096465ca46f168f26bf31b967188f45ae6f81cbdfe8540fc06b39c6. Final ledger review and writer validation recorded in commit.",
+        "writer_checks": "make lint; strict docs and assembled local/Git links pass. Rendered changed section inspected. External checker ran; unresolved access failures remain recorded separately, without new ignore patterns.",
+        "external_check_initial": {
+          "command": "make docs-check-external",
+          "exit_code": 2,
+          "log_sha256": "e08c88e4bdbcd58919f59c9098e7b50722871f375516ff1d847ba674da419aa8",
+          "failures": [
+            "GitHub actions/checkout README HTTP429",
+            "UT Austin fmsd.pdf connection refusal"
+          ],
+          "note": "This completed pass preceded the separate compiler-CI documentation draft. A later full external check covers that draft; it has its own adjacent record."
+        }
+      },
+      "artifacts": {
+        "root": "results/probe-gcc13-20261121/",
+        "compiler": "compiler/ logs, command JSON, baseline tool source, package manifest, header digests and suppression diff",
+        "runtime": "verification/ and probe-equivalence/ stdout/stderr/rows and seven refutations",
+        "static": "collected/results/static/ plus static-metadata.tar.gz",
+        "static_archive_sha256": "4ca498b9201dbbd5289c52dd3ba5237b3e7b06a5b82756f8cd7f55d48bed83d8",
+        "remote_template": "$PRIMO_WORKDIR/results/",
+        "retention": "Committed ledger/source/documentation; bulk validation artifacts ignored as in prior qualification records."
+      }
+    },
+    {
       "id": "2026-11-20-statistics-storage-simplification",
       "date": "2026-11-20",
       "recorded_utc": "2026-11-20T22:48:48.105946+00:00",

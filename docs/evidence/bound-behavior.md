@@ -260,7 +260,13 @@ results location; the runner refuses to overwrite a task directory.
 Build through `scripts/slurm_prepare_benchmark_workspace.py --build-via-slurm`
 with `--extra-target primo_preprocess_bound_probe`, then run its
 `--check-only --no-sync` preflight against the clean source checkout before
-submission. The SLURM
+submission. The {download}`current probe <../../tests/tools/preprocess_bound_probe.cpp>`
+passes its open input file directly to
+`Parser(std::istream&)`; the file outlives the parser call. `parse_commands()`
+still parses the whole file before the probe processes commands through the
+first `check-sat`. This removes the iterator-to-string construction named in
+a GCC 13 `-Wnull-dereference` build failure without suppressing the warning.
+It does not change bound analysis or the exported refutation query. The SLURM
 {boundbehaviorevidence}`wrapper <scripts/qualification/bound_behavior/diagnose.sbatch>`
 requires `PRIMO_WORKDIR`, `PRIMO_BEHAVIOR_RUNNER` and `PRIMO_BEHAVIOR_CONFIG`
 to name the remote checkout, runner and private JSON file. Submit inspection

@@ -3,7 +3,6 @@
 #include <exception>
 #include <fstream>
 #include <iostream>
-#include <iterator>
 #include <map>
 #include <stdexcept>
 #include <string>
@@ -43,8 +42,7 @@ int main(int argc, char** argv) {
     if (!input) throw std::runtime_error("cannot read input");
     primo::smt::Frontend frontend;
     std::vector<primo::core::TermId> assertions;
-    const std::string text{std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>()};
-    for (const auto& command : primo::smtlib::Parser(text).parse_commands()) {
+    for (const auto& command : primo::smtlib::Parser(input).parse_commands()) {
       if (command.kind == primo::smtlib::CommandKind::CheckSat) break;
       frontend.process_command(command, assertions);
     }
