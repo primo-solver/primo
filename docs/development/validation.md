@@ -10,10 +10,27 @@ not part of solver speed measurements. The current model capabilities are in
 
 {source}`validate_qfuf_models_with_dolmen.py
 <scripts/validate_qfuf_models_with_dolmen.py>` supports more than QF_UF despite
-its historical filename. Select successful SAT rows before invoking it: the
-adapter requests `get-model`, which is a protocol error after UNSAT. Use
-{source}`select_fuzz_sat_inputs.py <scripts/select_fuzz_sat_inputs.py>` for a
-fuzz run, and `--expect-sat` to reject a changed answer during replay.
+its historical filename. The adapter appends `get-model` after the single
+`check-sat`. After UNSAT or UNKNOWN, Primo rejects that command with an
+`(error ...)` response and exit status 2. This behavior is intended. The
+driver accepts only that exact response shape: the answer line, then one
+error line; stderr that is empty or repeats only that error; and a normal
+process exit. It records UNSAT as `not-sat` with the message
+`no model expected; get-model refused`. UNKNOWN stays `solver-unknown`.
+After UNKNOWN, stderr may also hold one reason line, printed before the
+refusal, if it names an exhausted budget: the branch-and-bound node limit,
+the hybrid integer split atom limit (`--lia-split-atom-limit`), the theory
+conflict limit or the quantifier instantiation budget
+(`RESOURCE_LIMIT_UNKNOWN_REASONS`). The row's message then ends with
+`; reason: <line>`. Any other reason, such as a stale or incomplete theory
+model, makes the run a `solver-error`. A gate that accepts `solver-unknown`
+therefore accepts budget exhaustion and UNKNOWN without a reason, but not a
+reported internal failure. A signal, a sanitizer report, extra
+output, or any error after SAT is still a `solver-error`. The refusal check is pinned by
+{source}`test_model_validation.py <tests/python/test_model_validation.py>`. Use
+{source}`select_fuzz_sat_inputs.py <scripts/select_fuzz_sat_inputs.py>` to
+validate only the SAT rows of a fuzz run, and `--expect-sat` to reject a
+changed answer during replay.
 For a known SAT smoke input, with a built solver and installed Dolmen:
 
 ```bash

@@ -1,9 +1,45 @@
 # Writing and checking documentation
 
 Write current explanations under the appropriate implementation, guide, reference,
-or contributor page. Keep active work, research leads and dated evidence separate.
+or contributor page. Keep project work, research leads and dated evidence separate.
 Every implementation chapter needs concrete owners, operations, invariants,
 limitations, an example, source links, and paper/test mappings.
+
+## Where a change belongs
+
+Give each claim one authoritative home:
+
+| Question | Home |
+| --- | --- |
+| What works now, and with which defaults? | The implementation or reference chapter; [capabilities](../capabilities.md) provides a short linked summary. |
+| Which research question is still unresolved? | [Open research questions](../leads/index.md), linked to a focused design note. State the implemented baseline and what evidence would close the remaining question. |
+| What was tested, accepted, rejected or left inconclusive? | The relevant topic under [evidence](../evidence/index.md), with exact provenance in the run ledger. |
+| Which review, publication or maintenance task remains? | [Project work](../work/merge-readiness.md) and the relevant work page. Do not imply every listed task is actively being worked on. |
+
+When an investigation finishes, remove it from the current research navigation.
+Preserve its results, limitations and original checklist as an investigation
+record. Existing paths and anchors can remain: give the page a clear status
+paragraph and place its navigation entry with the relevant evidence. New
+investigation records belong under `evidence/`.
+
+Extend an existing topic's evidence page for follow-up runs unless a distinct
+method or scope needs its own explanation. Avoid a new narrative page for each
+run. Keep commands, hashes, job identities and measurements in evidence or the
+ledger; link them from current implementation documentation. Update navigation,
+status summaries and links together. A completed implementation can still have
+an open research question, but name that residual question explicitly rather
+than leaving the original implementation plan in the backlog.
+
+For a growing subsystem, group detailed chapters under its implementation
+entry point. Split by the reader's question (state, feasibility, propagation,
+completion or scheduling), rather than by experiment date. A shared mechanism
+needs one detailed owner: integer relaxation links to shared arithmetic
+propagation rather than repeating its queue/cache rules. Keep general
+preprocessing and theory-combination contracts in their owning layers.
+When splitting a page, update internal links to the detailed destinations,
+preserve old page/fragment entry points, and check those fragments against the
+previous rendered book. A successful link check alone does not inventory
+unreferenced legacy anchors.
 
 ## Writing conventions
 
@@ -13,6 +49,11 @@ Use standard mathematical and solver terminology, with these conventions:
 - Define a technical term or acronym at its first use when the reader needs
   it to understand the next step. For example, explain a strategy leaf as one
   tactic application, and expand CITE before discussing its simplification.
+- Recheck first use at every chapter entry point after splitting a page. A
+  definition earlier in the former combined chapter may no longer be available.
+  Distinguish similarly named objects, such as groups of equal model values
+  and components formed by proved equalities. Describe scheduling operations
+  directly instead of introducing unexplained metaphors for them.
 - Keep code identifiers exact, but describe their behavior in ordinary prose.
   Prefer “clauses generated before simplification” to an unexplained label
   such as “raw clauses.”
@@ -46,8 +87,12 @@ Use standard mathematical and solver terminology, with these conventions:
 
 ## Sources and review
 
-Use the shared bibliography in `docs/references.bib`, with DOI or stable publisher/
-author links. Ignored local PDF names are not bibliographic identifiers. Read
+Use the shared bibliography in `docs/references.bib`. Prefer the DOI URL as a
+paper's primary citation link whenever a DOI exists. A publisher or author PDF
+may be offered separately as a reading copy; it should not replace the DOI just
+because the automated checker cannot access the publisher. For works without a
+DOI, prefer a stable publisher or institutional-repository URL before a personal
+webpage. Ignored local PDF names are not bibliographic identifiers. Read
 relevant primary sections before claiming a mechanism is implemented, and state
 the subset/deviations. Keep implementation links in the centrally configured
 `source` role and historical snapshots in `record`; see the
@@ -105,6 +150,46 @@ both books strictly, including the frozen historical book. The external checker 
 separate Sphinx linkcheck reports; distinguish genuinely broken targets from
 transient timeout, rate-limit or authorization failures. Do not silently suppress
 a new failure. Inspect rendered equations, tables, navigation and source links.
+
+Run `make docs-check-external` before committing documentation changes. It is
+the same command used by the
+{actionsworkflow}`GitHub external-link workflow <.github/workflows/external-links.yml>`.
+It checks both books and includes the strict builds and local/Git checks above.
+Read each book's `_build/linkcheck/output.json` for per-URL statuses and errors.
+
+Network results can differ between this workspace, a browser and GitHub's
+runner. A timeout does not establish that a paper moved; HTTP 403/429 and TLS
+certificate errors also need separate triage. Recheck the affected request when
+feasible, repair confirmed bad links, and record unresolved access failures
+with the command, date and execution environment. Preserve a working paper URL
+unless there is evidence for a better destination. Do not bypass certificate
+verification or add broad ignores to make the check pass.
+The pinned Sphinx version returns nonzero for timeouts as well as broken links:
+`linkcheck_report_timeouts_as_broken: false` distinguishes the reported statuses;
+it does not make timeouts pass. Keep these failures visible when reporting
+verification, even if local builds and source links pass.
+
+Known access failures may be exempted by exact URL when requested by the owner.
+The dated exception blocks in both book configs identify the observed error and
+link to its evidence. Sphinx reports those URLs as `ignored` and makes no request
+to them; a green result does not validate ignored targets. Keep both lists in
+sync, retain DOI citations and TLS verification, and investigate new failures
+before extending the list. Do not exempt an entire publisher or all HTTP errors.
+A DOI verified to resolve to the intended paper may be retained as a durable
+citation. Record the verification date and destination in the evidence record;
+later automated access failures may be made advisory through an exact-URL
+exception. That preserves the earlier verification without claiming current
+availability. New or never-verified DOIs still need checking.
+The owner may also defer a known publisher issue for an identified paper. The
+20 November EasyChair exception covers only that paper's publisher page and
+DOI URL, including its observed resolver 404; it does not exempt other missing
+targets. Separate exact-file exceptions skip GitHub's dynamically rendered
+fragment checks while still checking file availability.
+
+
+Pinned Primo source commits must be reachable from the checked-out `HEAD`.
+The local checker rejects commits present only in unrelated local history,
+because a full CI checkout of the candidate would not include those objects.
 
 The {project}`local checker <scripts/check_doc_links.py>` also flags unlinked concrete `src/` file paths in the main
 book's prose. It excludes code blocks and the historical book from this style

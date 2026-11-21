@@ -33,6 +33,25 @@ using primo::theory::equality::ProofForestObligation;
 namespace primo::theory::equality {
 class FlatCongruenceClosureTestAccess {
  public:
+  static void trace_witness(FlatCongruenceClosure& closure, FlatTermId lhs, FlatTermId rhs) {
+    auto& state = *closure.conflict_trace_;
+    state.collecting = true;
+    state.generation = 1;
+    FlatCongruenceClosure::Edge edge;
+    edge.lhs_definition.result = lhs;
+    edge.rhs_definition.result = rhs;
+    closure.trace_conflict_congruence(edge);
+    state.collecting = false;
+  }
+  static const auto& retained_trace(const FlatCongruenceClosure& closure) {
+    return closure.conflict_trace_->current;
+  }
+  static std::size_t disequality_undo_entries(const FlatCongruenceClosure& closure) {
+    return closure.size_vector_trail_.size();
+  }
+  static std::size_t trace_capacity(const FlatCongruenceClosure& closure) {
+    return closure.conflict_trace_->current.steps.capacity();
+  }
   static std::size_t representative_proof_storage(const FlatCongruenceClosure& closure) {
     return closure.proof_parent_.capacity() + closure.proof_parent_label_endpoint_.capacity() +
            closure.proof_parent_edge_.capacity();
@@ -1494,7 +1513,132 @@ void proof_forest_structural_class_coalescing_backtracks() {
 
 }  // namespace
 
+void conflict_congruence_trace_selects_only_explained_steps() {
+  for (auto mode :
+       {FlatExplanationSearchMode::OneSidedBfs, FlatExplanationSearchMode::BidirectionalBfs,
+        FlatExplanationSearchMode::ProofForest}) {
+    FlatCongruenceClosure closure(8, mode);
+    closure.enable_conflict_congruence_trace();
+    closure.add_definition({0, 1, 3});
+    closure.add_definition({0, 2, 4});
+    closure.add_definition({5, 1, 6});
+    closure.add_definition({5, 2, 7});
+    const auto checkpoint = closure.push();
+    closure.assert_equal(1, 2, {{1}});
+    check(closure.explain_equal(6, 7).has_value());
+    check(closure.conflict_congruence_trace() == nullptr);
+    closure.assert_distinct(3, 4, {{-2}});
+    const auto* trace = closure.conflict_congruence_trace();
+    check(trace != nullptr && trace->visited_steps == 1 && trace->steps.size() == 1);
+    check((trace->steps[0].lhs == 3 && trace->steps[0].rhs == 4) ||
+          (trace->steps[0].lhs == 4 && trace->steps[0].rhs == 3));
+    const auto nested = closure.push();
+    closure.pop(nested);
+    check(closure.conflict_congruence_trace()->steps.size() == 1);
+    closure.pop(checkpoint);
+    check(!closure.conflict() && closure.conflict_congruence_trace() == nullptr);
+    closure.assert_distinct(3, 4, {{-3}});
+    closure.assert_equal(1, 2, {{4}});
+    check(closure.conflict_congruence_trace()->steps.size() == 1);
+  }
+  FlatCongruenceClosure limited(5);
+  limited.enable_conflict_congruence_trace(0);
+  limited.add_definition({0, 1, 3});
+  limited.add_definition({0, 2, 4});
+  limited.assert_equal(1, 2, {{1}});
+  limited.assert_distinct(3, 4, {{-2}});
+  check(limited.conflict()->size() == 2);
+  check(limited.conflict_congruence_trace()->visited_steps == 1);
+  check(limited.conflict_congruence_trace()->steps.empty());
+  for (auto mode : {FlatExplanationSearchMode::ReorientedProofForest,
+                    FlatExplanationSearchMode::StructuralProofForest}) {
+    FlatCongruenceClosure unsupported(0, mode);
+    bool rejected = false;
+    try {
+      unsupported.enable_conflict_congruence_trace();
+    } catch (const std::invalid_argument&) {
+      rejected = true;
+    }
+    check(rejected);
+  }
+}
+
+void flat_terms_do_not_export_curry_prefixes() {
+  primo::core::SymbolTable symbols;
+  const auto sort = symbols.declare_sort("A");
+  const auto a = symbols.declare_constant("a", sort);
+  const auto b = symbols.declare_constant("b", sort);
+  const auto f = symbols.declare_function("f", {sort, sort}, sort);
+  primo::core::TermManager terms(symbols);
+  const auto ta = terms.mk_constant(a);
+  const auto tb = terms.mk_constant(b);
+  const auto fab = terms.mk_app(f, {ta, tb});
+  const auto faa = terms.mk_app(f, {ta, ta});
+  FlatTermIndex flat(terms);
+  const auto full = flat.flatten(fab);
+  flat.flatten(faa);
+  check(flat.original_term(full).value() == fab);
+  check(!flat.original_term(flat.definitions().front().result));
+  check(!flat.original_term(flat.definitions().front().function));
+  check(flat.original_term(flat.existing_flat_term(ta).value()).value() == ta);
+}
+
+void empty_losing_disequalities_preserve_undo_and_conflicts() {
+  FlatCongruenceClosure closure(160);
+  for (std::size_t i = 64; i < 128; ++i) closure.assert_distinct(0, i, {{-1}});
+  auto root = closure.push();
+  const auto before = FlatCongruenceClosureTestAccess::disequality_undo_entries(closure);
+  for (std::size_t i = 1; i < 64; ++i) closure.assert_equal(i, 0, {{2}});
+  check(FlatCongruenceClosureTestAccess::disequality_undo_entries(closure) == before);
+  auto nested = closure.push();
+  closure.assert_equal(1, 64, {{3}});
+  check(closure.conflict().has_value());
+  closure.pop(nested);
+  check(!closure.conflict().has_value() && closure.are_equal(1, 0));
+  closure.pop(root);
+  check(!closure.are_equal(1, 0));
+  closure.assert_equal(0, 65, {{4}});
+  check(closure.conflict().has_value());
+}
+
+void conflict_trace_reuses_storage_after_rollback() {
+  FlatCongruenceClosure closure(5);
+  closure.enable_conflict_congruence_trace();
+  closure.add_definition({0, 1, 3});
+  closure.add_definition({0, 2, 4});
+  std::size_t capacity = 0;
+  for (int round = 0; round < 20; ++round) {
+    auto checkpoint = closure.push();
+    closure.assert_equal(1, 2, {{1}});
+    closure.assert_distinct(3, 4, {{-2}});
+    check(closure.conflict().has_value());
+    if (round == 0) capacity = FlatCongruenceClosureTestAccess::trace_capacity(closure);
+    check(capacity > 0 && FlatCongruenceClosureTestAccess::trace_capacity(closure) == capacity);
+    closure.pop(checkpoint);
+    check(FlatCongruenceClosureTestAccess::trace_capacity(closure) == capacity);
+  }
+}
+
+void conflict_trace_filters_prefixes_and_duplicates_before_retention() {
+  FlatCongruenceClosure closure(200);
+  closure.enable_conflict_congruence_trace(2);
+  std::vector<unsigned char> semantic(200, 0);
+  for (auto id : {100U, 101U, 102U, 103U}) semantic[id] = 1;
+  closure.set_conflict_trace_semantic_results(std::move(semantic));
+  for (int i = 0; i < 70; ++i) FlatCongruenceClosureTestAccess::trace_witness(closure, 0, 1);
+  for (int i = 0; i < 70; ++i) FlatCongruenceClosureTestAccess::trace_witness(closure, 100, 101);
+  FlatCongruenceClosureTestAccess::trace_witness(closure, 102, 103);
+  const auto& trace = FlatCongruenceClosureTestAccess::retained_trace(closure);
+  check(trace.visited_steps == 141 && trace.prefix_steps == 70);
+  check(trace.duplicate_steps == 69 && trace.steps.size() == 2);
+}
+
 int main() {
+  conflict_trace_filters_prefixes_and_duplicates_before_retention();
+  empty_losing_disequalities_preserve_undo_and_conflicts();
+  conflict_trace_reuses_storage_after_rollback();
+  conflict_congruence_trace_selects_only_explained_steps();
+  flat_terms_do_not_export_curry_prefixes();
   congruent_applications_are_merged();
   distinct_unrelated_terms_are_satisfiable();
   explained_closure_explains_explicit_chain();

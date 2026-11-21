@@ -1,6 +1,5 @@
 # Statistics reference
 
-
 Use `--stats` to print numeric counters to stderr while leaving stdout as the
 SMT result stream:
 
@@ -44,6 +43,112 @@ or `--check-model`. The assumptions engine also constructs a model when
 `:time.model.check-and-print-us`. Dolmen replay is a separate process and is
 not included in these internal counters.
 
+## Arithmetic row-refinement work
+
+The optional row propagation modes share these counters across QF_LRA, QF_UFLRA,
+QF_LIA and QF_UFLIA. They measure work attempted during scans, separately from
+`:lra.row-propagations`, which counts delivered consequences.
+
+| Key | Meaning |
+| --- | --- |
+| `:lra.basic-variable-row-scans` | Own-row reverse scans requested by a basic-variable bound notification, after fanout checks; row-size checks may still skip the work. |
+| `:lra.integer-rounding-entailments` | Candidate entailments that require integer rounding; queued, duplicate or later discarded candidates can contribute. |
+| `:lra.row-bound-calculations` | Numeric direction calculations attempted, including missing or capped endpoints; a local cache reuses failed attempts too. |
+| `:lra.row-bound-candidate-comparisons` | Candidate polarity comparisons requested from the endpoint cache, including comparisons with a missing endpoint. |
+| `:lra.row-bound-explanations` | Cached explaining vectors constructed after successful entailment; copying them to individual consequences does not increment this counter. |
+
+The {rowcachetrialsource}`publisher <src/smt/solver_engines.cpp#L7092>`
+records the three `row-bound-*` counts once per row or child group; the
+other two counters increment at their respective scan or entailment events. See the
+{ref}`cache lifetime and cost model <scan-local-reuse-draft>`.
+Absent increment-only keys mean zero when statistics were printed successfully;
+an interrupted run with no statistics provides no counter evidence.
+
+## Arithmetic redundancy audit
+
+Both {propfilterfinaltrialsource}`arithmetic execution adapters <src/smt/solver_engines.cpp>`
+record these diagnostic counters. In the
+instrument-only snapshot `f8845def`, all candidates were retained and classified.
+The frozen qualification candidate `c815a0b4` adds coalescing in opt-in row mode
+and an exact-state row-scan guard; its acceptance remains recorded separately
+in the {download}`ledger <../run-log.json>`. The
+[design checklist](../leads/bound-propagation-improvements.md#redundancy-audit-2026-11-15)
+explains ownership, invalidation and the research basis.
+
+| Key | Meaning |
+| --- | --- |
+| `:lra.bound-notifications` | Arithmetic assignments offered to bound insertion, excluding notifications ignored after an existing conflict. |
+| `:lra.bound-tightening-notifications` | Nonconflicting insertions changing at least one endpoint, including equality's paired insertion. |
+| `:lra.bound-noop-notifications` | Nonconflicting insertions changing neither endpoint. |
+| `:lra.bound-conflicting-notifications` | Insertions returning a direct conflict; equality may have changed one endpoint first. These three categories partition notifications. |
+| `:lra.propagation-candidate-attempts` | Calls offering a candidate before duplicate suppression. |
+| `:lra.propagation-candidates` | Actual SAT-literal queue insertions, including same-variable, row and existing-equality consequences where queued. Interface-pair publications are excluded from every queue counter. |
+| `:lra.propagation-unique-candidates` | Classified insertions whose signed literal was not already pending; not a lifetime distinct-fact count. |
+| `:lra.propagation-duplicate-candidates` | Classified duplicate insertions in the instrument-only snapshot. The filtering candidate suppresses these before insertion. |
+| `:lra.propagation-untracked-candidates` | Actual insertions outside row mode, where no pending-marker storage is allocated and duplicate classification is unavailable. |
+| `:lra.propagation-suppressed-duplicates` | Attempts discarded because the same signed literal is already pending; no reason vector is copied for these attempts. |
+| `:lra.propagation-reason-literals` | Total literal occurrences copied into retained queue-entry reasons; not bytes or distinct premises. |
+| `:lra.propagation-discarded-assigned` | Candidates popped and discarded because their variable was already assigned. |
+| `:lra.propagation-backtrack-discarded` | Actual entries cleared on backtracking. Undrained entries can remain at termination, so discards plus deliveries need not equal insertions. |
+| `:lra.row-scan-events` | Notifications requesting row refinement, including events rejected by caps or skipped by the repeated-state guard. |
+| `:lra.row-scan-events-with-new-candidates` | Such events inserting at least one classified signed literal not already pending. This is a queue outcome, not a CPU or search-benefit measure. |
+| `:lra.row-scan-noop-events` | Row-scan events following a successful numerical no-op insertion. |
+| `:lra.row-scan-repeated-state-skips` | No-op events whose variable has already been scanned at the same trail offset and pivot count in the current backtrack generation. |
+
+In the filtering candidate, attempts equal insertions plus suppressed duplicates;
+insertions equal unique plus duplicate plus untracked insertions. Do not compute
+a duplicate fraction if untracked insertions are present: classification is
+unavailable, rather than a measured zero. Old binaries lack the newer counters;
+an absent key there is unavailable, not zero. Increment-only keys absent from a
+successful statistics print mean zero only for a binary implementing that key.
+An interrupted run without statistics provides no counter evidence.
+
+## Preprocessing bound-tightening counters
+
+Actual strengthening uses separate `:preprocessing.bounds.*` counters:
+`constraints`, `endpoint-updates` (including explicit input endpoints),
+`row-visits`, `work`, `emitted`, `newly-finite` (among emitted endpoints),
+`contradictions`, `work-exhaustion`, `emission-truncated` (omitted endpoint count),
+`cancelled`, and `time-us` (analysis and materialization wall time). They appear
+only when `--preprocess-bound-tightening` executes. Work exhaustion is partial
+success, not an `unknown` result. See the
+[tightening checklist](../leads/preprocessing-bound-tightening.md).
+
+(root-bound-opportunity-counters)=
+## Root-bound opportunity counters
+
+Enable `--arithmetic-bound-diagnostics --stats` to collect the following
+`:arithmetic.root-bounds.*` counters before preprocessing. The detector reads
+unconditional input literals only, and installs none of its conclusions.
+See [the design checklist](../leads/root-bound-detection.md).
+
+| Suffix | Meaning |
+| --- | --- |
+| `atoms`, `supported-atoms`, `unsupported-atoms` | Distinct signed arithmetic atoms inspected; those normalized successfully; those skipped for extended arithmetic such as `div` or `ite`. |
+| `ignored-formulas` | Distinct signed non-arithmetic or unsupported Boolean roots, including disjunctions and disequalities. Their children are not mined for facts. |
+| `compound-rows`, `wide-rows-skipped` | Normalized multi-term constraints; those exceeding the 64-term evaluation cap. Equality counts as one row. |
+| `explicit-bounds` | Finite lower/upper endpoints from single-term literals, keeping the strongest endpoint per term and direction. |
+| `variables` | Distinct terms represented by explicit bounds or evaluated multi-term rows. Skipped wide rows do not contribute new terms. |
+| `candidate-directions`, `missing-premises` | Target/direction calculations attempted; those missing a required explicit endpoint. Equality attempts both directions. |
+| `rows-with-improvements` | Evaluated constraints yielding any endpoint stronger than the explicit input bounds. Equivalent rows with different syntax may each count. |
+| `stronger-bounds`, `new-finite-bounds` | Distinct improved term/direction endpoints after keeping the strongest candidate; the subset previously unbounded in that direction. |
+| `improved-variables` | Distinct terms with at least one improved endpoint. |
+| `integer-roundings` | Computable multi-term target/direction calculations changed by integer rounding, including candidates that do not improve an explicit endpoint. |
+| `cancelled`, `time-us` | Whether cooperative cancellation interrupted detection, leaving partial counts; detector wall time in microseconds. |
+
+For `x,y >= 0` and `3*x+4*y=12`, the detector records two explicit bounds,
+two stronger bounds, two newly finite bounds and two improved variables.
+It does not recursively use those inferred endpoints. Real endpoint comparisons
+treat all positive multiples of the symbolic infinitesimal as the same
+strictness at a rational endpoint. Counts are query-local; repeated identical
+signed input atoms are visited once. With the option disabled these keys are
+absent. With `--preprocess-only`, no SAT search runs; preprocessing can still
+prove UNSAT, otherwise the result is `unknown`. Counts indicate opportunities,
+not missed solver deductions, a speedup, or a consistency verdict.
+The {rootboundsource}`SMT diagnostic helper
+<src/smt/root_bound_diagnostics.cpp>` records these keys in the ordinary
+`util::Statistics` owned by the current solving invocation.
+
 ## Shared integer route instrumentation
 
 The {migrationsource}`QF_LIA recipe <src/smt/solver_engines.cpp#L10043-L10077>`
@@ -63,6 +168,32 @@ shared-driver migration adds `:combination.*` diagnostics and
 clauses. QF_UFLIA's `:time.qf-uflia.*` timers remain attached to its recipe and
 are not emitted by standalone QF_LIA. Scheduling and diagnostic search counts
 need not match the old standalone loop even when results and limits agree.
+
+## QF_UFLIA equality discovery
+
+When pre-integer equality delivery is enabled, `:lia.equality.scans` counts
+adapter queries and `:time.lia.equality-scan-us` covers discovery plus owning
+proof translation. `:time.lia.equality-discovery-us` isolates the query and
+its mechanism-stat publication. `:lia.equality.legacy-producer-selected` and
+`:lia.equality.legacy-scans-skipped` distinguish discovery paths.
+
+The `:lia.equality.model-unit.*` family records `selected`, `classes`,
+`class-terms`, `candidate-pairs`, `rows-inspected`, `nonzeros-inspected`,
+`fixed-matches`, `one-row-matches`, `two-row-matches`, `nonunit-rejections`,
+`nonfixed-row-rejections` and `reason-lits`. These copy the existing tableau
+query's work counters. `classes` and `class-terms` exclude singleton model
+classes; potential candidate pairs are not enumerated pairs. Shape matches
+precede spanning-forest suppression, delivery-policy filtering and
+already-true/named suppression, so matches may exceed returned proofs.
+`:lia.equality.candidates` and the existing rule counters describe returned
+proofs and their retained translation, respectively. The model-unit producer
+skips general `EqRows`; incomplete discovery retains arrangement fallback.
+The model-unit online boundary without model projection (complete arrangement)
+also counts `feasibility-checks` and
+`feasibility-pivots`; `:time.lia.equality-feasibility-us` covers the owned
+snapshot copy and its explicit repair. It is outside the discovery timer.
+Selecting a producer while equality export is off runs neither query.
+See the [paper mapping and ownership checklist](../implementation/uflia-equality-propagation.md#cav-2024-model-unit-discovery-integration-checklist).
 
 ## Session counters
 
@@ -379,6 +510,15 @@ ordinary post-model check or by the CaDiCaL external-clause callback used by
 `:euf.assignments`, `:euf.eq-assignments`, and `:euf.diseq-assignments` count
 theory-literal notifications received by the online/conflict EUF callback.
 Predicate atoms contribute only to `:euf.assignments`.
+
+The delayed finite-domain stage records
+`:preprocessing.finite-domain.raw-cache-hits` and `raw-cache-refreshes`.
+A hit requires exactly matching ordered source/executing assertion IDs; a
+refresh regenerates raw constraints on the executing goal. Symmetry has the
+analogous `:preprocessing.symmetry.cache-hits` and `cache-refreshes` counters.
+Each counts an enabled cache decision per nonterminal goal alternative.
+One tactic call over two alternatives may increment twice; these are not
+counts of tactic invocations, clauses or solver decisions.
 
 ## Experimental pure-QF_LRA equality propagation
 
@@ -1099,8 +1239,8 @@ documented; add a new key instead of changing the meaning of an old one.
 
 ## Collection and interpretation
 
-{source}`Statistics <src/util/statistics.hpp>` owns registered counters and
-additional string-keyed entries; {source}`the registry <src/util/statistics.cpp>`
+{download}`Statistics <../../src/util/statistics.hpp>` owns registered counters and
+additional string-keyed entries; {download}`the registry <../../src/util/statistics.cpp>`
 maps registered names to `StatKey`. Dynamic tactic/session keys are also
 part of the output. A missing key is not necessarily a measured zero.
 
@@ -1160,3 +1300,84 @@ bound check first discovers an internal conflict. Repeated availability checks
 for one pending clause do not increment it again. At exhaustion a complete SAT
 candidate may unwind the backend; the runtime must replace that candidate with
 `unknown` before any model or definitive solver answer is accepted.
+
+## Conflict-selected Ackermann prototype
+
+The historical [pilot](../evidence/conflict-ackermann.md) used the original
+`:euf.conflict-ack.*` catalogue/trace policy. Its `trace-kept`,
+`trace-truncations`, `prefix-steps`, `semantic-pairs`, `duplicate-pairs`,
+`catalog-limit` and `peak-pairs` are retired in the revised implementation;
+missing keys are unavailable, not measured zeros. The revision emits
+`:euf.conflict-ack.v2.policy-version = 2` when candidates are considered.
+
+V2 `semantic-witnesses`, `prefix-visits`, `duplicate-witnesses` and
+`witness-budget-visits` describe complete-result filtering and deduplication
+before the 64-witness limit. After the limit fills, distinctness is not checked;
+the latter counter counts visits, not unique omitted pairs. V2 `candidate-visits`,
+`admitted-hits`, `negative-hits`, `admission-limit`, `admitted-pairs`,
+`negative-evictions`, `peak-admitted-pairs` and `peak-negative-pairs` describe the
+two independent bounded sets, retained across execution rebuilds within one
+backend. `admitted-pairs` counts admission events; a fresh backend may admit the
+same semantic pair again. Peaks are maxima across selector instances.
+`conflicts` and `trace-steps` retain their raw conflict/visit meaning.
+
+`missing-result` counts absent result equalities. Legacy `missing-argument`
+occurrence accounting is available only with full diagnostics enabled;
+emitting-only mode reports V2 `missing-argument-with-result`, after the cheap
+result check succeeds. Repeated argument positions can contribute repeatedly.
+`width-skips`, `nonmatching-pairs`, `tautologies`, `ready-clauses`,
+`queued-clauses`, `sent-clauses`, `sent-lits` and `peak-pending` retain their
+original meanings. Complete streaming does not show backend retention or use.
+
+Demand mode adds `:euf.conflict-ack.demand.*`: `requests`, `request-limit`,
+`boolean-skips`, `reused-atoms`, `budget-skips`, `fresh-atoms`, `peak-fresh-atoms`,
+`installed-instances` and `sat-resumes`. Fresh counts are query-cumulative
+*equality* atoms; peak is a maximum. `requests` counts queued emitting instances;
+`request-limit` counts candidates rejected at the 64-pending or 4096-settled
+bounds. `boolean-skips` counts rejection on a differing Boolean argument,
+not rejection of Boolean-result applications. `dry-run-instances` counts
+independent diagnostic candidates that fit the configured atom limit. Reuse counts requested positions less
+unique missing equalities, so repeated positions may count repeatedly.
+Diagnostic-only demand uses `dry-run-instances`, `dry-run-missing-atoms` and
+`budget-skips` for independent candidates, without atom creation or a simulated
+cumulative budget. Coverage is the retained conflict trace, not all congruence
+merges or a complete all-pairs reduction. The
+{download}`selector and growth state <../../src/smt/conflict_ackermann.cpp>` and
+{download}`runtime delivery <../../src/smt/solver_engines.cpp>` own these counters.
+
+## Typed instrumentation policy
+
+The agent guide and code-review checklist require typed or numeric recurring
+instrumentation, including helper calls. `Statistics::set(StatKey, ...)` and
+`increment(StatKey, ...)` update indexed arrays without string construction or
+name lookup. Fixed scoped timers and interface-propagation groups also use typed
+keys. Each `Statistics` object owns a fixed value array, presence flags and a
+map that owns the names and values of dynamic counters. Typed updates are
+inline array writes: they mark the counter present and update its value without
+allocation or first-use bookkeeping. Local counters inside very frequent solver
+operations may publish an accumulated delta through the same API.
+
+`keys()` and `print_statistics` list present fixed counters in registry order,
+then dynamic counters in lexicographic name order. This replaces the historical
+first-use ordering; consumers must identify counters by name, not line position.
+An untouched fixed counter is omitted, while a counter explicitly set to zero
+remains present. Copies own independent arrays and dynamic names; assigning a
+fresh `Statistics{}` clears both kinds. Presence scans and dynamic-name sorting
+occur when listing counters; `empty()` also scans presence flags when there are
+no dynamic entries. No ordering vectors or variants are retained.
+
+Cold summaries explicitly call `set_dynamic` or `increment_dynamic`.
+The compatible implicit string mutation overloads are deprecated, so owned
+warnings-as-errors builds reject their use, including through helper aliases.
+String reads remain available for reporting and public lookup.
+`make lint` checks each remaining string-call expression and occurrence count
+against `scripts/statistics_cold_calls.json`, with a phase/lifetime rationale.
+The lexical scanner is not type analysis or proof of coldness; helper review
+and compiler checks remain required. Tests and documentation examples also use
+the explicit cold mutation API where appropriate.
+
+Fixed arrays grow with the registry, once per owning `Statistics` object.
+Closure checkpoints contain `IncrementalCongruenceClosureStats`, not this registry.
+Memory and copy costs still require measurement; no zero-cost claim is made.
+See the [implementation checklist](../leads/euf-performance-fixes.md) for the
+qualification status and the {download}`implementation <../../src/util/statistics.cpp>`.

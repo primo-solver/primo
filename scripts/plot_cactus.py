@@ -74,6 +74,9 @@ def load_series(directory: pathlib.Path, solver: str) -> list[dict[str, str]]:
             for path in sorted(directory.glob("shard-*.csv"))
             if not path.stem.endswith("-summary")
         ]
+    # Model-replay campaigns retain each shard's answers beside its provenance.
+    if not paths:
+        paths = sorted(directory.glob("shard-*/answers.csv"))
 
     rows: dict[str, dict[str, str]] = {}
     for path in paths:
@@ -145,6 +148,8 @@ def svg(
     caption: list[str],
     highlighted: str | None = None,
     breakdown: dict[str, tuple[int, int]] | None = None,
+    colour_by_name: dict[str, str] | None = None,
+    percentage: bool = False,
 ) -> str:
     # The caption grows with the number of provenance notes, so the canvas and
     # the bottom margin grow with it rather than the plot area shrinking --
@@ -156,6 +161,8 @@ def svg(
     left, right, top, bottom = 78, 250, 56, 96 + extra
     plot_w, plot_h = width - left - right, height - top - bottom
     max_solved = max((len(s) for _, s in series), default=1) or 1
+    if percentage:
+        max_solved = total or 1
     # Log time axis: solved counts bunch up at the low end otherwise, and the
     # interesting separation between solvers is in the last decade.
     import math
@@ -168,9 +175,13 @@ def svg(
 
     # Deliberately no red: series are solvers, not severities, and a red curve
     # reads as a verdict on whichever solver happens to be second. When one
-    # series is highlighted, reserve the saturated blue for it.
-    palette = ["#1b6ca8", "#c9760a", "#2a9d8f", "#8d5bb5", "#5a6472", "#b5527d"]
-    comparison_palette = ["#c9760a", "#2a9d8f", "#8d5bb5", "#5a6472", "#b5527d"]
+    # series is highlighted, reserve the blue for it. The six hues, in this
+    # fixed order, pass a lightness-band, chroma, colour-vision-deficiency and
+    # normal-vision separation check on white; three are below 3:1 contrast, so
+    # every curve is also named in the legend with its solved count. The
+    # previous palette failed that check (its gray had almost no chroma).
+    palette = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300"]
+    comparison_palette = palette[1:]
     out = [(f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" '
            f'viewBox="0 0 {width} {height}" font-family="system-ui,-apple-system,sans-serif">'),
            '<rect width="100%" height="100%" fill="#ffffff"/>',
@@ -188,20 +199,24 @@ def svg(
         out.append(f'<text x="{x:.1f}" y="{top+plot_h+20}" font-size="12" '
                    f'text-anchor="middle" fill="#444">{label}</text>')
     for frac in (0, 0.25, 0.5, 0.75, 1.0):
-        n = int(max_solved * frac)
+        n = max_solved * frac if percentage else int(max_solved * frac)
         y = y_of(n)
         out.append(f'<line x1="{left}" y1="{y:.1f}" x2="{left+plot_w}" y2="{y:.1f}" '
                    f'stroke="#e6e6e6" stroke-width="1"/>')
+        tick = f"{100 * frac:g}%" if percentage else str(n)
         out.append(f'<text x="{left-10}" y="{y+4:.1f}" font-size="12" '
-                   f'text-anchor="end" fill="#444">{n}</text>')
+                   f'text-anchor="end" fill="#444">{tick}</text>')
 
     # Anchored to the plot area, not the canvas: with a caption-driven height
     # a canvas-relative offset walks down into the caption block.
     out.append(f'<text x="{left+plot_w/2:.0f}" y="{top+plot_h+38}" font-size="13" '
                f'text-anchor="middle" fill="#222">per-instance time budget (log scale)</text>')
+    y_label = f"instances solved (of {total})"
+    if percentage:
+        y_label = f"instances solved (% of {total})"
     out.append(f'<text x="18" y="{top+plot_h/2:.0f}" font-size="13" fill="#222" '
                f'transform="rotate(-90 18 {top+plot_h/2:.0f})" text-anchor="middle">'
-               f'instances solved (of {total})</text>')
+               f'{y_label}</text>')
 
     # Two-line legend entries need the extra room; a single-line legend keeps
     # the tighter spacing it always had.
@@ -209,7 +224,9 @@ def svg(
     comparison_index = 0
     for index, (name, solved) in enumerate(series):
         is_highlighted = name == highlighted
-        if highlighted is None:
+        if colour_by_name is not None:
+            colour = colour_by_name[name]
+        elif highlighted is None:
             colour = palette[index % len(palette)]
         elif is_highlighted:
             colour = "#0057b8"
@@ -222,7 +239,8 @@ def svg(
         points = " ".join(f"{x_of(t):.1f},{y_of(i+1):.1f}" for i, t in enumerate(solved))
         if points:
             out.append(f'<polyline points="{points}" fill="none" stroke="{colour}" '
-                       f'stroke-width="{curve_width}" stroke-linejoin="round"/>')
+                       f'stroke-width="{curve_width}" stroke-linejoin="round">'
+                       f'<title>{html.escape(name)}: {len(solved)} solved</title></polyline>')
         ly = top + 8 + index * legend_step
         out.append(f'<line x1="{left+plot_w+18}" y1="{ly}" x2="{left+plot_w+44}" y2="{ly}" '
                    f'stroke="{colour}" stroke-width="{legend_width}"/>')

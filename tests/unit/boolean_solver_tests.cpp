@@ -9,11 +9,18 @@
 #include <string>
 #include <string_view>
 #include <utility>
+#include <vector>
 
 #include "core/model.hpp"
+#include "core/symbol_table.hpp"
+#include "core/term_manager.hpp"
+#include "sat/cadical_backend.hpp"
 #include "smt/check_sat.hpp"
+#include "smt/clausifier.hpp"
+#include "smt/conflict_ackermann.hpp"
 #include "smt/inconclusive_reason.hpp"
 #include "smt/preprocessing.hpp"
+#include "util/statistics.hpp"
 
 using primo::smt::CheckSatOptions;
 using primo::smt::CheckSatResult;
@@ -1422,7 +1429,7 @@ void strong_preprocessing_enables_finite_domain_amo() {
   assert(result.statistics.get(":euf.propagation.rounds") == 0);
 }
 
-void finite_domain_raw_amo_survives_forced_atom_simplification() {
+void finite_domain_raw_amo_is_refreshed_after_forced_atom_simplification() {
   primo::smt::CheckSatOptions options;
   options.preprocessing_mode = primo::smt::PreprocessingMode::Strong;
   const auto result = check_sat_smtlib(
@@ -1442,9 +1449,11 @@ void finite_domain_raw_amo_survives_forced_atom_simplification() {
   assert(result.result == CheckSatResult::Sat);
   assert(result.statistics.get(":preprocessing.forced-atoms.rewrites") >= 1);
   assert(result.statistics.get(":preprocessing.finite-domain.raw-choices") == 1);
+  // Initial analysis remains diagnostic; emission uses the simplified goal.
+  assert(result.statistics.get(":preprocessing.finite-domain.raw-cache-refreshes") == 1);
   assert(result.statistics.get(":preprocessing.finite-domain.raw-amo-clauses") == 3);
   assert(result.statistics.get(":preprocessing.finite-domain.post-amo-clauses") == 1);
-  assert(result.statistics.get(":preprocessing.finite-domain.amo-clauses") == 3);
+  assert(result.statistics.get(":preprocessing.finite-domain.amo-clauses") == 1);
   assert(result.statistics.get(":preprocessing.finite-domain.deduped-amo-clauses") == 1);
 }
 
@@ -1468,9 +1477,11 @@ void finite_domain_post_amo_can_be_disabled() {
       options);
   assert(result.result == CheckSatResult::Sat);
   assert(result.statistics.get(":preprocessing.forced-atoms.rewrites") >= 1);
+  // Initial analysis remains diagnostic; emission uses the simplified goal.
+  assert(result.statistics.get(":preprocessing.finite-domain.raw-cache-refreshes") == 1);
   assert(result.statistics.get(":preprocessing.finite-domain.raw-amo-clauses") == 3);
   assert(result.statistics.get(":preprocessing.finite-domain.post-amo-clauses") == 0);
-  assert(result.statistics.get(":preprocessing.finite-domain.amo-clauses") == 3);
+  assert(result.statistics.get(":preprocessing.finite-domain.amo-clauses") == 1);
   assert(result.statistics.get(":preprocessing.finite-domain.deduped-amo-clauses") == 0);
 }
 
@@ -1497,10 +1508,12 @@ void finite_domain_amo_uses_forced_disequalities_modulo_forced_equalities() {
       options);
   assert(result.result == CheckSatResult::Sat);
   assert(result.statistics.get(":preprocessing.forced-atoms.disequalities") >= 1);
+  // Initial analysis remains diagnostic; emission uses the simplified goal.
+  assert(result.statistics.get(":preprocessing.finite-domain.raw-cache-refreshes") == 1);
   assert(result.statistics.get(":preprocessing.finite-domain.raw-amo-clauses") == 6);
   assert(result.statistics.get(":preprocessing.finite-domain.post-amo-clauses") == 9);
-  assert(result.statistics.get(":preprocessing.finite-domain.amo-clauses") == 12);
-  assert(result.statistics.get(":preprocessing.finite-domain.deduped-amo-clauses") == 3);
+  assert(result.statistics.get(":preprocessing.finite-domain.amo-clauses") == 9);
+  assert(result.statistics.get(":preprocessing.finite-domain.deduped-amo-clauses") == 9);
 }
 
 void auto_preprocessing_uses_basic_polarity_for_small_multiple_assertions() {
@@ -1891,6 +1904,48 @@ void qg_shape_uses_fixed_terms_but_not_moving_table_terms_for_symmetry() {
   assert(result.statistics.get(":preprocessing.uf-symmetry.constraints") == 4);
   assert(result.statistics.get(":preprocessing.uf-symmetry.value-precedence-terms") == 2);
   assert(result.statistics.get(":preprocessing.uf-symmetry.value-precedence-constraints") == 4);
+}
+
+void overlapping_symmetry_groups_preserve_a_derangement_model() {
+  const std::string input =
+      read_text_file("../benchmarks/regressions/qf_uf_overlapping_symmetry_groups.smt2");
+  for (const bool value_precedence : {false, true}) {
+    for (const auto mode :
+         {primo::smt::PreprocessingMode::Auto, primo::smt::PreprocessingMode::Strong}) {
+      CheckSatOptions options;
+      options.finite_domain_value_precedence = value_precedence;
+      options.preprocessing_mode = mode;
+      const auto result = check_sat_smtlib(input, options);
+      assert(result.result == CheckSatResult::Sat);
+      assert(result.statistics.get(primo::util::StatKey::UfSymmetryAcceptedSets) == 1);
+      assert(result.statistics.get(primo::util::StatKey::UfSymmetryRejectedPriorConstraints) >= 1);
+    }
+  }
+}
+
+void compatible_symmetry_groups_both_retain_restrictions() {
+  CheckSatOptions options;
+  options.preprocessing_mode = primo::smt::PreprocessingMode::Strong;
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UF)
+    (declare-sort U 0)
+    (declare-sort V 0)
+    (declare-const a U)
+    (declare-const b U)
+    (declare-const x U)
+    (declare-const c V)
+    (declare-const d V)
+    (declare-const y V)
+    (assert (distinct a b))
+    (assert (distinct c d))
+    (assert (or (= x a) (= x b)))
+    (assert (or (= y c) (= y d)))
+    (check-sat)
+  )",
+                                       options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(primo::util::StatKey::UfSymmetryAcceptedSets) == 2);
+  assert(result.statistics.get(primo::util::StatKey::UfSymmetryRejectedPriorConstraints) == 0);
 }
 
 void no_symmetry_breaking_disables_strong_preset_symmetry_only() {
@@ -3177,7 +3232,358 @@ void purely_propositional_input_still_uses_the_boolean_solver() {
   assert(result.statistics.get(":solver.qf-uf") == 0);
 }
 
+void conflict_ackermann_selector_preserves_nary_disjunction_and_retries_missing_atoms() {
+  primo::core::SymbolTable symbols;
+  const auto sort = symbols.declare_sort("A");
+  const auto sa = symbols.declare_constant("a", sort);
+  const auto sb = symbols.declare_constant("b", sort);
+  const auto sc = symbols.declare_constant("c", sort);
+  const auto sd = symbols.declare_constant("d", sort);
+  const auto f = symbols.declare_function("f", {sort, sort}, sort);
+  primo::core::TermManager terms(symbols);
+  const auto a = terms.mk_constant(sa), b = terms.mk_constant(sb);
+  const auto c = terms.mk_constant(sc), d = terms.mk_constant(sd);
+  const auto lhs = terms.mk_app(f, {a, c}), rhs = terms.mk_app(f, {b, d});
+  const auto ab = terms.mk_eq(a, b), cd = terms.mk_eq(c, d), rr = terms.mk_eq(lhs, rhs);
+  primo::util::Statistics stats;
+  primo::smt::ConflictAckermannSelector selector(terms, stats);
+  selector.register_atom(rr, {3});
+  selector.register_atom(ab, {1});
+  assert(!selector.consider(lhs, rhs));
+  assert(stats.get(":euf.conflict-ack.missing-argument") == 1);
+  selector.register_atom(cd, {2});
+  auto clause = selector.consider(lhs, rhs);
+  assert(clause && clause->size() == 3);
+  assert((*clause)[0].value == 3 && (*clause)[1].value == -1 && (*clause)[2].value == -2);
+  assert(!selector.consider(rhs, lhs));
+  selector.enqueue(*clause);
+  assert(selector.pending_clauses() == 1);
+  selector.register_atom(terms.mk_eq(a, d), {7});
+  assert(selector.pending_clauses() == 1);
+  const auto retained_clause = selector.take_clause();
+  assert(retained_clause.size() == clause->size());
+  for (std::size_t i = 0; i < retained_clause.size(); ++i)
+    assert(retained_clause[i].value == (*clause)[i].value);
+  assert(selector.pending_clauses() == 0);
+  // Truth-table check of congruence: false result allows either argument to differ.
+  for (int bits = 0; bits < 8; ++bits) {
+    bool satisfied = false;
+    for (auto lit : *clause) {
+      const int variable = lit.value < 0 ? -lit.value : lit.value;
+      const bool value = (bits & (1 << (variable - 1))) != 0;
+      satisfied = satisfied || value == (lit.value > 0);
+    }
+    const bool congruent = !(bits & 1) || !(bits & 2) || (bits & 4);
+    assert(satisfied == congruent);
+  }
+  const auto shared_lhs = terms.mk_app(f, {a, c});
+  const auto shared_rhs = terms.mk_app(f, {b, c});
+  selector.register_atom(terms.mk_eq(shared_lhs, shared_rhs), {4});
+  clause = selector.consider(shared_lhs, shared_rhs);
+  assert(clause && clause->size() == 2);
+  const auto repeated_lhs = terms.mk_app(f, {a, a});
+  const auto repeated_rhs = terms.mk_app(f, {b, b});
+  selector.register_atom(terms.mk_eq(repeated_lhs, repeated_rhs), {5});
+  clause = selector.consider(repeated_lhs, repeated_rhs);
+  assert(clause && clause->size() == 2);
+  primo::smt::ConflictAckermannSelector missing_result(terms, stats);
+  missing_result.register_atom(ab, {1});
+  assert(!missing_result.consider(repeated_lhs, repeated_rhs));
+  assert(stats.get(":euf.conflict-ack.missing-result") == 1);
+  primo::smt::ConflictAckermannSelector bounded(terms, stats);
+  for (int i = 0; i < 4100; ++i) {
+    const auto name = symbols.declare_constant("fresh" + std::to_string(i), sort);
+    const auto fresh = terms.mk_constant(name);
+    const auto application = terms.mk_app(f, {fresh, c});
+    assert(!bounded.consider(lhs, application));
+  }
+  assert(stats.get(":euf.conflict-ack.v2.peak-negative-pairs") == 4096);
+  assert(stats.get(":euf.conflict-ack.v2.negative-evictions") == 4);
+  // Negative-cache saturation cannot prevent an eligible existing pair.
+  bounded.register_atom(rr, {3});
+  bounded.register_atom(ab, {1});
+  bounded.register_atom(cd, {2});
+  clause = bounded.consider(lhs, rhs);
+  assert(clause && clause->size() == 3);
+  assert(stats.get(":euf.conflict-ack.v2.admitted-pairs") > 0);
+  assert(!bounded.consider(lhs, rhs));
+  const auto wide_symbol =
+      symbols.declare_function("wide", std::vector<primo::core::SortId>(32, sort), sort);
+  std::vector<primo::core::TermId> args(32, a);
+  const auto wide_a = terms.mk_app(wide_symbol, args);
+  args[0] = b;
+  const auto wide_b = terms.mk_app(wide_symbol, args);
+  assert(!selector.consider(wide_a, wide_b));
+  assert(stats.get(":euf.conflict-ack.width-skips") == 1);
+}
+
+void conflict_ackermann_v2_keeps_admission_separate_and_diagnostics_explicit() {
+  primo::core::SymbolTable symbols;
+  const auto sort = symbols.declare_sort("A");
+  const auto sa = symbols.declare_constant("a", sort);
+  const auto sb = symbols.declare_constant("b", sort);
+  const auto f = symbols.declare_function("f", {sort}, sort);
+  primo::core::TermManager terms(symbols);
+  const auto a = terms.mk_constant(sa), b = terms.mk_constant(sb);
+  const auto lhs = terms.mk_app(f, {a}), rhs = terms.mk_app(f, {b});
+  primo::util::Statistics stats;
+  primo::smt::ConflictAckermannSelector cheap(terms, stats, false);
+  bool missing_atoms = false;
+  assert(!cheap.consider(lhs, rhs, &missing_atoms));
+  assert(missing_atoms);
+  assert(!stats.contains(":euf.conflict-ack.missing-argument"));
+  cheap.register_atom(terms.mk_eq(lhs, rhs), {1});
+  assert(!cheap.consider(lhs, rhs));
+  assert(stats.get(":euf.conflict-ack.v2.missing-argument-with-result") == 1);
+  assert(!stats.contains(":euf.conflict-ack.missing-argument"));
+  cheap.register_atom(terms.mk_eq(a, b), {2});
+  assert(cheap.consider(lhs, rhs, &missing_atoms));
+  assert(!missing_atoms);
+  missing_atoms = true;
+  assert(!cheap.consider(lhs, rhs, &missing_atoms));
+  assert(!missing_atoms);  // An admitted hit must not request duplicate growth.
+  primo::smt::ConflictAckermannSelector admitted(terms, stats, false);
+  for (int i = 0; i < 4097; ++i) {
+    const auto name = symbols.declare_constant("admitted" + std::to_string(i), sort);
+    const auto term = terms.mk_constant(name);
+    const auto application = terms.mk_app(f, {term});
+    admitted.register_atom(terms.mk_eq(a, term), {2 * i + 1});
+    admitted.register_atom(terms.mk_eq(lhs, application), {2 * i + 2});
+    const auto clause = admitted.consider(lhs, application);
+    assert(clause.has_value() == (i < 4096));
+  }
+  assert(stats.get(":euf.conflict-ack.v2.peak-admitted-pairs") == 4096);
+  assert(stats.get(":euf.conflict-ack.v2.admission-limit") == 1);
+  primo::smt::ConflictAckermannSelector fresh_instance(terms, stats, false);
+  fresh_instance.register_atom(terms.mk_eq(lhs, rhs), {100001});
+  fresh_instance.register_atom(terms.mk_eq(a, b), {100002});
+  const auto fresh_clause = fresh_instance.consider(lhs, rhs);
+  assert(fresh_clause && (*fresh_clause)[0].value == 100001 && (*fresh_clause)[1].value == -100002);
+  assert(fresh_instance.pending_clauses() == 0);
+  assert(stats.get(":euf.conflict-ack.v2.peak-admitted-pairs") == 4096);
+}
+
+void demand_ackermann_preflights_reuses_and_owns_requests() {
+  primo::core::SymbolTable symbols;
+  const auto sort = symbols.declare_sort("A");
+  const auto as = symbols.declare_constant("a", sort);
+  const auto bs = symbols.declare_constant("b", sort);
+  const auto cs = symbols.declare_constant("c", sort);
+  const auto ds = symbols.declare_constant("d", sort);
+  const auto f = symbols.declare_function("f", {sort, sort}, sort);
+  primo::core::TermManager terms(symbols);
+  const auto a = terms.mk_constant(as), b = terms.mk_constant(bs);
+  const auto c = terms.mk_constant(cs), d = terms.mk_constant(ds);
+  const auto lhs = terms.mk_app(f, {a, c}), rhs = terms.mk_app(f, {b, d});
+  primo::sat::CadicalBackend backend;
+  primo::smt::BooleanClausifier clausifier(backend, terms, false);
+  primo::util::Statistics stats;
+  primo::smt::AckermannGrowthState bounded(terms, stats, 2, true);
+  bounded.request(lhs, rhs);
+  bounded.request(rhs, lhs);
+  assert(bounded.pending() && !bounded.ready());
+  bounded.clause_finished();
+  assert(bounded.ready());
+  bounded.drain(clausifier);
+  assert(!bounded.pending() && clausifier.theory_atoms().empty());
+  assert(stats.get(":euf.conflict-ack.demand.budget-skips") == 1);
+  // A skipped request is settled; rebuilding cannot retry it forever.
+  bounded.request(lhs, rhs);
+  assert(!bounded.pending());
+  // Reversed existing equalities cost no budget and retain their SAT identity.
+  const auto dc = terms.mk_eq(d, c);
+  const int dc_lit = clausifier.ensure_theory_atom(dc).lit.value;
+  primo::smt::AckermannGrowthState growth(terms, stats, 2, true);
+  growth.request(lhs, rhs);
+  for (int i = 0; i < 4096; ++i)
+    terms.mk_eq(terms.mk_rational(primo::util::Rational(i)),
+                terms.mk_rational(primo::util::Rational(i + 1)));
+  growth.drain(clausifier);
+  assert(clausifier.theory_atoms().size() == 3);
+  assert(clausifier.ensure_theory_atom(dc).lit.value == dc_lit);
+  assert(stats.get(":euf.conflict-ack.demand.fresh-atoms") == 2);
+  // Consumption survives successive drain calls, not only one batch.
+  const auto second_lhs = terms.mk_app(f, {a, a});
+  const auto second_rhs = terms.mk_app(f, {b, b});
+  growth.request(second_lhs, second_rhs);
+  growth.drain(clausifier);
+  assert(clausifier.theory_atoms().size() == 3);
+  assert(stats.get(":euf.conflict-ack.demand.budget-skips") == 2);
+  primo::smt::AckermannGrowthState dry(terms, stats, 0, false);
+  dry.request(second_lhs, second_rhs);
+  assert(!dry.pending());
+  assert(stats.get(":euf.conflict-ack.demand.dry-run-instances") == 1);
+}
+
+void demand_ackermann_resumes_uf_and_mixed_without_asserting_equalities() {
+  for (bool mixed : {false, true}) {
+    auto options = propagation_test_options();
+    options.euf_propagation = primo::smt::EufPropagationMode::Conflict;
+    options.theory_phase = primo::smt::TheoryPhaseMode::Positive;
+    options.euf_conflict_ackermann = true;
+    options.euf_conflict_ackermann_demand_atoms = true;
+    options.euf_conflict_ackermann_atom_limit = 1;
+    options.produce_model = true;
+    const auto input = mixed ? R"(
+      (set-logic QF_UFLIA) (declare-sort A 0)
+      (declare-const a Int) (declare-const b Int) (declare-const c Int)
+      (declare-const q Bool) (declare-fun f (Int) A)
+      (assert (= a c)) (assert (or (= b c) q))
+      (assert (not (= (f a) (f b)))) (check-sat)
+    )"
+                             : R"(
+      (set-logic QF_UF) (declare-sort A 0)
+      (declare-const a A) (declare-const b A) (declare-const c A)
+      (declare-const q Bool) (declare-fun f (A) A)
+      (assert (= a c)) (assert (or (= b c) q))
+      (assert (not (= (f a) (f b)))) (check-sat)
+    )";
+    const auto result = check_sat_smtlib(input, options);
+    assert(result.result == CheckSatResult::Sat);
+    assert(result.statistics.get(":euf.conflict-ack.demand.fresh-atoms") <= 1);
+    if (!mixed) {
+      assert(result.statistics.get(":euf.conflict-ack.demand.fresh-atoms") == 1);
+      assert(result.statistics.get(":euf.conflict-ack.demand.sat-resumes") > 0);
+    }
+    options.euf_conflict_ackermann = false;
+    options.euf_conflict_ackermann_diagnostics = true;
+    const auto dry = check_sat_smtlib(input, options);
+    assert(dry.result == CheckSatResult::Sat);
+    assert(dry.statistics.get(":euf.conflict-ack.demand.fresh-atoms") == 0);
+    assert(dry.statistics.get(":euf.conflict-ack.demand.sat-resumes") == 0);
+  }
+}
+
+void demand_ackermann_mixed_noninterface_equality_grows_at_driver_boundary() {
+  auto options = propagation_test_options();
+  options.euf_propagation = primo::smt::EufPropagationMode::Conflict;
+  options.theory_phase = primo::smt::TheoryPhaseMode::Positive;
+  options.euf_conflict_ackermann = true;
+  options.euf_conflict_ackermann_demand_atoms = true;
+  options.produce_model = true;
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLIA) (declare-sort A 0)
+    (declare-const a A) (declare-const b A) (declare-const c A)
+    (declare-const z Int) (declare-const q Bool) (declare-fun f (A) A) (declare-fun g (A) A)
+    (assert (<= 0 z)) (assert (= a c)) (assert (or (= b c) q))
+    (assert (not (= (f (g a)) (f (g b))))) (check-sat)
+  )",
+                                       options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":euf.conflict-ack.demand.fresh-atoms") == 1);
+  assert(result.statistics.get(":euf.conflict-ack.demand.sat-resumes") > 0);
+  assert(result.statistics.get(":no.mixed.lia-atoms") == 1);
+  assert(result.statistics.get(":combination.model.total-pairs") == 0);
+}
+
+void demand_ackermann_mixed_exports_only_checked_facts() {
+  const std::string input =
+      read_text_file("../benchmarks/regressions/qf_uflia_demand_filtered_model_fact.smt2");
+  for (const auto filtering :
+       {primo::smt::PureTheoryFilterMode::Auto, primo::smt::PureTheoryFilterMode::On}) {
+    CheckSatOptions options;
+    options.produce_model = true;
+    options.pure_theory_filter = filtering;
+    options.euf_conflict_ackermann = true;
+    options.euf_conflict_ackermann_demand_atoms = true;
+    const auto result = check_sat_smtlib(input, options);
+    assert(result.result == CheckSatResult::Sat);
+    assert(result.typed_model);
+    assert(result.statistics.get(":euf.conflict-ack.demand.fresh-atoms") > 0);
+    // The complete recipe reused an online closure that omitted a fresh
+    // positive-only equality's false assignment, then exported it as a fact.
+    assert(result.statistics.get(":combination.model.complete-fallbacks") > 0);
+  }
+}
+
+void demand_ackermann_limits_and_nested_witnesses() {
+  const char* input = R"(
+    (set-logic QF_UF) (declare-sort A 0)
+    (declare-const a A) (declare-const b A) (declare-const c A)
+    (declare-const q Bool) (declare-fun f (A) A) (declare-fun g (A) A)
+    (assert (= a c)) (assert (or (= b c) q))
+    (assert (not (= (f (g a)) (f (g b))))) (check-sat)
+  )";
+  for (std::size_t limit : {0U, 1U, 2U}) {
+    auto options = propagation_test_options();
+    options.euf_propagation = primo::smt::EufPropagationMode::Conflict;
+    options.theory_phase = primo::smt::TheoryPhaseMode::Positive;
+    options.euf_conflict_ackermann = true;
+    options.euf_conflict_ackermann_demand_atoms = true;
+    options.euf_conflict_ackermann_atom_limit = limit;
+    const auto result = check_sat_smtlib(input, options);
+    assert(result.result == CheckSatResult::Sat);
+    assert(result.statistics.get(":euf.conflict-ack.demand.fresh-atoms") <= (limit ? limit : 4096));
+    if (!limit) assert(result.statistics.get(":euf.conflict-ack.demand.installed-instances") >= 2);
+    options.max_theory_conflicts = 1;
+    const auto bounded = check_sat_smtlib(input, options);
+    assert(bounded.result == CheckSatResult::Unknown);
+    assert(bounded.reason == primo::smt::InconclusiveReason::ResourceLimit);
+    assert(bounded.statistics.get(":euf.conflict-ack.demand.sat-resumes") == 0);
+  }
+}
+
+void conflict_ackermann_diagnostics_observe_actual_conflicts() {
+  const char* input = R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-const a A) (declare-const b A) (declare-const c A)
+    (declare-fun f (A) A)
+    (assert (= a c)) (assert (= c b))
+    (assert (not (= (f a) (f b))))
+    (check-sat)
+  )";
+  auto options = propagation_test_options();
+  options.euf_propagation = primo::smt::EufPropagationMode::Conflict;
+  options.euf_conflict_ackermann_diagnostics = true;
+  const auto result = check_sat_smtlib(input, options);
+  assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(":euf.conflict-ack.conflicts") > 0);
+  assert(result.statistics.get(":euf.conflict-ack.trace-steps") > 0);
+  assert(result.statistics.get(":euf.conflict-ack.missing-argument") > 0);
+  assert(result.statistics.get(":euf.conflict-ack.sent-clauses") == 0);
+  options.euf_conflict_ackermann_diagnostics = false;
+  const auto disabled = check_sat_smtlib(input, options);
+  assert(disabled.result == CheckSatResult::Unsat);
+  assert(disabled.statistics.get(":euf.conflict-ack.conflicts") == 0);
+}
+
+void conflict_ackermann_emits_after_backtracking_without_strengthening_nary_clause() {
+  for (bool binary : {false, true}) {
+    auto options = propagation_test_options();
+    options.euf_propagation = primo::smt::EufPropagationMode::Conflict;
+    options.theory_phase = primo::smt::TheoryPhaseMode::Positive;
+    options.euf_conflict_ackermann = true;
+    const auto input = binary ? R"(
+      (set-logic QF_UF) (declare-sort A 0)
+      (declare-const a A) (declare-const b A) (declare-const c A) (declare-const d A)
+      (declare-const q Bool) (declare-fun f (A A) A)
+      (assert (= a b)) (assert (or (= c d) q))
+      (assert (not (= (f a c) (f b d)))) (check-sat)
+    )"
+                              : R"(
+      (set-logic QF_UF) (declare-sort A 0)
+      (declare-const a A) (declare-const b A) (declare-const q Bool)
+      (declare-fun f (A) A)
+      (assert (or (= a b) q)) (assert (not (= (f a) (f b)))) (check-sat)
+    )";
+    const auto result = check_sat_smtlib(input, options);
+    assert(result.result == CheckSatResult::Sat);
+    assert(result.statistics.get(":euf.conflict-ack.queued-clauses") > 0);
+    assert(result.statistics.get(":euf.conflict-ack.sent-clauses") > 0);
+  }
+}
+
 int main() {
+  demand_ackermann_mixed_noninterface_equality_grows_at_driver_boundary();
+  demand_ackermann_mixed_exports_only_checked_facts();
+  demand_ackermann_limits_and_nested_witnesses();
+  conflict_ackermann_v2_keeps_admission_separate_and_diagnostics_explicit();
+  demand_ackermann_preflights_reuses_and_owns_requests();
+  demand_ackermann_resumes_uf_and_mixed_without_asserting_equalities();
+  conflict_ackermann_emits_after_backtracking_without_strengthening_nary_clause();
+  conflict_ackermann_selector_preserves_nary_disjunction_and_retries_missing_atoms();
+  conflict_ackermann_diagnostics_observe_actual_conflicts();
   pure_boolean_sat();
   get_model_requires_produce_models();
   get_model_requires_prior_check_sat();
@@ -3246,7 +3652,7 @@ int main() {
   pure_theory_literal_filter_can_be_disabled();
   mixed_polarity_theory_literal_is_not_filtered();
   strong_preprocessing_enables_finite_domain_amo();
-  finite_domain_raw_amo_survives_forced_atom_simplification();
+  finite_domain_raw_amo_is_refreshed_after_forced_atom_simplification();
   finite_domain_post_amo_can_be_disabled();
   finite_domain_amo_uses_forced_disequalities_modulo_forced_equalities();
   auto_preprocessing_uses_basic_polarity_for_small_multiple_assertions();
@@ -3262,6 +3668,8 @@ int main() {
   moving_only_symmetry_terms_are_rejected_from_smtlib();
   symmetry_ignores_preprocessing_residual_domains();
   qg_shape_uses_fixed_terms_but_not_moving_table_terms_for_symmetry();
+  overlapping_symmetry_groups_preserve_a_derangement_model();
+  compatible_symmetry_groups_both_retain_restrictions();
   no_symmetry_breaking_disables_strong_preset_symmetry_only();
   theory_phase_option_can_leave_backend_phase_unset();
   default_theory_phase_keeps_negative_phase();

@@ -149,6 +149,15 @@ QF_UF / EUF theory options:
                               adding them
           --euf-diseq-ackermann [default: off]
                               Enable watched QF_UF disequality Ackermann propagation
+          --euf-conflict-ackermann [default: off]
+                              Emit bounded conflict-selected congruence clauses
+          --euf-conflict-ackermann-diagnostics [default: off]
+                              Measure conflict-selected congruence clauses without emitting
+                              them
+          --euf-conflict-ackermann-atoms TEXT:{existing,demand} [existing]
+                              Conflict-selected equality atoms: existing or demand
+          --euf-conflict-ackermann-atom-limit UINT:INT in [0 - 1000000000] [4096]
+                              Fresh equality atoms per query in demand mode (0: unlimited)
           --euf-diseq-ackermann-max-width UINT:INT in [2 - 1000] [3]
                               Maximum width of watched disequality Ackermann clauses
           --euf-diseq-ackermann-queue-budget UINT:INT in [0 - 1000000000] [4096]
@@ -220,6 +229,13 @@ Preprocessing options:
                               Enable experimental primitive-integer canonicalization of
                               proportional Real comparisons and equalities before
                               clausification
+          --arithmetic-bound-diagnostics [default: off]
+                              Diagnostic: count unconditional numeric bound opportunities
+                              before preprocessing; does not install bounds or change search
+          --preprocess-bound-tightening [default: off]
+                              Infer and assert unconditional arithmetic bounds after lowering
+          --preprocess-bound-work-limit UINT [100000]
+                              Bound-tightening work budget; 0 performs no strengthening
           --preprocessing-mode TEXT:{off,basic,strong,auto} [auto]
                               Preprocessing preset for all supported logics
           --incremental-mode TEXT:{rebuild,assumptions} [rebuild]
@@ -291,13 +307,6 @@ QF_LRA theory options:
           --lra-equality-propagation [default: off]
                               Enable experimental pure QF_LRA model-unit equality discovery and
                               propagation of existing difference comparisons (IPASIR-UP only)
-          --lra-model-phase [default: auto]
-                              Enable model-based SAT phase hints (automatic for QF_LRA rebuild
-                              queries with auto preprocessing): keep CaDiCaL's variable choice,
-                              but refresh arithmetic atom polarity from the current tableau
-                              assignment at quiescence points
-          --no-lra-model-phase [default: off]
-                              Disable model-based SAT phase hints
           --lra-pivoting-rule TEXT:{bland,dantzig,soi,sparse} [sparse]
                               QF_LRA Check/Pivot variable-selection rule: sparse (prices what a
                               pivot costs: among the entering candidates that all repair the
@@ -401,42 +410,12 @@ QF_LRA theory options:
                               disjunction with one Real equality child directly to two guarded
                               inequalities, avoiding one Tseitin layer on some QF_LRA encodings
 
-QF_LIA theory options:
-          --qf-uflia-model-combination, --experimental-qf-uflia-model-combination [default: on]
-                              Guide non-convex QF_UFLIA arrangement search with component
-                              models before complete fallback
-          --no-qf-uflia-model-combination [default: off]
-                              Disable QF_UFLIA model guidance and start from the complete
-                              arrangement
-          --qf-uflia-online-components, --experimental-qf-uflia-online-components [default: on]
-                              Reuse trail-synchronized EUF and rational-arithmetic state during
-                              QF_UFLIA SAT search
-          --no-qf-uflia-online-components [default: off]
-                              Disable trail-synchronized QF_UFLIA components
-          --qf-uflia-model-decision-budget UINT [512]
-                              Maximum QF_UFLIA model-choice batches before complete arrangement
-                              fallback
-          --lia-branch-limit UINT:INT in [1 - 100000000] [100000]
-                              QF_LIA branch-and-bound node cap: plain branch-and-bound alone
-                              has no completeness argument (an unbounded integer-infeasible
-                              polytope can branch forever), so once this many nodes have been
-                              explored the search reports Unknown instead of continuing
-          --lia-gomory-cut-limit UINT:INT in [0 - 100000000] [100]
-                              QF_LIA Gomory-cut round cap, run before branch-and-bound on every
-                              candidate model: caps how many cut-and-recheck rounds are
-                              attempted before falling through to branch-and-bound regardless
-          --lia-patch-limit UINT:INT in [0 - 100000000] [100]
-                              QF_LIA patching budget, run before the integer refutation stages
-                              on every candidate model: caps how many nonbasic moves are taken
-                              to nudge Int variables onto integer values. 0 disables patching
-          --no-lia-conflict-generalization [default: off]
-                              Disable QF_LIA conflict generalization: build each
-                              integer-infeasibility lemma from every arithmetic atom in the
-                              problem instead of from the GCD/cut/branch derivation that
-                              actually proved it. The coarse form excludes one Boolean
-                              assignment per round
-
 SAT and DPLL(T) options:
+          --arithmetic-model-phase TEXT:{on,off,auto} [auto]  Excludes: --lra-model-phase --no-lra-model-phase
+                              Refresh arithmetic SAT phase preferences from the current
+                              tableau: on, off, or auto (QF_LRA rebuild with automatic
+                              preprocessing). Keeps SAT variable selection; requires an
+                              arithmetic phase-output path
           --qf-uflra-online-euf [default: off]
                               Enable experimental incremental EUF callbacks and live
                               final-model closure reuse in mixed QF_UFLRA solving
@@ -451,9 +430,95 @@ SAT and DPLL(T) options:
                               most 700 negations
           --pure-theory-filter TEXT:{auto,on,off} [auto]
                               T-pure theory literal filtering mode
-          --theory-phase TEXT:{negative,positive,none,polarity,auto} [negative]
-                              Initial SAT phase for theory atoms
+          --initial-theory-phase, --theory-phase TEXT:{negative,positive,none,polarity,auto} [negative]
+                              Initial SAT truth-value preference for theory atoms on routes
+                              that install it; --theory-phase is a compatibility alias
           --max-theory-conflicts UINT:INT in [1 - 1000000000] [unlimited]
                               Return unknown after at least this many learned theory conflicts
           --cadical-option TEXT
                               Set a CaDiCaL integer option as name=value; may be repeated
+
+QF_LIA theory options:
+          --qf-uflia-model-combination, --experimental-qf-uflia-model-combination [default: on]
+                              Guide non-convex QF_UFLIA arrangement search with component
+                              models before complete fallback
+          --no-qf-uflia-model-combination [default: off]
+                              Disable QF_UFLIA model guidance and start from the complete
+                              arrangement
+          --qf-uflia-online-components, --experimental-qf-uflia-online-components [default: on]
+                              Reuse trail-synchronized EUF and rational-arithmetic state during
+                              QF_UFLIA SAT search
+          --no-qf-uflia-online-components [default: off]
+                              Disable trail-synchronized QF_UFLIA components
+          --qf-uflia-lia-equality-producer TEXT:{legacy,model-unit} [legacy]
+                              QF_UFLIA equality discovery: legacy exact-offset rules or
+                              model-unit current-model-filtered unit rows; requires
+                              --qf-uflia-tableau-equalities
+          --qf-uflia-tableau-equalities [=MODE; default: off]
+                              Experimental pre-integer equality policy: off, scan only,
+                              names/bridges only, fixed-value proofs, or all proofs. Bare flag
+                              selects all; default off
+          --qf-uflia-model-decision-budget UINT [512]
+                              Maximum QF_UFLIA model-choice batches before complete arrangement
+                              fallback
+          --lia-branch-limit UINT:INT in [1 - 100000000] [100000]
+                              Private integer branch-and-bound node cap for QF_LIA/QF_UFLIA:
+                              private mode reports Unknown at the cap; hybrid mode restores
+                              private bounds and hands off to SAT. Plain branching has no
+                              completeness guarantee on unbounded inputs
+          --lia-branching [default: hybrid for QF_LIA, private for QF_UFLIA]
+                              Integer branching policy: private or hybrid
+          --lia-private-branch-factor UINT:INT in [0 - 100000000] [1]
+                              Hybrid private nodes per original Int term (default 1; zero hands
+                              off immediately)
+          --lia-split-atom-limit UINT:INT in [0 - 100000000] [0]
+                              Fresh hybrid integer split atoms per solve (default 0: unlimited)
+          --lia-gomory-cut-limit UINT:INT in [0 - 100000000] [100]
+                              QF_LIA Gomory-cut round cap, run before branch-and-bound on every
+                              candidate model: caps how many cut-and-recheck rounds are
+                              attempted before falling through to branch-and-bound regardless
+          --lia-patch-limit UINT:INT in [0 - 100000000] [100]
+                              QF_LIA patching budget, run before the integer refutation stages
+                              on every candidate model: caps how many nonbasic moves are taken
+                              to nudge Int variables onto integer values. 0 disables patching
+          --lia-cube [default: uniform for QF_LIA, off for QF_UFLIA]
+                              QF_LIA cube model attempt: off, uniform, or difference
+          --lia-cube-steps UINT:INT in [0 - 100000000] [1000]
+                              Repair-step budget of the optional QF_LIA cube solve (default
+                              1000)
+          --lia-round-integer-bounds [default: on for QF_LIA, off for QF_UFLIA]
+                              Round non-strict QF_LIA/QF_UFLIA thresholds on integer-valued
+                              tableau variables inward (x <= 5/3 becomes x <= 1); strict
+                              thresholds are always rounded
+          --no-lia-round-integer-bounds [default: off]
+                              Disable --lia-round-integer-bounds; wins over it
+          --lia-primitive-int-rows [default: on for QF_LIA, off for QF_UFLIA]
+                              Store QF_LIA/QF_UFLIA atom rows with coprime integer coefficients
+                              (2x + 3y stays 2x + 3y instead of x + 3/2 y), so every Int slack
+                              is integer-valued and its thresholds can be rounded
+          --no-lia-primitive-int-rows [default: off]
+                              Disable --lia-primitive-int-rows; wins over it
+          --lia-integer-slacks [default: off]
+                              Treat QF_LIA/QF_UFLIA slacks whose rows are integer polynomials
+                              over Int variables as integer variables in patching, GCD tests,
+                              cuts and branching
+          --no-lia-integer-slacks [default: off]
+                              Disable --lia-integer-slacks; wins over it
+          --lia-patch-integral-moves [default: on for QF_LIA, off for QF_UFLIA]
+                              QF_LIA/QF_UFLIA patching: never leave an integer nonbasic
+                              variable fractional, and propose the integer values of a row's
+                              nonbasic variable that make its basic variable integral
+          --no-lia-patch-integral-moves [default: off]
+                              Disable --lia-patch-integral-moves; wins over it
+          --no-lia-conflict-generalization [default: off]
+                              Disable QF_LIA conflict generalization: build each
+                              integer-infeasibility lemma from every arithmetic atom in the
+                              problem instead of from the GCD/cut/branch derivation that
+                              actually proved it. The coarse form excludes one Boolean
+                              assignment per round
+
+Compatibility aliases:
+          --lra-model-phase [compatibility alias]
+                              Compatibility flag; use --arithmetic-model-phase=on
+          --no-lra-model-phase [compatibility alias]
+                              Compatibility flag; use --arithmetic-model-phase=off

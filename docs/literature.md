@@ -20,21 +20,39 @@ chapter states the actual subset, deviations, invariants and tests.
 
 ## Arithmetic papers and theses
 
+[Arithmetic-guided phase control](papers/arithmetic-phase-control.md) reviews
+polarity-only recommendations, their mapping to Primo, and the termination
+obligations for the current investigation. Its follow-up distinguishes Boolean
+target phases and small-value local search from an unimplemented preference
+for the lower-valued side of existing slack thresholds, and reviews polarity
+scores as context for adaptive overrides of arithmetic advice. The
+{ref}`narrow-region candidate <narrow-region-phase-candidate>`
+preserves β generally and proposes measuring repeated entry into small integer
+ranges before selecting local overrides. It is not implemented or evaluated.
+Numeric trial assumptions and model-value branching are outside its scope.
+Its [CSP follow-up](papers/arithmetic-phase-control.md#csp-connections-and-the-finite-domain-limitation)
+distinguishes least-constraining values, Refalo's impact-based search and
+counting-based solution density, including the finite-domain limits on transfer.
+The supplied [Baptista thesis overview](papers/csp-restarts-phase-control.md)
+adds finite-domain context, negative split-point results and randomized branch
+orientation as related work, with no policy adoption.
+
 | Source | Current role and retained reading note |
 | --- | --- |
 | Arithmetic symmetry | [Open lead and reading scope](leads/arithmetic-symmetry.md): SyMT detection results, CVC4-SymBreak, and related LP/ILP work. These motivate investigation beyond the current finite-choice pass; they do not establish a QF_LIA/QF_LRA speedup for Primo. |
 | Dutertre–de Moura, integrating simplex with DPLL(T) | [LRA](implementation/lra.md) covers preparation, bound repair, strict arithmetic, conflicts and rollback. The {source}`base-paper checklist <docs/papers/fast-linear-arithmetic-dpllt.md>` records departures and later optional methods. |
 | Tim King, *Effective Algorithms for the Satisfiability of Quantifier-Free Formulas Over Linear Real and Integer Arithmetic*, PhD thesis, 2014 | LRA sparse operations, finite fallback, SOI and conflict construction. [The chapter's source table](implementation/lra.md#sources-and-implementation-status) distinguishes Primo's representation from the complete thesis designs. |
 | Alberto Griggio, *An Effective SMT Engine for Formal Verification*, PhD thesis, 2009 | Sparse engineering, violation selection and early-pruning context. The {source}`thesis note <docs/papers/griggio-mathsat-thesis.md>` retains exact sections and the corrected least-violated attribution. |
-| Martin Bromberger, *Decision Procedures for Linear Arithmetic*, PhD thesis, 2019 | [Reading guide](papers/bromberger-linear-arithmetic.md), [LIA](implementation/lia.md) and [preprocessing](implementation/preprocessing.md). Complete equality bases, cube/bounding methods and other unimplemented algorithms remain comparisons/leads. The {source}`original thesis checklist <docs/papers/bromberger-linear-arithmetic-thesis.md>` retains the full intake. |
+| Martin Bromberger, *Decision Procedures for Linear Arithmetic*, PhD thesis, 2019 | [Reading guide](papers/bromberger-linear-arithmetic.md), [LIA](implementation/lia.md) and [preprocessing](implementation/preprocessing.md). Optional pure QF_LIA uniform/difference cubes are implemented from the CAV 2024 description; see {ref}`lia-cubes`. Complete equality bases, mixed cubes and bounding transformations remain comparisons/leads. The {source}`original thesis checklist <docs/papers/bromberger-linear-arithmetic-thesis.md>` retains the full intake. |
 | Monniaux, CAV 2009 | LRA normalization, direct bounds and sparse-pivot motivation. [Floating-point assistance](leads/lra-floating-point.md) is unimplemented; leading-coefficient-one normalization differs from the paper's integer normalization. |
 | King–Barrett–Dutertre, SOI | LRA's optional SOI section states the implemented objective, breakpoint method, conflict explanation and finite fallback; it does not describe the default sparse repair loop. |
 | King, ordinary-conflict strengthening and provenance | [Missing-section intake](papers/conflict-explanation-minimization.md#king-ordinary-simplex-conflict-strengthening-and-provenance): thesis §§2.2.4 and 2.2.9 describe regression to assertions and greedy bound weakening. These are not implemented as general LRA explanation transformations; SOI row reduction is separate. |
-| Bjørner–Nachmanson, *Arithmetic Solving in Z3* | LRA's optional model-unit producer and LIA's selected patching/GCD/cut mechanisms. The {source}`paper map <docs/papers/arithmetic-solving-in-z3.md>` preserves broader unimplemented integer/nonlinear procedures. |
+| Bjørner–Nachmanson, *Arithmetic Solving in Z3* | LRA's optional model-unit producer, LIA's selected patching/GCD/cut mechanisms, and the optional pure QF_LIA uniform/difference cube test (§4.2); see {ref}`lia-cubes`. The {source}`paper map <docs/papers/arithmetic-solving-in-z3.md>` preserves broader unimplemented integer/nonlinear procedures. |
 | Dillig–Dillig–Aiken, *Cuts from proofs* (2011 journal version) | [Reading note](papers/cuts-from-proofs.md): HNF certificates, general integer splits, coefficient bounds and the bounded-region termination argument. Deferred; current Gomory cuts and coordinate DFS do not implement this procedure. |
 | Word GCD and integer divisibility | [LIA](implementation/lia.md) states row integrality preconditions; {source}`word-GCD notes <docs/papers/word-gcd-notes.md>` are an engineering comparison, not the origin of the mathematical divisibility test. |
 | Integer division and modulo | [LIA](implementation/lia.md) and [preprocessing](implementation/preprocessing.md) describe the constant-divisor subset; the {source}`reading note <docs/papers/integer-division-and-modulo.md>` retains excluded variants. |
 | LP/MIP presolve and primal heuristics | [Repair survey](papers/lia-primal-heuristics.md), [patching lead](leads/lia-patching.md), and {source}`monotone-elimination note <docs/papers/monotone-variable-elimination.md>` keep rounding/repair and elimination obligations distinct. |
+| Achterberg et al., *Presolve Reductions in Mixed Integer Programming* {cite:p}`achterberg2020presolve` | Taxonomy of MIP presolve reductions. GCD row reduction (§3.5), integer-bound rounding (§4.2) and implied-integer detection (§7.6) are mapped in the [integrality checklist](papers/mip-presolve-integrality.md) and the [infinitesimal-avoidance lead](leads/lia-infinitesimals.md). Primo implements fragments: `--lia-primitive-int-rows` stores `Int` rows with coprime integer coefficients, and `--lia-round-integer-bounds` rounds non-strict fractional thresholds on integer-valued variables; both are on by default for QF_LIA and off for QF_UFLIA. The separate early atom canonicalizer is off by default and does not round the right side. |
 | Atom canonicalization | Current normalization is explained in preprocessing and LRA; {source}`the comparison note <docs/papers/lra-atom-canonicalization.md>` retains rejected/default-off policy evidence. |
 | Difference constraints | {source}`Reading note <docs/papers/difference-constraint-propagation.md>` motivates a future dedicated route. It is not implemented difference-logic admission. |
 
