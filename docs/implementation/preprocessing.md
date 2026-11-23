@@ -54,8 +54,8 @@ composition operations.
 (preprocessing-order)=
 ## Execution order
 
-{source}`prepare_and_execute_preprocessing_strategy
-<src/smt/preprocessing_strategy.cpp#L554-L641>` executes the initial sequence,
+{preprocessboundsource}`prepare_and_execute_preprocessing_strategy
+<src/smt/preprocessing_strategy.cpp>` executes the initial sequence,
 analyzes its result to select a profile, then runs the remaining passes.
 The following order is encoded by
 {source}`make_preprocessing_strategy <src/smt/preprocessing_strategy.cpp#L419-L552>`.
@@ -67,6 +67,7 @@ In the table, **ITE** means an if-then-else expression, written `ite` in SMT-LIB
 | --- | --- |
 | 1. Simplify extended terms | If enabled, simplify comparisons involving constant if-then-else terms, then apply bounded structural `ite`/`div`/`mod`/`abs` rewrites. The constant-ITE pass also has its own switch. |
 | 2. Eliminate extended operators | Always translate remaining extended terms into Boolean structure, linear terms, and fresh definitions. |
+| 2a. Tighten unconditional bounds | Optional bounded interval propagation on the lowered goal; emit ordinary comparison conjuncts. |
 | 3. Normalize the initial goal | Optional arithmetic atom canonicalization, then optional initial bounded Boolean flattening. |
 | 4. Choose a profile | Analyze the normalized goal; retain finite-domain clauses and symmetry results needed later. |
 | 5. Profile-specific preparation | Integer profiles run bounded syntactic solve-eqs. The profile that skips the main loop for large inputs can run one solve-eqs pass. Integer profiles with an enabled round normalize Boolean negations before that round. |
@@ -87,6 +88,55 @@ without search. It returns `unknown` for surviving goals, even an empty goal,
 and `unsat` if every alternative reduces to false. It does not print the
 transformed assertions. Quantified `UF` input stops after the frontend,
 without running these ground passes or entering the quantifier solver.
+
+`--arithmetic-bound-diagnostics` is a separate, default-off measurement before
+rewriting. It reads unconditional arithmetic literals in the original assertion
+conjunction and counts numeric bound improvements available from explicit
+single-term bounds and one multi-term constraint at a time. It does not install
+the inferred bounds or generate SAT atoms. Use it with `--preprocess-only
+--stats` to measure these opportunities without entering search. This remains
+independent of the optional basic/nonbasic tableau propagation described in
+{ref}`the arithmetic chapter <propagation-and-online-checking>`.
+
+The SMT helper {rootboundsource}`record_root_bound_diagnostics
+<src/smt/root_bound_diagnostics.cpp>` owns temporary polynomials and
+maps keyed by stable `TermId`; its const term-manager input is never mutated.
+All state is query-local, so rebuild sessions recompute it after push/pop.
+Assumptions sessions reject the option; quantified queries skip it. The
+[implementation checklist](../leads/root-bound-detection.md) gives the algebra,
+paper basis, strictness and integer rounding rules, 64-term row cap, cancellation
+behavior, tests, and limits. This is one-pass detection, not fixed-point bound
+tightening or complete arithmetic consequence discovery.
+
+## Optional bound tightening
+
+`--preprocess-bound-tightening` enables bounded interval propagation immediately
+after required extended-term lowering, before the remaining initial normalizers,
+profile analysis, equation elimination and the main simplification loop. It is
+off by default, supports the four ground arithmetic logics in rebuild sessions,
+and runs independently of the chosen preprocessing preset. Assumptions sessions
+reject explicit enabling; quantified queries use their separate route.
+The feature remains experimental: [qualification is blocked](../leads/preprocessing-bound-tightening.md#qualification-is-blocked)
+by a shared baseline/candidate callback-cleanup failure under memory pressure.
+
+The {preprocessboundsource}`analysis <src/smt/preprocess_bound_tightening.cpp>`
+owns intervals and occurrence lists keyed by stable term IDs, and a FIFO queue
+of row indices. It reads unconditional conjunctions only. Completed improved
+endpoints become ordinary comparison conjuncts through the term manager, then
+follow ordinary clausification and arithmetic preparation. There are no new
+dynamic tableau rows or branch-dependent private assumptions. Existing model
+reconstruction and checks of the original assertions remain in force.
+
+The work budget defaults to 100,000 counted operations; zero does no
+strengthening. Exhaustion retains sound partial results and continues solving,
+while cancellation follows the existing inconclusive path. At most 4,096
+endpoints are emitted per query. Neither limit bounds the cost of one exact
+rational operation or provides a wall-time guarantee. See the
+[algorithm and implementation checklist](../leads/preprocessing-bound-tightening.md).
+
+The original `--arithmetic-bound-diagnostics` remains a separate, read-only scan
+before rewriting, so its opportunities and this pass's actual emissions have
+different input boundaries and must not be compared as identical measurements.
 
 (preprocessing-profiles)=
 ## Profiles and repetition
@@ -287,6 +337,14 @@ simplification because it can produce Boolean ITEs that those structural
 rules simplify further. Fewer
 auxiliary variables can come at the cost of more Boolean structure.
 
+### Constant-comparison work inside CITE simplification
+
+Production uses the full CITE leaf scan. An endpoint/membership shortcut was
+implemented experimentally and rejected after a paired runtime regression; its
+mechanism, obsolete counters and measurements are retained with the
+[rejected experiment](../evidence/arithmetic-overhead-20261109.md#cite-constant-comparisons).
+It is not part of the current preprocessing pipeline.
+
 ### Translate remaining operators
 
 {source}`lower_extended_terms <src/smt/preprocessing.cpp#L4468-L4614>`
@@ -303,7 +361,7 @@ constants.
 Definitions are emitted before the assertion that needs them. Within the call,
 equal rewritten numerator/divisor pairs share a quotient. Negative divisors
 are normalized earlier; zero or nonconstant divisors are unsupported. The
-[integer chapter](lia.md#input-lowering-and-integer-bounds) gives the uniqueness
+[integer chapter](arithmetic/lia/preparation.md#input-lowering-and-integer-bounds) gives the uniqueness
 argument, signed example, and subsequent bound handling.
 
 (normalize-atoms-at-the-right-boundary)=
@@ -312,7 +370,7 @@ argument, signed example, and subsequent bound handling.
 The optional early arithmetic canonicalizer converts proportional atoms to
 a common core-term form with coprime integer coefficients. It can therefore
 merge their SAT abstractions. This differs from the always-used
-[leading-coefficient normalization](lra.md#from-atoms-to-bounds)
+[leading-coefficient normalization](arithmetic/lra/tableau.md#from-atoms-to-bounds)
 inside LRA preparation, whose purpose is sharing a polynomial row. The
 {source}`canonicalizer <src/smt/preprocessing.cpp#L499-L599>` is off by default;
 if enabled it runs initially, again after finite-domain generation, and for
@@ -339,9 +397,11 @@ supported proof of distinctness. Arbitrary values with different `TermId`s
 are not automatically distinct.
 
 At-most-one (AMO) clauses state
-$\neg(t=c_i)\lor\neg(t=c_j)$ for distinct values. Clauses generated
-before simplification are emitted later and deduplicated against a second
-scan after simplification. A choice disjunction is not always needed: if
+$\neg(t=c_i)\lor\neg(t=c_j)$ for distinct values. Cached clauses generated before simplification are reused only if the
+executing goal has the same ordered assertion roots. Otherwise that raw scan
+is repeated on the current goal before emission. Emitted clauses are
+deduplicated against existing assertions and clauses from the optional
+post-simplification scan. A choice disjunction is not always needed: if
 the formula contains $t=u$ and $t=v$, and asserts $u\ne v$, the generator
 can add $\neg(t=u)\lor\neg(t=v)$. For terms $s,t$ with the same recognized
 domain and a known disequality $s\ne t$, it can add
@@ -356,7 +416,7 @@ for every possible term pair. Enabling these clauses in `auto` mode is a
 separate option, off by default, with limits on domain size, generated clauses,
 and formula size.
 
-{source}`UfSymmetryBreaker <src/smt/preprocessing.cpp#L5197-L5241>` attempts to check
+[UfSymmetryBreaker](https://github.com/primo-solver/primo/blob/59d81fee55ae861ea7fe022b5602450013a57cd0/src/smt/preprocessing.cpp#L5202) attempts to check
 whether permuting a recognized set of uninterpreted constants leaves the
 assertions unchanged. It treats equality, `and`, and `or` as commutative when
 comparing formulas. Checking a cycle through the constants and a swap of the
@@ -368,7 +428,14 @@ unchanged when the constants are renamed.
 With **value precedence**, a term may take value $c_i$, for $i>0$, only if
 an earlier term in the sequence takes value $c_{i-1}$. Disabling value
 precedence uses weaker restrictions on the values allowed at each position.
-A group with no fixed candidate term is rejected. Arithmetic numerals are
+A group with no fixed candidate term is rejected. Before admitting each later
+group, the pass also checks that its cycle/swap permutations preserve the conjunction of
+restrictions emitted for earlier groups. This maintains the evolving-formula
+precondition of Algorithm 1; separately valid restrictions can be incompatible
+when composed. The typed counter
+`:preprocessing.uf-symmetry.rejected-prior-constraints` identifies groups that
+pass the input check but fail this additional guard. See the
+[symmetry-composition repair](../leads/uf-symmetry-composition.md). Arithmetic numerals are
 never permuted.
 Unlike AMO consequences, symmetry constraints need not hold in every original
 model; the justification is that some equivalent renamed model satisfies them.
@@ -491,7 +558,7 @@ describes their reverse replay and validation against original assertions.
 | {source}`PreprocessingProfile <src/smt/preprocessing_strategy.hpp>` | Selected passes, repetition limits, finite-domain analysis, and generated clauses retained for later use. |
 | {source}`PreparedPreprocessingStrategy <src/smt/preprocessing_strategy.hpp>` | Full strategy description, selected profile, and result returned by `prepare_and_execute_preprocessing_strategy` after executing the transformations. |
 | {source}`PreprocessingRoundOptions <src/smt/preprocessing_tactics.hpp>` | Immutable settings for one simplification round. The round uses the executing tactic context. |
-| {source}`FiniteDomainPreprocessInput <src/smt/preprocessing_tactics.hpp#L65-L75>` | Assertions used for symmetry analysis, at-most-one clauses generated before simplification, and any previously computed symmetry result. |
+| {modelrepairsource}`FiniteDomainPreprocessInput <src/smt/preprocessing_tactics.hpp#L65-L75>` | Owning source assertion IDs, immutable precomputed AMO clauses and optional symmetry result. Reuse requires exact executing goal roots; supplying IDs from the same term manager is a caller precondition. |
 | {source}`ModelReconstruction <src/smt/model_reconstruction.hpp>` | Each goal's model-conversion records and forced equality/disequality pairs needed by later stages. |
 
 The term manager owns every original and generated term. Pass results refer
@@ -501,11 +568,33 @@ IDs remain valid when term storage grows; borrowed references to term nodes
 may not. A pass must copy the child IDs and other data it needs before
 constructing another term.
 
-Finite-domain and symmetry analysis retain the assertions they examined and
-the constraints they generated. Simplification can remove a choice such as
-$t=c_0\lor t=c_1$, so a later scan might no longer find the same constraint.
-The saved data lets the final generation stage use the earlier result. It
-belongs to the current query and its term manager.
+Finite-domain and symmetry analysis retain owning copies of the ordered
+assertion IDs and their generated constraint results. The
+{modelrepairsource}`emission operation <src/smt/preprocessing_tactics.cpp>`
+compares `FiniteDomainPreprocessInput::source_assertions` with the executing
+`Goal::assertions()`. An exact match permits cached results; any change forces
+regeneration from the current goal. The original profile-analysis counters
+still describe the initial goal; emitted-constraint counters describe actual
+emission. Simplification may remove an earlier finite-domain opportunity;
+reusing its old vocabulary is not a substitute for transporting its proof
+through the transformation.
+
+For example, let `a = 7`, `f(a) = 0`, and `f(a) = 0 or f(a) = 1`. A raw AMO
+clause over `f(a)` may be computed before solve-eqs eliminates `a`. Emitting it
+afterwards reintroduces `a` as a free argument of an auxiliary purification
+application. Its temporary model value need not be 7. Restoring `a = 7` can
+then invalidate the function row selected by that auxiliary. The refreshed scan uses surviving syntax such as `f(7)` instead; it may emit
+no clause when simplification has removed that finite-domain opportunity. The model guards and reverse
+conversion order remain unchanged.
+
+The same cache boundary applies to analyzed symmetry constraints. Each
+alternative goal is checked separately; refreshing one invocation owns a local
+result and does not replace the immutable snapshot captured by another. The caller must supply IDs from the same live term manager, which must
+outlive the tactic; comparing root IDs does not check manager identity.
+This is an original cache-validity repair; it adds no new finite-domain or
+symmetry algorithm. Regression tests exercise unchanged cache hits, changed
+goals, alternative goals, AMO and symmetry, plus original-model replay on
+integer and real UF inputs. Qualification evidence is recorded separately.
 
 (preprocessing-evidence)=
 ## Correctness checks and evidence

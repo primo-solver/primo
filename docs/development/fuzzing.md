@@ -17,6 +17,30 @@ needs fresh evidence for its actual configuration.
 | Real-seed mutation | {source}`yinyang_fuzz.sh <scripts/yinyang_fuzz.sh>`, with logic-specific configs |
 
 The convenience `make fuzzsmt` target's small default count is not a merge gate.
+
+Result adapters must distinguish diagnostics from printed statistics. The
+{arithmeticcombsource}`external-fuzzer adapter <scripts/fuzz_external.py>`,
+{arithmeticcombsource}`integer/UF adapter <scripts/qf_uflia_fuzz.py>`,
+{arithmeticcombsource}`real/UF adapter <scripts/qf_uflra_smoke_fuzz.py>` and
+{arithmeticcombsource}`seed comparator <scripts/check_solver_seed_corpus.py>`
+exclude colon-prefixed statistic lines when checking for unsupported diagnostics.
+A key such as `:combination.model.fallback-unsupported 0` is not an unsupported
+answer. A nonzero exit after a printed SAT/UNSAT answer remains a crash, even
+when unsupported text is also present. The
+{arithmeticcombsource}`mock protocol regressions <tests/python/test_solver_statistics_classification.py>`
+exercise all four adapters without invoking a solver.
+
+For qualifying a preprocessing pass that can bypass finite-domain machinery,
+the {preprocessboundsource}`finite-domain generator <scripts/finite_domain_fuzz.py>`
+supports explicit `--activation-profile=answers`.
+It checks expected answers, reference agreement and process status, while making
+no AMO or selector-activation claim. It cannot be combined with
+`--require-post-amo`. The default `amo` and optional `structural` profiles retain
+their existing activity requirements. The {preprocessboundsource}`mixed SLURM
+gate <scripts/slurm_qf_uflra_fuzz_gate.sbatch>` accepts
+`PRIMO_FINITE_DOMAIN_QF_UF_ACTIVATION_PROFILE=answers` and
+`PRIMO_FINITE_DOMAIN_QF_UFLRA_ACTIVATION_PROFILE=answers`; for the latter, also
+set `PRIMO_FINITE_DOMAIN_QF_UFLRA_REQUIRE_POST_AMO=0`. Model replay still runs.
 A skipped generator/dependency is not a pass. Install missing dependencies
 where feasible; otherwise record the blocked gate and failed access/install
 command. Counts must include valid inputs actually reaching the relevant solver
@@ -45,6 +69,21 @@ again before submission. A subsequent tracked-file sync can remove the staged
 corpus. Mutation tasks may exhaust their wall budget before visiting all seeds:
 report visited seeds, mutations and completed solver calls, rather than claiming
 complete seed coverage.
+
+To establish coverage of every seed, use
+{settingssource}`slurm_seed_mutation_per_seed.sbatch <scripts/slurm_seed_mutation_per_seed.sbatch>`.
+It runs one array task per fuzzer and seed. Seeds are the `*.smt2` files
+under `PRIMO_MUTATION_SEEDS` that are no larger than the size limit, in sorted
+order. Task $k$ uses fuzzer $\lfloor k/N\rfloor$ and seed $k \bmod N$, where
+$N$ is the seed count, so submit `--array=0-(F*N-1)` for $F$ fuzzers. Each
+task copies its seed into a private directory, checks the solver banner
+against `PRIMO_EXPECTED_GIT`, and writes `task-K/status.tsv`. The status is
+`COVERED` when the fuzzer finished all its iterations, `WALL` when the wall
+limit cut it short, and `ERROR` otherwise; `ERROR` also fails the task.
+OpFuzz runs through {source}`seeded_opfuzz.py <scripts/seeded_opfuzz.py>`,
+so both fuzzers get the per-task random seed `PRIMO_MUTATION_RANDOM_SEED_BASE`
+plus the task index. The script needs `opfuzz`, `typefuzz` and `z3` on `PATH`.
+Bug files still need replay and triage.
 
 Inspect {source}`operator config <benchmarks/fuzz-configs/qf_lia_operator_mutations.txt>`
 and {source}`typefuzz config <benchmarks/fuzz-configs/qf_lia_typefuzz.txt>` before describing

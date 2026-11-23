@@ -4,10 +4,15 @@
 
 #include <cassert>
 #include <cstdint>
+#include <limits>
 #include <string>
 #include <string_view>
 #include <utility>
+#include <vector>
 
+#include "sat/lit.hpp"
+#include "smt/arithmetic_propagation_queue.hpp"
+#include "smt/arithmetic_row_scan_memo.hpp"
 #include "smt/check_sat.hpp"
 #include "util/statistics.hpp"
 
@@ -3071,7 +3076,7 @@ void qf_uf_lra_combines_euf_proxy_equality_with_lowered_real_disequality() {
   assert(result.statistics.get(":no.interface.lra-conflicts") >= 1);
 }
 
-void qf_uf_lra_lowers_finite_domain_amo_equalities_before_dispatch() {
+void qf_uf_lra_does_not_restore_eliminated_finite_domain_choices() {
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_UFLRA)
     (declare-fun a () Real)
@@ -3091,7 +3096,9 @@ void qf_uf_lra_lowers_finite_domain_amo_equalities_before_dispatch() {
   assert(result.statistics.get(":solver.qf-uflra") == 1);
   assert(result.statistics.get(":preprocessing.finite-domain.raw-choices") == 1);
   assert(result.statistics.get(":preprocessing.finite-domain.raw-amo-clauses") == 3);
-  assert(result.statistics.get(":preprocessing.finite-domain.amo-clauses") == 3);
+  // Solve-eqs removed the original choice: its cached clauses cannot return.
+  assert(result.statistics.get(":preprocessing.finite-domain.raw-cache-refreshes") == 1);
+  assert(result.statistics.get(":preprocessing.finite-domain.amo-clauses") == 0);
   assert(result.statistics.get(":preprocessing.real-equality-lowering.lowered") >= 4);
 }
 
@@ -3531,6 +3538,177 @@ void row_propagation_limits_are_actually_enforced() {
   assert(with_tight_fanout.statistics.get(StatKey::LraRowPropagations) == 0);
 }
 
+// Scheduling and integer refinement regressions from the selected diagnostics.
+void row_bound_events_and_integer_refinement() {
+  for (const std::string logic : {"QF_LRA", "QF_UFLRA", "QF_LIA", "QF_UFLIA"}) {
+    const bool integer = logic == "QF_LIA" || logic == "QF_UFLIA";
+    const std::string prefix = "(set-logic " + logic + ")(declare-const u " +
+                               (integer ? "Int" : "Real") + ")(declare-const v " +
+                               (integer ? "Int" : "Real") + ")(declare-const t " +
+                               (integer ? "Int" : "Real") + ")";
+    auto options = isolated_lra_options();
+    options.preprocessing_mode = primo::smt::PreprocessingMode::Off;
+    options.lra_propagation = true;
+    options.lra_row_propagation = true;
+    options.lra_bidirectional_row_propagation = true;
+    for (bool basic_first : {false, true}) {
+      const std::string basic = "(assert (>= (+ u v) 5))";
+      const std::string child = "(assert (<= u 2))";
+      std::string input = prefix;
+      input += basic_first ? basic : child;
+      input += basic_first ? child : basic;
+      input += "(assert (or (<= v 2) (>= t 20)))(check-sat)";
+      const auto result = check_sat_smtlib(input, options);
+      assert(result.result == CheckSatResult::Sat);
+      assert(result.statistics.get(StatKey::LraBidirectionalRowPropagations) > 0);
+      assert(result.statistics.get(StatKey::LraBoundNotifications) ==
+             result.statistics.get(StatKey::LraBoundNoopNotifications) +
+                 result.statistics.get(StatKey::LraBoundTighteningNotifications) +
+                 result.statistics.get(StatKey::LraBoundConflictingNotifications));
+      assert(result.statistics.get(StatKey::LraPropagationCandidateAttempts) ==
+             result.statistics.get(StatKey::LraPropagationCandidates) +
+                 result.statistics.get(StatKey::LraPropagationSuppressedDuplicates));
+      if (!basic_first) assert(result.statistics.get(":lra.basic-variable-row-scans") > 0);
+      auto capped = options;
+      capped.lra_row_propagation_limits.max_fanout = 0;
+      const auto without_scans = check_sat_smtlib(input, capped);
+      assert(without_scans.result == CheckSatResult::Sat);
+      assert(without_scans.statistics.get(StatKey::LraRowPropagations) == 0);
+      assert(without_scans.statistics.get(":lra.basic-variable-row-scans") == 0);
+    }
+    if (!integer) continue;
+    // UFLIA intentionally keeps this off by default; exercise the opt-in policy.
+    options.lia.round_integer_bounds = true;
+    for (const std::string constraints : {"(assert (<= (+ (* 2 u) v) 5))(assert (>= v 0))"
+                                          "(assert (or (<= u 2) (>= t 20)))",
+                                          "(assert (>= (+ (* 2 u) v) (- 5)))(assert (<= v 0))"
+                                          "(assert (or (>= u (- 2)) (>= t 20)))"}) {
+      const auto result = check_sat_smtlib(prefix + constraints + "(check-sat)", options);
+      assert(result.result == CheckSatResult::Sat);
+      assert(result.statistics.get(":lra.integer-rounding-entailments") > 0);
+      options.lia.round_integer_bounds = false;
+      const auto disabled = check_sat_smtlib(prefix + constraints + "(check-sat)", options);
+      assert(disabled.result == CheckSatResult::Sat);
+      assert(disabled.statistics.get(":lra.integer-rounding-entailments") == 0);
+      options.lia.round_integer_bounds = true;
+    }
+  }
+}
+
+void row_scan_memo_invalidates_changed_inputs_and_backtracks() {
+  primo::smt::detail::ArithmeticRowScanMemo memo;
+  assert(!memo.seen(5, 10, 2));
+  memo.remember(5, 10, 2);
+  assert(memo.seen(5, 10, 2));
+  assert(!memo.seen(6, 10, 2));
+  assert(!memo.seen(5, 11, 2));
+  assert(!memo.seen(5, 10, 3));
+  memo.remember(50000, 11, 3);  // Growth must preserve an earlier stamp.
+  assert(memo.seen(5, 10, 2) && memo.seen(50000, 11, 3));
+  memo.invalidate();  // Even restoring exactly the old numeric offsets is new.
+  assert(!memo.seen(5, 10, 2) && !memo.seen(50000, 11, 3));
+  memo.remember(5, 10, 2);
+  assert(memo.seen(5, 10, 2));
+  const primo::smt::detail::ArithmeticRowScanMemo fresh;
+  assert(!fresh.seen(5, 10, 2));
+}
+
+void pending_arithmetic_queue_retains_first_literal_and_reason_order() {
+  primo::util::Statistics statistics;
+  primo::smt::detail::ArithmeticPropagationQueue queue(true);
+  std::vector<primo::sat::Lit> first_reasons{{-11}, {-12}};
+  queue.push(7, first_reasons, true, false, false, statistics);
+  first_reasons[0].value = -99;  // The queue owns its original premises.
+  queue.push(7, first_reasons, false, true, true, statistics);
+  const std::vector<primo::sat::Lit> opposite_reasons{{-20}};
+  queue.push(-7, opposite_reasons, false, true, false, statistics);
+  queue.push(9, first_reasons, false, false, true, statistics);
+  queue.push(-7, first_reasons, true, false, true, statistics);
+  const auto first = queue.pop();
+  assert(first.lit == 7 && first.reasons.size() == 2);
+  assert(first.reasons[0].value == -11 && first.reasons[1].value == -12);
+  assert(first.row_based && !first.bidirectional && !first.variable_equality);
+  const auto opposite = queue.pop();
+  assert(opposite.lit == -7 && opposite.reasons.size() == 1);
+  assert(opposite.reasons[0].value == -20 && opposite.bidirectional);
+  const auto third = queue.pop();
+  assert(third.lit == 9 && third.variable_equality && queue.empty());
+  // Popped and backtracked literals must be eligible in the next state.
+  queue.push(7, opposite_reasons, false, false, false, statistics);
+  queue.clear(statistics);
+  queue.push(7, first_reasons, true, true, false, statistics);
+  // Cross an allocation boundary while an earlier candidate owns its reasons.
+  queue.push(50000, opposite_reasons, false, false, false, statistics);
+  const auto restored = queue.pop();
+  assert(restored.lit == 7 && restored.reasons[0].value == -99);
+  assert(queue.pop().lit == 50000 && queue.empty());
+  assert(first.reasons[0].value == -11);  // Earlier delivered reasons survive.
+  assert(statistics.get(StatKey::LraPropagationCandidateAttempts) == 8);
+  assert(statistics.get(StatKey::LraPropagationSuppressedDuplicates) == 2);
+  assert(statistics.get(StatKey::LraPropagationCandidates) == 6);
+  assert(statistics.get(StatKey::LraPropagationBacktrackDiscarded) == 1);
+  // Disabled row mode retains the original duplicate order and reasons.
+  primo::util::Statistics unfiltered_statistics;
+  primo::smt::detail::ArithmeticPropagationQueue unfiltered(false);
+  unfiltered.push(7, first_reasons, true, false, false, unfiltered_statistics);
+  unfiltered.push(7, opposite_reasons, false, true, false, unfiltered_statistics);
+  assert(unfiltered.pop().reasons[0].value == -99);
+  assert(unfiltered.pop().reasons[0].value == -20 && unfiltered.empty());
+  assert(unfiltered_statistics.get(StatKey::LraPropagationCandidates) == 2);
+  assert(unfiltered_statistics.get(StatKey::LraPropagationUntrackedCandidates) == 2);
+  // Sparse SAT IDs must not allocate an ID-indexed marker array in default mode.
+  unfiltered.push(std::numeric_limits<int>::max(), opposite_reasons, false, false, false,
+                  unfiltered_statistics);
+  assert(unfiltered.pop().lit == std::numeric_limits<int>::max());
+  assert(unfiltered.empty());
+  assert(unfiltered_statistics.get(StatKey::LraPropagationSuppressedDuplicates) == 0);
+}
+
+void row_scans_reuse_endpoints_and_build_reasons_lazily() {
+  for (const bool with_uf : {false, true}) {
+    std::string input = with_uf ? "(set-logic QF_UFLRA)" : "(set-logic QF_LRA)";
+    input += "(declare-const u Real)(declare-const v Real)(declare-const t Real)";
+    if (with_uf) {
+      input += "(declare-fun f (Real) Real)(assert (distinct (f t) (f u)))";
+    }
+    input += "(assert (<= u 1))(assert (<= v 2))";
+    for (int i = 4; i < 16; ++i) {
+      input += "(assert (or (<= (+ u v) ";
+      input += std::to_string(i);
+      input += ") (>= t 20)))";
+    }
+    input += "(check-sat)";
+    auto options = isolated_lra_options();
+    options.preprocessing_mode = primo::smt::PreprocessingMode::Off;
+    options.lra_propagation = true;
+    options.lra_row_propagation = true;
+    options.lra_bidirectional_row_propagation = true;
+    const auto result = check_sat_smtlib(input, options);
+    assert(result.result == CheckSatResult::Sat);
+    const auto calculations = result.statistics.get(":lra.row-bound-calculations");
+    const auto candidates = result.statistics.get(":lra.row-bound-candidate-comparisons");
+    const auto explanations = result.statistics.get(":lra.row-bound-explanations");
+    assert(result.statistics.get(StatKey::LraRowPropagations) >= 12);
+    assert(calculations > 0 && calculations < candidates);
+    assert(explanations > 0 && explanations < calculations);
+    // Measurement must preserve the partition of notifications and candidates.
+    // Weaker propagated sum bounds exercise successful numerical no-ops.
+    assert(result.statistics.get(StatKey::LraBoundNoopNotifications) > 0);
+    assert(result.statistics.get(StatKey::LraBoundNotifications) ==
+           result.statistics.get(StatKey::LraBoundNoopNotifications) +
+               result.statistics.get(StatKey::LraBoundTighteningNotifications) +
+               result.statistics.get(StatKey::LraBoundConflictingNotifications));
+    assert(result.statistics.get(StatKey::LraPropagationCandidates) ==
+           result.statistics.get(StatKey::LraPropagationUniqueCandidates) +
+               result.statistics.get(StatKey::LraPropagationDuplicateCandidates));
+    assert(result.statistics.get(StatKey::LraRowScanEventsWithNewCandidates) > 0);
+    assert(result.statistics.get(StatKey::LraRowScanNoopEvents) > 0);
+    assert(result.statistics.get(StatKey::LraRowScanRepeatedStateSkips) > 0);
+    assert(result.statistics.get(StatKey::LraRowScanEventsWithNewCandidates) <=
+           result.statistics.get(StatKey::LraRowScanEvents));
+  }
+}
+
 void bidirectional_row_propagation_drives_boolean_structure() {
   // s := (+ x y) has a directly-asserted lower bound (>= s 5) and x has a
   // directly-asserted upper bound (<= x 2), so x+y>=5 and x<=2 together
@@ -3542,16 +3720,11 @@ void bidirectional_row_propagation_drives_boolean_structure() {
   // FALSE (since y is forced >=3, contradicting y<=2), forcing the
   // disjunction's other branch without ever deciding (<= y 2) directly.
   //
-  // The specific atom shapes here aren't arbitrary: single_variable_slack
-  // only registers a bare variable's *positive*-coefficient normalized
-  // form (`>=` normalizes to a negated/coefficient-(-1) polynomial and
-  // never gets an entry at all -- a pre-existing quirk this test must
-  // respect, not something item 7 changes), and the specific bound
-  // *direction* combination used here (s's lower bound + x's upper
-  // bound, deriving y's lower bound) is the one that's actually available
-  // given that same quirk -- asserting *both* (<= x 2) and (>= x 2)
-  // would split x's bound across two different slacks with only one
-  // direction visible on each, making the other combination unreachable.
+  // Single-variable atoms now bind their variable directly, including
+  // comparisons with a flipped coefficient. This case covers a bound on
+  // the basic row before the bound on its child: the latter notification
+  // triggers the reverse scan. The opposite notification order is a
+  // separate coverage gap documented by the bound-behavior diagnostics.
   const std::string formula = R"(
     (set-logic QF_LRA)
     (declare-fun x () Real)
@@ -5043,7 +5216,7 @@ int main() {
   nelson_oppen_online_option_does_not_wrap_single_theory_lra();
   nelson_oppen_online_option_does_not_wrap_single_theory_euf();
   qf_uf_lra_combines_euf_proxy_equality_with_lowered_real_disequality();
-  qf_uf_lra_lowers_finite_domain_amo_equalities_before_dispatch();
+  qf_uf_lra_does_not_restore_eliminated_finite_domain_choices();
   qf_uf_lra_finite_domain_amo_sat_control_remains_sat();
   qf_uf_lra_purifies_real_valued_application_arithmetic_arguments();
   qf_uf_lra_purifies_nested_real_valued_application_arguments();
@@ -5060,6 +5233,10 @@ int main() {
   row_based_propagation_can_reach_a_conflict();
   boolean_flattening_runs_after_the_rewriting_passes();
   row_propagation_limits_are_actually_enforced();
+  row_bound_events_and_integer_refinement();
+  row_scan_memo_invalidates_changed_inputs_and_backtracks();
+  pending_arithmetic_queue_retains_first_literal_and_reason_order();
+  row_scans_reuse_endpoints_and_build_reasons_lazily();
   bidirectional_row_propagation_drives_boolean_structure();
   bidirectional_row_propagation_can_reach_a_conflict();
   theory_decisions_drive_boolean_structure();

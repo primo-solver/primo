@@ -35,8 +35,128 @@ sphinx:
   config:
     bibtex_reference_style: label
     extlinks:
+      eufgrowthsource:
+        - "https://github.com/primo-solver/primo/blob/59d81fee55ae861ea7fe022b5602450013a57cd0/%s"
+        - "%s"
+      conflictacksource:
+        - "https://github.com/primo-solver/primo/blob/13230b6da2801244baee4d60848ccfda092694e7/%s"
+        - "%s"
+      citesource:
+        - "https://github.com/primo-solver/primo/blob/98a5fd8bf18c3c18fda495454b42204cd033c458/%s"
+        - "%s"
+      ufliamodelunitsource:
+        - "https://github.com/primo-solver/primo/blob/183dce9a22229f0de9ba7eebd03291260672c17e/%s"
+        - "%s"
+      modelrepairsource:
+        - "https://github.com/primo-solver/primo/blob/e209d59f4c0d1526aba227f180fd2a40a86e15bf/%s"
+        - "%s"
+      patchsource:
+        - "https://github.com/primo-solver/primo/blob/cab1ebc45fdf5d93940b36f574e2675be7ef4b4b/%s"
+        - "%s"
+      cubesource:
+        - "https://github.com/primo-solver/primo/blob/84654ade537df8473d4ada833a6da5e3e729ca4a/%s"
+        - "%s"
+      ufliaeqworkflow:
+        - "https://github.com/primo-solver/primo/blob/c474ef253ec1b195f08e41d1361abca22dcff07a/%s"
+        - "%s"
+      ufliaablationanalysis:
+        - "https://github.com/primo-solver/primo/blob/cb65253dd4a04b823241313a5031503562085fc7/%s"
+        - "%s"
+      ufliaablationmethods:
+        - "https://github.com/primo-solver/primo/blob/16ad8c01cce429a1fa7aa316bc838e264c4863f7/%s"
+        - "%s"
+      ufliaablationsource:
+        - "https://github.com/primo-solver/primo/blob/4a0c6bee586c0d7c1d21ade156cff8cdb71892d5/%s"
+        - "%s"
+      ufliaeqsource:
+        - "https://github.com/primo-solver/primo/blob/6e46d0dd1b3ff2466af23de0efb0a9009d411495/%s"
+        - "%s"
+      regionsource:
+        - "https://github.com/primo-solver/primo/blob/ade90f98d568bb8946a4490600f04a61b1e5de63/%s"
+        - "%s"
+      adaptivephasesource:
+        - "https://github.com/primo-solver/primo/blob/ea618ba9bc8f2909ff87aa70f53c04a5bc81dd1b/%s"
+        - "%s"
       source:
         - "https://github.com/primo-solver/primo/blob/c944fa790c2043ebac93b8d6f63c7b02b0c2c235/%s"
+        - "%s"
+      hybridfallbacksource:
+        - 'https://github.com/primo-solver/primo/blob/2d6daadc846160756f8633dae41e99cb2a3448c4/%s'
+        - '%s'
+      hybridsource:
+        - "https://github.com/primo-solver/primo/blob/cd258f6ae4f690609132a402bb6454ddb40335b7/%s"
+        - "%s"
+      rootboundsource:
+        - "https://github.com/primo-solver/primo/blob/084ba5b2312b904609bcaa8044088314042d8038/%s"
+        - "%s"
+      preprocessboundsource:
+        - "https://github.com/primo-solver/primo/blob/2c6503d9645f9ca76250c68c82cd86f7100f4733/%s"
+        - "%s"
+      preprocessboundevidence:
+        - "https://github.com/primo-solver/primo/blob/a5a105460fd75d34be53c5181a4deb8f4500a1cf/%s"
+        - "%s"
+      boundrepairevidence:
+        - "https://github.com/primo-solver/primo/blob/7e99c017d2e74f878a8ca270ee6b5c7c7c5e5e5c/%s"
+        - "%s"
+      staticrunnerreportersource:
+        - "https://github.com/primo-solver/primo/blob/f34acfa479676335e8f275acc534bd26b939f9b2/%s"
+        - "%s"
+      boundrepairresults:
+        - "https://github.com/primo-solver/primo/blob/ffaa99e648f33708267ef5a5e90ab8633131de60/%s"
+        - "%s"
+      boundrepairfollowupsource:
+        - "https://github.com/primo-solver/primo/blob/d85c08e190d6fc6e8d056cde8689afcc23aa4a99/%s"
+        - "%s"
+      boundrepairpairsource:
+        - "https://github.com/primo-solver/primo/blob/4d7647b6/%s"
+        - "%s"
+      arithmeticreporttools:
+        - "https://github.com/primo-solver/primo/blob/b0ea8e6d/%s"
+        - "%s"
+      liatuningtools:
+        - "https://github.com/primo-solver/primo/blob/35e680fd/%s"
+        - "%s"
+      arithmeticcombsource:
+        - "https://github.com/primo-solver/primo/blob/4f02a8b7/%s"
+        - "%s"
+      propagationreporttools:
+        - "https://github.com/primo-solver/primo/blob/ef1d8689/%s"
+        - "%s"
+      propfilterfinaltrialsource:
+        - "https://github.com/primo-solver/primo/blob/c815a0b4/%s"
+        - "%s"
+      propfiltertrialsource:
+        - "https://github.com/primo-solver/primo/blob/127d71e1/%s"
+        - "%s"
+      redundancyauditsource:
+        - "https://github.com/primo-solver/primo/blob/f8845def/%s"
+        - "%s"
+      boundrepaircomparison:
+        - "https://github.com/primo-solver/primo/blob/0756279a/%s"
+        - "%s"
+      boundrepairfinalevidence:
+        - "https://github.com/primo-solver/primo/blob/9fe16357/%s"
+        - "%s"
+      rowcachetrialsource:
+        - "https://github.com/primo-solver/primo/blob/07ec5ce52e1ff93e893441e81c76a258d2aa571b/%s"
+        - "%s"
+      boundrepairsource:
+        - "https://github.com/primo-solver/primo/blob/7e99c017d2e74f878a8ca270ee6b5c7c7c5e5e5c/%s"
+        - "%s"
+      boundbehaviorsource:
+        - "https://github.com/primo-solver/primo/blob/5c8ced982170676b7abda41fdf6f01bb97b931df/%s"
+        - "%s"
+      boundbehaviorevidence:
+        - "https://github.com/primo-solver/primo/blob/3aa7047ac41f7e8ee4a9ca5adb48a6b53f8eefc4/%s"
+        - "%s"
+      boundpropsource:
+        - "https://github.com/primo-solver/primo/blob/158cc50af0fae9cd9ed78b0b8bb103b725d729d0/%s"
+        - "%s"
+      boundpropevidence:
+        - "https://github.com/primo-solver/primo/blob/95872423352e3592ac6fe925a9d7822549790c7d/%s"
+        - "%s"
+      hybridbaselinesource:
+        - "https://github.com/primo-solver/primo/blob/c49585a09710eca76f10ce081923c1bcb3765a7c/%s"
         - "%s"
       diagnosticsource:
         - "https://github.com/primo-solver/primo/blob/f318be143cfa4b5625e16a7a8723c678eacc1dd2/%s"
@@ -101,6 +221,18 @@ sphinx:
       repairsource:
         - "https://github.com/primo-solver/primo/blob/5c96568/%s"
         - "%s"
+      integralityreviewsource:
+        - "https://github.com/primo-solver/primo/blob/dbedbfd1/%s"
+        - "%s"
+      phaseclisource:
+        - "https://github.com/primo-solver/primo/blob/8357ff8b/%s"
+        - "%s"
+      qfliadefaultsource:
+        - 'https://github.com/primo-solver/primo/blob/b3218ec919336110d79ab2dea9f52a0868ca263a/%s'
+        - '%s'
+      settingssource:
+        - "https://github.com/primo-solver/primo/blob/5dec036329b8b8cc6d929835fa1c6dfa644b8fb3/%s"
+        - "%s"
       toolsource:
         - "https://github.com/primo-solver/primo/blob/d16acb42d87a55eaa5f76faf14a904900a9a7e8b/%s"
         - "%s"
@@ -120,11 +252,51 @@ sphinx:
     linkcheck_anchors_ignore_for_url:
       # GitHub implements code-line fragments dynamically; still check the file URL.
       - '^https://github\.com/arminbiere/cadical/blob/rel-3\.0\.0/src/cadical\.hpp$'
+      # Known dynamically rendered GitHub fragments; retain file availability checks.
+      - '^https://github\.com/arminbiere/cadical/blob/7b99c07/src/cadical\.hpp$'
+      - '^https://github\.com/actions/checkout/blob/3d3c42e5aac5ba805825da76410c181273ba90b1/README\.md$'
     linkcheck_ignore:
       # Validated from local Git by make docs-check-links; no GitHub login needed.
       - '^https://github\.com/primo-solver/primo/(?:blob|commit)/'
       # Repository landing page requires access while the repository is private.
       - '^https://github\.com/primo-solver/primo/?$'
+      # Exact access-failure exceptions reviewed 2026-11-20 at the owner's request.
+      # Evidence: docs/coverage/external-links-20261120.json. Ignored is not validated.
+      # Keep DOI citations; do not exempt new targets or HTTP 404 results by category.
+      # Observed HTTP 403 access refusals.
+      - '^https://doi\.org/10\.1145/1017472\.1017477$'
+      - '^https://doi\.org/10\.1145/1670412\.1670413$'
+      - '^https://doi\.org/10\.1145/3453483\.3454088$'
+      - '^https://doi\.org/10\.1145/357073\.357079$'
+      - '^https://doi\.org/10\.1287/educ\.2013\.0112$'
+      - '^https://doi\.org/10\.1287/ijoc\.2018\.0857$'
+      - '^https://doi\.org/10\.1287/moor\.2\.2\.103$'
+      - '^https://doi\.org/10\.1287/opre\.2013\.1231$'
+      - '^https://doi\.org/10\.1287/opre\.50\.1\.3\.17780$'
+      - '^https://doi\.org/10\.15168/11572_368265$'
+      - '^https://doi\.org/10\.3233/SAT190034$'
+      - '^https://doi\.org/10\.3233/SAT190086$'
+      - '^https://eprint\.iacr\.org/2020/972\.pdf$'
+      - '^https://iris\.unitn\.it/handle/11572/368265$'
+      - '^https://publikationen\.sulb\.uni\-saarland\.de/handle/20\.500\.11880/28955$'
+      - '^https://www\.sciencedirect\.com/science/article/pii/0304397580900596$'
+      # Observed HTTP 429 rate limits.
+      # Additional pinned API/fixture URLs rate-limited during the EasyChair rechecks.
+      - '^https://github\.com/cvc5/cvc5/blob/f9e5d3c312d9476763dc0afa85ac637da5907d99/test/regress/cli/regress0/parser/issue11763\-quoted\-dt\-cons\.smt2$'
+      - '^https://github\.com/cvc5/cvc5/blob/f9e5d3c312d9476763dc0afa85ac637da5907d99/test/regress/cli/regress0/parser/quoted\-define\-fun\.smt2$'
+      - '^https://github\.com/arminbiere/cadical/blob/7b99c07/src/cadical\.hpp\#L844\-L848$'
+      - '^https://github\.com/arminbiere/cadical/blob/rel\-3\.0\.0/src/cadical\.hpp\#L1248\-L1367$'
+      - '^https://github\.com/cvc5/cvc5/blob/f9e5d3c312d9476763dc0afa85ac637da5907d99/test/regress/cli/regress0/parser/non\-std\-char\.smt2$'
+      # Observed certificate-chain or hostname verification failures.
+      - '^https://disi\.unitn\.it/rseba/papers/JSAT\-2007\.pdf$'
+      - '^https://users\.soe\.ucsc\.edu/\~avg/Papers/ccmin\-avg\-sat09\.pdf$'
+      - '^https://verit\.loria\.fr/papers/tacas2017\.pdf$'
+      # Observed connection timeout; browser download reported by owner.
+      - '^https://www\.cs\.man\.ac\.uk/\~regerg/papers/arw16\.pdf$'
+      # Owner-reported EasyChair publication issue, deferred 2026-11-20.
+      # Same paper in references.bib: publisher page and DOI; keep both citations.
+      - '^https://easychair\.org/publications/paper/rPZ9$'
+      - '^https://doi\.org/10\.29007/rn52$'
     html_css_files:
       - contribution-map.css
     html_show_copyright: false

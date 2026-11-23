@@ -6,9 +6,11 @@
 #include <cstdlib>
 #include <map>
 #include <optional>
+#include <set>
 #include <stdexcept>
 #include <tuple>
 #include <utility>
+#include <vector>
 
 #include "core/term.hpp"
 #include "sat/cadical_backend.hpp"
@@ -19,24 +21,26 @@
 #include "smt/solver_runtime.hpp"
 #include "smt/solver_support.hpp"
 #include "smt/theory_combination_plan.hpp"
+#include "theory/arithmetic/lra_atom.hpp"
 
 namespace primo::smt {
 namespace {
 
 class CombinationTimer {
  public:
-  CombinationTimer(util::Statistics& statistics, std::string key)
-      : statistics_(statistics), key_(std::move(key)), start_(std::chrono::steady_clock::now()) {}
+  CombinationTimer(util::Statistics& statistics, std::optional<util::StatKey> key)
+      : statistics_(statistics), key_(key), start_(std::chrono::steady_clock::now()) {}
   ~CombinationTimer() {
+    if (!key_) return;
     statistics_.increment(
-        key_, static_cast<std::uint64_t>(std::chrono::duration_cast<std::chrono::microseconds>(
-                                             std::chrono::steady_clock::now() - start_)
-                                             .count()));
+        *key_, static_cast<std::uint64_t>(std::chrono::duration_cast<std::chrono::microseconds>(
+                                              std::chrono::steady_clock::now() - start_)
+                                              .count()));
   }
 
  private:
   util::Statistics& statistics_;
-  std::string key_;
+  std::optional<util::StatKey> key_;
   std::chrono::steady_clock::time_point start_;
 };
 
@@ -48,30 +52,30 @@ theory::ComponentAtom component_atom(const BooleanClausifier::TheoryAtom& atom) 
 }
 
 void publish(const ComponentModelStatistics& source, util::Statistics& statistics) {
-  statistics.set(":combination.component-checks", source.component_checks);
-  statistics.set(":combination.learned-clauses", source.learned_clauses);
-  statistics.set(":combination.model.component-checks", source.component_checks);
-  statistics.set(":combination.model.snapshots", source.snapshots);
-  statistics.set(":combination.model.mutations", source.mutations);
-  statistics.set(":combination.model.fixed-points", source.fixed_points);
-  statistics.set(":combination.model.care-pairs", source.care_pairs);
-  statistics.set(":combination.model.care-pair-agreements", source.care_pair_agreements);
-  statistics.set(":combination.model.spanning-pair-checks", source.spanning_pair_checks);
-  statistics.set(":combination.model.disagreements", source.disagreements);
-  statistics.set(":combination.model.learned-clauses", source.learned_clauses);
-  statistics.set(":combination.model.decisions", source.model_decisions);
-  statistics.set(":combination.model.fresh-decisions", source.fresh_decisions);
-  statistics.set(":combination.model.stale-snapshots", source.stale_snapshots);
-  statistics.set(":combination.model.rejected-mutations", source.rejected_mutations);
+  statistics.set(util::StatKey::CombinationComponentChecks, source.component_checks);
+  statistics.set(util::StatKey::CombinationLearnedClauses, source.learned_clauses);
+  statistics.set(util::StatKey::CombinationModelComponentChecks, source.component_checks);
+  statistics.set(util::StatKey::CombinationModelSnapshots, source.snapshots);
+  statistics.set(util::StatKey::CombinationModelMutations, source.mutations);
+  statistics.set(util::StatKey::CombinationModelFixedPoints, source.fixed_points);
+  statistics.set(util::StatKey::CombinationModelCarePairs, source.care_pairs);
+  statistics.set(util::StatKey::CombinationModelCarePairAgreements, source.care_pair_agreements);
+  statistics.set(util::StatKey::CombinationModelSpanningPairChecks, source.spanning_pair_checks);
+  statistics.set(util::StatKey::CombinationModelDisagreements, source.disagreements);
+  statistics.set(util::StatKey::CombinationModelLearnedClauses, source.learned_clauses);
+  statistics.set(util::StatKey::CombinationModelDecisions, source.model_decisions);
+  statistics.set(util::StatKey::CombinationModelFreshDecisions, source.fresh_decisions);
+  statistics.set(util::StatKey::CombinationModelStaleSnapshots, source.stale_snapshots);
+  statistics.set(util::StatKey::CombinationModelRejectedMutations, source.rejected_mutations);
 }
 
-}  // namespace
-
-CheckSatOutcome solve_component_recipe(core::TermManager& terms,
-                                       std::span<const core::TermId> assertions,
-                                       const ModelConversionChain& conversions,
-                                       const CheckSatOptions& options, util::Statistics& statistics,
-                                       const CombinationRecipe& recipe) try {
+CheckSatOutcome solve_component_recipe_impl(core::TermManager& terms,
+                                            std::span<const core::TermId> assertions,
+                                            const ModelConversionChain& conversions,
+                                            const CheckSatOptions& options,
+                                            util::Statistics& statistics,
+                                            const CombinationRecipe& recipe,
+                                            std::size_t& fresh_integer_atoms) try {
   sat::CadicalBackend backend(options.cadical_options);
   SolveTerminator terminator(options.cancelled, statistics, options.max_theory_conflicts);
   const ScopedTerminatorConnection terminator_connection(backend, terminator);
@@ -134,6 +138,11 @@ CheckSatOutcome solve_component_recipe(core::TermManager& terms,
   std::map<PairKey, theory::InterfaceRelation> registered;
   std::size_t bridge_clauses = 0;
   std::unique_ptr<ComponentDispatcher> dispatcher;
+  if (recipe.growth_ready) {
+    terminator.set_yield([&] {
+      return recipe.growth_ready() && (!dispatcher || !dispatcher->clause_stream_open());
+    });
+  }
   std::unique_ptr<AssignmentConnection> assignment_connection;
   const auto detach_dispatcher = [&]() {
     assignment_connection.reset();
@@ -193,11 +202,11 @@ CheckSatOutcome solve_component_recipe(core::TermManager& terms,
     }
   }
 
-  statistics.set(":combination.components", components.size());
-  statistics.set(":combination.shared-terms", shared_terms);
-  statistics.set(":combination.arrangement-pairs", total_pairs);
-  statistics.set(":combination.model.enabled", guided ? 1 : 0);
-  statistics.set(":combination.model.total-pairs", total_pairs);
+  statistics.set(util::StatKey::CombinationComponents, components.size());
+  statistics.set(util::StatKey::CombinationSharedTerms, shared_terms);
+  statistics.set(util::StatKey::CombinationArrangementPairs, total_pairs);
+  statistics.set(util::StatKey::CombinationModelEnabled, guided ? 1 : 0);
+  statistics.set(util::StatKey::CombinationModelTotalPairs, total_pairs);
   for (const auto* key :
        {":combination.model.complete-fallbacks", ":combination.model.fallback-budget",
         ":combination.model.fallback-unsupported", ":combination.model.fallback-unknown",
@@ -205,7 +214,7 @@ CheckSatOutcome solve_component_recipe(core::TermManager& terms,
         ":combination.online-components.integer-completions",
         ":combination.online-components.rebuilds", ":combination.components.full-builds",
         ":combination.components.incremental-growths"}) {
-    statistics.set(key, 0);
+    statistics.set_dynamic(key, 0);
   }
   std::vector<std::vector<theory::ComponentAtom>> atoms_by_component(components.size());
   std::vector<theory::TheoryComponent*> online_components;
@@ -222,6 +231,9 @@ CheckSatOutcome solve_component_recipe(core::TermManager& terms,
     for (const auto index : online_order) online_components.push_back(components[index]);
   }
   std::vector<theory::ComponentAtom> propositional_atoms;
+  using BoundKey = std::pair<core::TermId, util::Rational>;
+  std::map<BoundKey, sat::Lit> integer_bounds;
+  std::set<int> integer_choice_variables;
   std::size_t installed_atoms = 0;
   std::size_t installed_pairs = 0;
   const auto install_atoms = [&]() {
@@ -229,9 +241,8 @@ CheckSatOutcome solve_component_recipe(core::TermManager& terms,
     // Every producer uses this boundary, including generated interface
     // encodings. Complete the registry before taking any view of its storage.
     if (recipe.prepare_boolean) recipe.prepare_boolean(clausifier);
-    const bool first = statistics.get(":combination.components.full-builds") == 0;
-    CombinationTimer timer(statistics, recipe.timing_prefix + (first ? "component-rebuild-us"
-                                                                     : "component-growth-us"));
+    const bool first = statistics.get(util::StatKey::CombinationComponentsFullBuilds) == 0;
+    CombinationTimer timer(statistics, recipe.timing_keys[first ? 0 : 1]);
     std::vector<std::vector<theory::ComponentAtom>> additions(components.size());
     const auto& all = clausifier.theory_atoms();
     for (std::size_t atom_index = installed_atoms; atom_index < all.size(); ++atom_index) {
@@ -250,16 +261,33 @@ CheckSatOutcome solve_component_recipe(core::TermManager& terms,
         continue;
       }
       const auto atom = component_atom(all[atom_index]);
+      // Index exact ordinary input bounds too. Fractional input thresholds may
+      // deliberately remain unrounded, so they cannot replace a progress bound.
+      const auto& node = terms.get(atom.term);
+      if (recipe.integer_splits && node.kind == core::TermKind::Le &&
+          terms.get(node.children[0]).sort == terms.symbols().int_sort()) {
+        const auto normalized = theory::arithmetic::normalize_atom(terms, atom.term);
+        if (normalized.polynomial.terms().size() == 1) {
+          const auto [term, coefficient] = *normalized.polynomial.terms().begin();
+          const auto threshold = normalized.rhs / coefficient;
+          if (threshold.is_integer()) {
+            const bool lower_branch = coefficient.sign() > 0;
+            const auto floor = lower_branch ? threshold : threshold - util::Rational(1);
+            integer_bounds.try_emplace(BoundKey{term, floor},
+                                       lower_branch ? atom.lit : sat::Lit{-atom.lit.value});
+          }
+        }
+      }
       additions[*owner].push_back(atom);
       atoms_by_component[*owner].push_back(atom);
     }
     for (std::size_t index = 0; index < components.size(); ++index) {
       components[index]->register_atoms(additions[index]);
       const auto& id = plan.descriptors()[index].id;
-      statistics.set(":no.mixed." + id + "-atoms", atoms_by_component[index].size());
+      statistics.set_dynamic(":no.mixed." + id + "-atoms", atoms_by_component[index].size());
       if (!first)
-        statistics.increment(":combination.components.incremental-" + id + "-atoms",
-                             additions[index].size());
+        statistics.increment_dynamic(":combination.components.incremental-" + id + "-atoms",
+                                     additions[index].size());
     }
     if (recipe.online) {
       dispatcher = std::make_unique<ComponentDispatcher>(
@@ -288,36 +316,36 @@ CheckSatOutcome solve_component_recipe(core::TermManager& terms,
             backend.add_observed_var(atom.lit.value < 0 ? -atom.lit.value : atom.lit.value);
         }
       }
-      statistics.increment(":combination.online-components.rebuilds");
+      statistics.increment(util::StatKey::CombinationOnlineComponentsRebuilds);
     } else {
       for (auto* component : components)
         component->bind_assignment_view(sat::TrailView(completed_assignment));
     }
-    statistics.increment(first ? ":combination.components.full-builds"
-                               : ":combination.components.incremental-growths");
+    statistics.increment(first ? util::StatKey::CombinationComponentsFullBuilds
+                               : util::StatKey::CombinationComponentsIncrementalGrowths);
     installed_atoms = all.size();
     installed_pairs = registered.size();
-    statistics.set(":combination.arrangement-bridge-clauses", bridge_clauses);
-    statistics.set(":combination.model.materialized-pairs", installed_pairs);
+    statistics.set(util::StatKey::CombinationArrangementBridgeClauses, bridge_clauses);
+    statistics.set(util::StatKey::CombinationModelMaterializedPairs, installed_pairs);
     statistics.set(util::StatKey::TheoryAtoms, all.size());
   };
   install_atoms();
-  statistics.set(":combination.online-components.enabled", recipe.online ? 1 : 0);
+  statistics.set(util::StatKey::CombinationOnlineComponentsEnabled, recipe.online ? 1 : 0);
   std::vector<sat::Lit> active_choices;
   std::size_t decision_batches = 0;
   std::uint64_t epoch = 0;
   ComponentModelCoordinator coordinator;
-  const auto fallback = [&](const char* reason) {
+  const auto fallback = [&](util::StatKey reason) {
     auto complete = recipe;
     complete.model_guided = false;
     CheckSatOutcome outcome;
     {
-      CombinationTimer timer(statistics, recipe.timing_prefix + "complete-fallback-us");
-      outcome =
-          solve_component_recipe(terms, assertions, conversions, options, statistics, complete);
+      CombinationTimer timer(statistics, recipe.timing_keys[2]);
+      outcome = solve_component_recipe_impl(terms, assertions, conversions, options, statistics,
+                                            complete, fresh_integer_atoms);
     }
-    statistics.set(":combination.model.enabled", 1);
-    statistics.increment(":combination.model.complete-fallbacks");
+    statistics.set(util::StatKey::CombinationModelEnabled, 1);
+    statistics.increment(util::StatKey::CombinationModelCompleteFallbacks);
     statistics.increment(reason);
     outcome.statistics = statistics;
     return outcome;
@@ -325,17 +353,37 @@ CheckSatOutcome solve_component_recipe(core::TermManager& terms,
   while (true) {
     if (auto stop = terminator.stop_outcome()) return *stop;
     if (guided && decision_batches >= recipe.decision_budget)
-      return fallback(":combination.model.fallback-budget");
+      return fallback(util::StatKey::CombinationModelFallbackBudget);
     if (installed_pairs != registered.size()) install_atoms();
     for (const auto choice : active_choices) backend.assume(choice);
     statistics.increment(util::StatKey::SatSolveCalls);
     sat::SatResult sat_result;
     {
-      CombinationTimer timer(statistics, recipe.timing_prefix + "sat-us");
+      CombinationTimer timer(statistics, recipe.timing_keys[3]);
+      const auto resume_start = std::chrono::steady_clock::now();
       sat_result = backend.solve();
+      if (statistics.get(util::StatKey::LiaBranchingSatResumes) != 0)
+        statistics.increment(
+            util::StatKey::TimeLiaBranchingResumedSatUs,
+            static_cast<std::uint64_t>(std::chrono::duration_cast<std::chrono::microseconds>(
+                                           std::chrono::steady_clock::now() - resume_start)
+                                           .count()));
     }
     publish_sat_stats(backend.statistics(), statistics);
     if (auto stop = terminator.stop_outcome()) return *stop;
+    if (sat_result != sat::SatResult::Unsat && recipe.growth_pending && recipe.growth_pending() &&
+        (!dispatcher || !dispatcher->failure().has_value())) {
+      detach_dispatcher();
+      recipe.grow(clausifier, [&](core::TermId lhs, core::TermId rhs) {
+        const auto sort = terms.get(lhs).sort;
+        // The wrapper retains its interface eligibility check. Non-interface
+        // equalities are subsequently registered by ordinary clausification.
+        static_cast<void>(materialize({lhs, rhs, sort}));
+      });
+      install_atoms();
+      statistics.increment(util::StatKey::EufConflictAckDemandSatResumes);
+      continue;
+    }
     // Lemma queue: an online component that must add consequences over new
     // atoms stops the search; its queue is drained here, at the established
     // growth boundary, and the problem is solved again. An UNSAT result with a
@@ -353,10 +401,10 @@ CheckSatOutcome solve_component_recipe(core::TermManager& terms,
         throw std::logic_error("a component reported queued lemmas but supplied none");
       }
       detach_dispatcher();
-      statistics.increment(":combination.lemmas.batches");
-      statistics.increment(":combination.lemmas.formulas", lemmas.size());
+      statistics.increment(util::StatKey::CombinationLemmasBatches);
+      statistics.increment(util::StatKey::CombinationLemmasFormulas, lemmas.size());
       {
-        CombinationTimer timer(statistics, recipe.timing_prefix + "lemma-us");
+        CombinationTimer timer(statistics, recipe.timing_keys[4]);
         for (const auto formula : recipe.prepare_lemmas(std::move(lemmas))) {
           clausifier.assert_formula(formula);
         }
@@ -377,6 +425,11 @@ CheckSatOutcome solve_component_recipe(core::TermManager& terms,
               failure.diagnostic, statistics, "", reason};
     }
     if (sat_result == sat::SatResult::Unsat && !active_choices.empty()) {
+      if (std::ranges::any_of(active_choices, [&](sat::Lit choice) {
+            return backend.failed(choice) &&
+                   integer_choice_variables.contains(std::abs(choice.value));
+          }))
+        statistics.increment(util::StatKey::LiaBranchingChoiceConflicts);
       sat::Clause clause;
       std::vector<sat::Lit> surviving;
       for (const auto choice : active_choices) {
@@ -391,12 +444,12 @@ CheckSatOutcome solve_component_recipe(core::TermManager& terms,
       }
       backend.add_clause(clause);
       active_choices = std::move(surviving);
-      statistics.increment(":no.interface.model-equality-blocking-clauses");
+      statistics.increment(util::StatKey::NoInterfaceModelEqualityBlockingClauses);
       continue;
     }
     if (sat_result != sat::SatResult::Sat) return {map_sat_result(sat_result), "", statistics, ""};
     ++epoch;
-    statistics.increment(":combination.rounds");
+    statistics.increment(util::StatKey::CombinationRounds);
     std::vector<theory::InterfaceRelation> arrangement;
     for (const auto& [key, relation] : registered) {
       static_cast<void>(key);
@@ -411,7 +464,7 @@ CheckSatOutcome solve_component_recipe(core::TermManager& terms,
       arrangement.push_back(assigned);
     }
     {
-      CombinationTimer timer(statistics, recipe.timing_prefix + "assignment-extraction-us");
+      CombinationTimer timer(statistics, recipe.timing_keys[5]);
       if (!recipe.online) {
         completed_assignment.clear();
         for (const auto& atoms : atoms_by_component) {
@@ -435,7 +488,7 @@ CheckSatOutcome solve_component_recipe(core::TermManager& terms,
     }
     ModelBasedCombinationResult combined;
     {
-      CombinationTimer timer(statistics, recipe.timing_prefix + "model-reconciliation-us");
+      CombinationTimer timer(statistics, recipe.timing_keys[6]);
       combined = coordinator.reconcile(plan, epoch, components, arrangement, materialize);
     }
     publish(coordinator.statistics(), statistics);
@@ -451,11 +504,103 @@ CheckSatOutcome solve_component_recipe(core::TermManager& terms,
           record_theory_conflict(statistics);
         backend.add_clause(combined.clause);
         continue;
+      case ModelBasedCombinationStatus::PropagateEqualities: {
+        // Snapshot every model-dependent fact before materialize() can add
+        // clauses/variables and invalidate CaDiCaL's last-model query state.
+        std::vector<bool> conflicts;
+        conflicts.reserve(combined.equalities.size());
+        for (const auto& equality : combined.equalities) {
+          for (const auto reason : equality.reasons) {
+            const int var = std::abs(reason.value);
+            const int actual = dispatcher ? dispatcher->assignment_view().literal(var)
+                                          : completed_assignment.literal(var);
+            if (actual != reason.value) {
+              return {CheckSatResult::Unknown, "equality antecedent is not currently true",
+                      statistics, "", InconclusiveReason::Unknown};
+            }
+          }
+          const PairKey key{equality.pair.sort, std::min(equality.pair.lhs, equality.pair.rhs),
+                            std::max(equality.pair.lhs, equality.pair.rhs)};
+          const auto known = registered.find(key);
+          if (!recipe.learn_exported_equalities && known != registered.end()) {
+            throw std::logic_error("naming-only equality batch contains an existing pair");
+          }
+          const int literal = known == registered.end() ? 0 : known->second.equality_lit.value;
+          const int actual = literal == 0 ? 0
+                             : dispatcher ? dispatcher->assignment_view().literal(std::abs(literal))
+                                          : completed_assignment.literal(std::abs(literal));
+          conflicts.push_back(literal != 0 && actual == -literal);
+        }
+        detach_dispatcher();
+        statistics.increment(util::StatKey::CombinationEqualityBatches);
+        for (std::size_t index = 0; index < combined.equalities.size(); ++index) {
+          const auto& equality = combined.equalities[index];
+          const auto before = registered.size();
+          const auto literal = materialize(equality.pair);
+          if (!literal.has_value()) {
+            throw std::logic_error("validated equality could not be materialized");
+          }
+          statistics.increment(util::StatKey::CombinationEqualityFreshPairs,
+                               registered.size() - before);
+          if (!recipe.learn_exported_equalities) {
+            statistics.increment(util::StatKey::CombinationEqualityNamedWithoutProof);
+            continue;
+          }
+          sat::Clause clause{*literal};
+          for (const auto reason : equality.reasons) clause.push_back(sat::Lit{-reason.value});
+          backend.add_clause(clause);
+          statistics.increment(util::StatKey::CombinationEqualityClauses);
+          if (conflicts[index]) {
+            statistics.increment(util::StatKey::CombinationEqualityConflicts);
+            statistics.increment(util::StatKey::TheoryConflicts);
+            record_theory_conflict(statistics);
+          }
+        }
+        install_atoms();
+        continue;
+      }
       case ModelBasedCombinationStatus::DecideEquality:
         ++decision_batches;
         active_choices.insert(active_choices.end(), combined.decision_lits.begin(),
                               combined.decision_lits.end());
         continue;
+      case ModelBasedCombinationStatus::IntegerSplit: {
+        // Griggio Section 5 ordinary splitting on demand. Neither polarity is
+        // implied: manage it as a SAT assumption, retaining failed-choice recovery.
+        if (!recipe.integer_splits)
+          throw std::logic_error("integer split requested by a disabled recipe");
+        const auto request = combined.integer_split;
+        if (request.term == core::kInvalidTermId || !request.floor.is_integer() ||
+            terms.get(request.term).sort != terms.symbols().int_sort())
+          throw std::logic_error("invalid ordinary integer split request");
+        const BoundKey key{request.term, request.floor};
+        if (const auto found = integer_bounds.find(key); found != integer_bounds.end()) {
+          statistics.increment(util::StatKey::LiaBranchingReusedAtoms);
+          // Complete checks receive every registered atom. Either polarity
+          // excludes this open integer gap, so requesting it again is a bug.
+          throw std::logic_error("assigned integer split made no arithmetic progress");
+        }
+        if (recipe.integer_split_atom_limit != 0 &&
+            fresh_integer_atoms >= recipe.integer_split_atom_limit) {
+          statistics.increment(util::StatKey::LiaBranchingSplitBudgetExhaustions);
+          return {CheckSatResult::Unknown, "integer split atom limit", statistics, "",
+                  InconclusiveReason::ResourceLimit};
+        }
+        detach_dispatcher();
+        // Each operation may grow term/atom storage. Retain only owning IDs/values.
+        const auto threshold = terms.mk_rational(request.floor, terms.symbols().int_sort());
+        const auto bound = terms.mk_le(request.term, threshold);
+        const auto literal = clausifier.ensure_theory_atom(bound).lit;
+        integer_bounds.emplace(key, literal);
+        ++fresh_integer_atoms;
+        statistics.increment(util::StatKey::LiaBranchingUniqueAtoms);
+        statistics.set(util::StatKey::LiaBranchingPeakGeneratedAtoms, fresh_integer_atoms);
+        install_atoms();
+        active_choices.push_back(literal);
+        integer_choice_variables.insert(std::abs(literal.value));
+        statistics.increment(util::StatKey::LiaBranchingSatResumes);
+        continue;
+      }
       case ModelBasedCombinationStatus::FreshDecision:
         if (const auto literal = materialize(combined.decision.pair); literal.has_value()) {
           active_choices.push_back(combined.decision.preferred_value ==
@@ -467,18 +612,18 @@ CheckSatOutcome solve_component_recipe(core::TermManager& terms,
         }
         [[fallthrough]];
       case ModelBasedCombinationStatus::Unsupported:
-        if (guided) return fallback(":combination.model.fallback-unsupported");
+        if (guided) return fallback(util::StatKey::CombinationModelFallbackUnsupported);
         return {CheckSatResult::Unsupported, combined.diagnostic, statistics, "",
                 InconclusiveReason::Unsupported};
       case ModelBasedCombinationStatus::Unknown:
-        if (guided) return fallback(":combination.model.fallback-unknown");
+        if (guided) return fallback(util::StatKey::CombinationModelFallbackUnknown);
         return {CheckSatResult::Unknown, combined.diagnostic, statistics, "",
                 InconclusiveReason::Unknown};
       case ModelBasedCombinationStatus::Cancelled:
         return {CheckSatResult::Unknown, "cancelled", statistics, "",
                 InconclusiveReason::Cancelled};
       case ModelBasedCombinationStatus::ResourceLimit:
-        if (guided) return fallback(":combination.model.fallback-resource-limit");
+        if (guided) return fallback(util::StatKey::CombinationModelFallbackResourceLimit);
         return {CheckSatResult::Unknown, combined.diagnostic, statistics, "",
                 InconclusiveReason::ResourceLimit};
     }
@@ -510,6 +655,20 @@ CheckSatOutcome solve_component_recipe(core::TermManager& terms,
 } catch (const UnsupportedCombination& error) {
   return {CheckSatResult::Unsupported, error.what(), statistics, "",
           InconclusiveReason::Unsupported};
+}
+
+}  // namespace
+
+CheckSatOutcome solve_component_recipe(core::TermManager& terms,
+                                       std::span<const core::TermId> assertions,
+                                       const ModelConversionChain& conversions,
+                                       const CheckSatOptions& options, util::Statistics& statistics,
+                                       const CombinationRecipe& recipe) {
+  // Complete fallback creates a second SAT space while the first is still alive.
+  // Charge both spaces to this solve; their bound-to-literal maps remain separate.
+  std::size_t fresh_integer_atoms = 0;
+  return solve_component_recipe_impl(terms, assertions, conversions, options, statistics, recipe,
+                                     fresh_integer_atoms);
 }
 
 }  // namespace primo::smt

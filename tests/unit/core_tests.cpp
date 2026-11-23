@@ -4,6 +4,7 @@
 
 #include <array>
 #include <cassert>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -271,12 +272,44 @@ void rational_primitive_integer_scale_clears_denominators_and_content() {
 }
 
 void statistics_preserve_fixed_and_dynamic_counters() {
+  // Output depends on registry/name order, independently of insertion order.
+  {
+    Statistics ordered;
+    assert(ordered.empty());
+    assert(ordered.keys().empty());
+    assert(!ordered.contains(StatKey::AssertionsInitial));
+    ordered.increment_dynamic(":custom.before");
+    ordered.increment(StatKey::EufConflictAckDuplicatePairs);
+    ordered.increment_dynamic(":custom.after");
+    ordered.set(StatKey::AssertionsInitial, 0);
+    assert(!ordered.empty());
+    assert(ordered.contains(StatKey::AssertionsInitial));
+    assert(ordered.get(StatKey::AssertionsInitial) == 0);
+    assert((ordered.keys() == std::vector<std::string>{":input.assertions",
+                                                       ":euf.conflict-ack.duplicate-pairs",
+                                                       ":custom.after", ":custom.before"}));
+    assert(ordered.get(":euf.conflict-ack.duplicate-pairs") == 1);
+
+    Statistics reversed;
+    reversed.set_dynamic(":input.assertions", 0);
+    reversed.set_dynamic(":custom.after", 1);
+    reversed.increment(StatKey::EufConflictAckDuplicatePairs);
+    reversed.set_dynamic(":custom.before", 1);
+    std::ostringstream first;
+    std::ostringstream second;
+    primo::util::print_statistics(first, ordered);
+    primo::util::print_statistics(second, reversed);
+    assert(first.str() == second.str());
+    assert(first.str() ==
+           ":input.assertions 0\n:euf.conflict-ack.duplicate-pairs 1\n"
+           ":custom.after 1\n:custom.before 1\n");
+  }
   Statistics statistics;
   statistics.increment(StatKey::AssertionsInitial);
-  statistics.increment(":input.assertions", 2);
-  statistics.increment(":test.dynamic", 3);
-  statistics.increment(":test.dynamic", 4);
-  statistics.set(":test.dynamic", 9);
+  statistics.increment_dynamic(":input.assertions", 2);
+  statistics.increment_dynamic(":test.dynamic", 3);
+  statistics.increment_dynamic(":test.dynamic", 4);
+  statistics.set_dynamic(":test.dynamic", 9);
 
   assert(statistics.get(StatKey::AssertionsInitial) == 3);
   assert(statistics.get(":input.assertions") == 3);
@@ -285,6 +318,27 @@ void statistics_preserve_fixed_and_dynamic_counters() {
   assert(statistics.contains(":test.dynamic"));
   assert(!statistics.contains(":test.missing"));
   assert(statistics.keys() == std::vector<std::string>({":input.assertions", ":test.dynamic"}));
+
+  const Statistics copied = statistics;
+  statistics.set(StatKey::AssertionsInitial, 17);
+  statistics.set_dynamic(":test.dynamic", 23);
+  statistics.set_dynamic(":test.zero", 0);
+  assert(statistics.contains(":test.zero"));
+  assert(copied.get(StatKey::AssertionsInitial) == 3);
+  assert(copied.get(":test.dynamic") == 9);
+  assert(!copied.contains(":test.zero"));
+  statistics = {};
+  assert(statistics.empty());
+  assert(statistics.keys().empty());
+  assert(!statistics.contains(StatKey::AssertionsInitial));
+  assert(!statistics.contains(":test.dynamic"));
+  assert(copied.keys() == std::vector<std::string>({":input.assertions", ":test.dynamic"}));
+
+  Statistics dynamic_zero;
+  dynamic_zero.set_dynamic(":test.zero", 0);
+  assert(!dynamic_zero.empty());
+  assert(dynamic_zero.contains(":test.zero"));
+  assert(dynamic_zero.get(":test.zero") == 0);
 }
 
 // SMT-LIB fixes div and mod by Boute's Euclidean definition: for a nonzero

@@ -1,5 +1,6 @@
 #include <chrono>
 #include <cmath>
+#include <cstddef>
 #include <cstdlib>
 #include <limits>
 #include <locale>
@@ -21,6 +22,8 @@
 #include "smt/experimental_tactics.hpp"
 #include "smt/frontend.hpp"
 #include "smt/inconclusive_reason.hpp"
+#include "smt/lia_settings.hpp"
+#include "smt/lia_settings_policy.hpp"
 #include "smt/model_reconstruction.hpp"
 #include "smt/preprocessing.hpp"
 #include "smt/preprocessing_strategy.hpp"
@@ -34,6 +37,7 @@
 #include "smt/solver_tactic.hpp"
 #include "smt/strategy.hpp"
 #include "smt/tactic.hpp"
+#include "theory/arithmetic/lia_cube_mode.hpp"
 #include "util/statistics.hpp"
 
 namespace {
@@ -954,6 +958,90 @@ void preprocessing_round_transforms_each_alternative_independently() {
   check(fixture.statistics.get(":tactic.unit-equality-propagation.invocations") == 1);
 }
 
+bool assertions_mention(const primo::core::TermManager& terms,
+                        const std::vector<primo::core::TermId>& roots, primo::core::TermId target) {
+  auto pending = roots;
+  while (!pending.empty()) {
+    const auto id = pending.back();
+    pending.pop_back();
+    if (id == target) return true;
+    const auto& children = terms.get(id).children;
+    pending.insert(pending.end(), children.begin(), children.end());
+  }
+  return false;
+}
+
+void finite_domain_snapshot_is_bound_to_the_executing_goal() {
+  Fixture fixture;
+  const auto integer = fixture.symbols.int_sort();
+  const auto a =
+      fixture.terms.mk_constant(fixture.symbols.declare_constant("eliminated_a", integer));
+  const auto b = fixture.terms.mk_constant(fixture.symbols.declare_constant("live_b", integer));
+  const auto f = fixture.symbols.declare_function("domain_f", {integer}, integer);
+  const auto zero = fixture.terms.mk_rational(primo::util::Rational(0), integer);
+  const auto one = fixture.terms.mk_rational(primo::util::Rational(1), integer);
+  const auto seven = fixture.terms.mk_rational(primo::util::Rational(7), integer);
+  const auto domain = [&](primo::core::TermId argument) {
+    const auto application = fixture.terms.mk_app(f, {argument});
+    const auto low = fixture.terms.mk_eq(application, zero);
+    const auto high = fixture.terms.mk_eq(application, one);
+    return fixture.terms.mk_or({low, high});
+  };
+  const std::vector original{fixture.terms.mk_eq(a, seven), domain(a)};
+  primo::smt::FiniteDomainAtMostOne generator(fixture.terms);
+  const auto raw =
+      std::make_shared<const primo::smt::FiniteDomainAtMostOneResult>(generator.generate(original));
+  check(!raw->clauses.empty());
+  const auto tactic = primo::smt::make_finite_domain_preprocess(
+      {.generate_at_most_one = true},
+      {.source_assertions = original, .raw_at_most_one = raw, .analyzed_symmetry = std::nullopt});
+  const auto unchanged =
+      tactic(fixture.context, primo::smt::AnyOf::single(primo::smt::Goal(original)));
+  check(assertions_mention(fixture.terms, unchanged.alternatives()[0].assertions(), a));
+  check(fixture.statistics.get(":preprocessing.finite-domain.raw-cache-hits") == 1);
+  // One shared tactic can see alternatives with different surviving symbols.
+  // Neither alternative may regain a constant removed by solve-eqs.
+  const auto changed =
+      tactic(fixture.context,
+             primo::smt::AnyOf({primo::smt::Goal({domain(seven)}), primo::smt::Goal({domain(b)})}));
+  check(changed.size() == 2);
+  for (const auto& goal : changed.alternatives())
+    check(!assertions_mention(fixture.terms, goal.assertions(), a));
+  check(fixture.statistics.get(":preprocessing.finite-domain.raw-cache-refreshes") == 2);
+  check(assertions_mention(fixture.terms, changed.alternatives()[1].assertions(), b));
+}
+
+void symmetry_snapshot_is_bound_to_the_executing_goal() {
+  Fixture fixture;
+  const auto sort = fixture.symbols.declare_sort("SymmetricValues");
+  const auto constant = [&](const char* name) {
+    return fixture.terms.mk_constant(fixture.symbols.declare_constant(name, sort));
+  };
+  const auto first = constant("first");
+  const auto second = constant("second");
+  const auto old = constant("old_choice");
+  const auto live = constant("live_choice");
+  const auto different = fixture.terms.mk_not(fixture.terms.mk_eq(first, second));
+  const auto choice = [&](primo::core::TermId term) {
+    const auto left = fixture.terms.mk_eq(term, first);
+    const auto right = fixture.terms.mk_eq(term, second);
+    return fixture.terms.mk_or({left, right});
+  };
+  const std::vector original{different, choice(old)};
+  primo::smt::UfSymmetryBreaker breaker(fixture.terms);
+  const auto analyzed = breaker.break_symmetries(original);
+  check(!analyzed.constraints.empty());
+  const auto tactic = primo::smt::make_finite_domain_preprocess(
+      {.symmetry_breaking = true}, {.source_assertions = original, .analyzed_symmetry = analyzed});
+  static_cast<void>(tactic(fixture.context, primo::smt::AnyOf::single(primo::smt::Goal(original))));
+  check(fixture.statistics.get(":preprocessing.symmetry.cache-hits") == 1);
+  const auto changed = tactic(
+      fixture.context, primo::smt::AnyOf::single(primo::smt::Goal({different, choice(live)})));
+  check(!assertions_mention(fixture.terms, changed.alternatives()[0].assertions(), old));
+  check(assertions_mention(fixture.terms, changed.alternatives()[0].assertions(), live));
+  check(fixture.statistics.get(":preprocessing.symmetry.cache-refreshes") == 1);
+}
+
 void public_preprocessing_leaves_are_independently_constructible_and_typed() {
   Fixture fixture;
   const primo::core::TermId p = fixture.p_term();
@@ -1150,6 +1238,145 @@ void solver_dispatch_uses_formula_tactics() {
   check(model_only_result.model.find("define-fun x") != std::string::npos);
 }
 
+// The route policy (lia_settings_policy.hpp) is the only source of LIA
+// engine defaults; explicit route-supported overrides take precedence.
+void lia_settings_policy_resolves_route_defaults_and_overrides() {
+  using primo::smt::LiaRoute;
+  using primo::smt::LiaSettings;
+  // QF_UFLIA retains the engine baseline; QF_LIA uses M124, uniform cubes
+  // and hybrid branching (docs/evidence/qf-lia-defaults-20261119.md).
+  LiaSettings qf_lia_expected;
+  qf_lia_expected.round_integer_bounds = true;
+  qf_lia_expected.primitive_int_rows = true;
+  qf_lia_expected.integer_slacks = false;
+  qf_lia_expected.patch_integral_moves = true;
+  qf_lia_expected.hybrid_branching = true;
+  qf_lia_expected.cube_mode = primo::theory::arithmetic::LiaCubeMode::Uniform;
+  check(primo::smt::default_lia_settings(LiaRoute::QfLia) == qf_lia_expected);
+  check(primo::smt::default_lia_settings(LiaRoute::QfUflia) == LiaSettings{});
+
+  for (const LiaRoute route : {LiaRoute::QfLia, LiaRoute::QfUflia}) {
+    const LiaSettings defaults = primo::smt::default_lia_settings(route);
+    check(primo::smt::resolve_lia_settings(route, {}) == defaults);
+
+    // Every override wins, in the direction opposite to the route default.
+    primo::smt::LiaSettingOverrides overrides;
+    overrides.branch_limit = 7;
+    overrides.hybrid_branching = !defaults.hybrid_branching;
+    overrides.private_branch_factor = 0;
+    overrides.split_atom_limit = 3;
+    overrides.gomory_cut_limit = 0;
+    overrides.patch_limit = 3;
+    overrides.conflict_generalization = !defaults.conflict_generalization;
+    overrides.round_integer_bounds = !defaults.round_integer_bounds;
+    overrides.primitive_int_rows = !defaults.primitive_int_rows;
+    overrides.integer_slacks = !defaults.integer_slacks;
+    overrides.patch_integral_moves = !defaults.patch_integral_moves;
+    const LiaSettings resolved = primo::smt::resolve_lia_settings(route, overrides);
+    check(resolved.branch_limit == 7);
+    check(defaults.private_branch_factor == 1 && defaults.split_atom_limit == 0);
+    check(resolved.hybrid_branching == !defaults.hybrid_branching &&
+          resolved.private_branch_factor == 0 && resolved.split_atom_limit == 3);
+    check(resolved.gomory_cut_limit == 0);
+    check(resolved.patch_limit == 3);
+    check(resolved.conflict_generalization == !defaults.conflict_generalization);
+    check(resolved.round_integer_bounds == !defaults.round_integer_bounds);
+    check(resolved.primitive_int_rows == !defaults.primitive_int_rows);
+    check(resolved.integer_slacks == !defaults.integer_slacks);
+    check(resolved.patch_integral_moves == !defaults.patch_integral_moves);
+
+    // An override equal to the default is kept and changes nothing.
+    primo::smt::LiaSettingOverrides same;
+    same.round_integer_bounds = defaults.round_integer_bounds;
+    same.conflict_generalization = defaults.conflict_generalization;
+    check(primo::smt::resolve_lia_settings(route, same) == defaults);
+  }
+
+  // An explicit false turns a QF_LIA default off: it is not treated as unset.
+  primo::smt::LiaSettingOverrides off;
+  off.primitive_int_rows = false;
+  const LiaSettings resolved = primo::smt::resolve_lia_settings(LiaRoute::QfLia, off);
+  check(!resolved.primitive_int_rows);
+  check(resolved.round_integer_bounds && !resolved.integer_slacks && resolved.patch_integral_moves);
+  check(resolved.hybrid_branching);
+  primo::smt::LiaSettingOverrides no_cube;
+  no_cube.cube_mode = primo::theory::arithmetic::LiaCubeMode::Off;
+  check(primo::smt::resolve_lia_settings(LiaRoute::QfLia, no_cube).cube_mode ==
+        primo::theory::arithmetic::LiaCubeMode::Off);
+}
+
+// Each LIA route's resolved settings are part of the dispatch leaf's
+// identity, so two option sets that run different engine settings never
+// share a fingerprint.
+void lia_overrides_change_the_solver_strategy_identity() {
+  primo::smt::Frontend frontend;
+  primo::util::Statistics statistics;
+  primo::smt::TacticContext context(frontend.terms(), statistics, {}, true);
+  primo::smt::CheckSatOptions options;
+  const primo::smt::Strategy base =
+      primo::smt::make_session_solver_strategy(frontend, options, statistics, context);
+
+  // The two routes' defaults differ, and the identity records both.
+  check(base.canonical().find("(\"qf-lia.primitive-int-rows\" \"true\")") != std::string::npos);
+  check(base.canonical().find("(\"qf-uflia.primitive-int-rows\" \"false\")") != std::string::npos);
+
+  primo::smt::CheckSatOptions same;
+  same.lia.conflict_generalization = true;
+  check(
+      primo::smt::make_session_solver_strategy(frontend, same, statistics, context).fingerprint() ==
+      base.fingerprint());
+
+  primo::smt::CheckSatOptions rows;
+  rows.lia.primitive_int_rows = false;
+  const primo::smt::Strategy without_rows =
+      primo::smt::make_session_solver_strategy(frontend, rows, statistics, context);
+  check(without_rows.fingerprint() != base.fingerprint());
+  check(without_rows.canonical().find("(\"qf-lia.primitive-int-rows\" \"false\")") !=
+        std::string::npos);
+  check(without_rows.canonical().find("(\"qf-uflia.primitive-int-rows\" \"false\")") !=
+        std::string::npos);
+}
+void lia_route_settings_reach_the_engine() {
+  const auto input = [](std::string_view logic) {
+    return "(set-logic " + std::string(logic) + R"()
+      (declare-fun x () Int)
+      (declare-fun y () Int)
+      (assert (= (+ (* 2 x) (* 2 y)) 3))
+      (check-sat)
+    )";
+  };
+  // QF_LIA's default stores the row as x + y with integer thresholds, so the
+  // fractional bound 3/2 is refuted during preparation, before patching.
+  const auto qf_lia = primo::smt::check_sat_smtlib(input("QF_LIA"), {});
+  check(qf_lia.result == primo::smt::CheckSatResult::Unsat);
+  check(qf_lia.statistics.get(":lia.prep-fractional-int-thresholds") > 0);
+  check(qf_lia.statistics.get(":lia.patch-sweeps") == 0);
+
+  // QF_UFLIA's default leaves the switches off: the slack stays non-integer
+  // and patching runs.
+  const auto qf_uflia = primo::smt::check_sat_smtlib(input("QF_UFLIA"), {});
+  check(qf_uflia.result == primo::smt::CheckSatResult::Unsat);
+  check(qf_uflia.statistics.get(":lia.prep-fractional-int-thresholds") == 0);
+  check(qf_uflia.statistics.get(":lia.patch-sweeps") > 0);
+
+  // Overrides reach the QF_LIA engine: switches off brings patching back,
+  // and a zero patch budget then disables it again.
+  primo::smt::CheckSatOptions off;
+  off.lia.round_integer_bounds = false;
+  off.lia.primitive_int_rows = false;
+  off.lia.integer_slacks = false;
+  off.lia.patch_integral_moves = false;
+  const auto patched = primo::smt::check_sat_smtlib(input("QF_LIA"), off);
+  check(patched.result == primo::smt::CheckSatResult::Unsat);
+  check(patched.statistics.get(":lia.prep-fractional-int-thresholds") == 0);
+  check(patched.statistics.get(":lia.patch-sweeps") > 0);
+
+  off.lia.patch_limit = 0;
+  const auto unpatched = primo::smt::check_sat_smtlib(input("QF_LIA"), off);
+  check(unpatched.result == primo::smt::CheckSatResult::Unsat);
+  check(unpatched.statistics.get(":lia.patch-sweeps") == 0);
+}
+
 void production_solver_strategy_has_stable_typed_identity() {
   primo::smt::Frontend frontend;
   primo::util::Statistics statistics;
@@ -1162,9 +1389,31 @@ void production_solver_strategy_has_stable_typed_identity() {
       primo::smt::make_session_solver_strategy(frontend, options, statistics, context);
   check(strategy.kind() == primo::smt::StrategyKind::Leaf);
   check(strategy.leaf_id() == "solver-dispatch");
+  // Keep both routes' full effective settings visible in the identity.
+  const auto lia = [](std::string_view branching, std::string_view cube, std::string_view slacks,
+                      std::string_view integrality) {
+    return "(\"branch-limit\" \"100000\") (\"branching\" \"" + std::string(branching) +
+           "\") (\"conflict-generalization\" \"true\") (\"cube\" \"" + std::string(cube) +
+           "\") (\"cube-steps\" \"1000\") (\"gomory-cut-limit\" \"100\") "
+           "(\"integer-slacks\" \"" +
+           std::string(slacks) + "\") (\"patch-integral-moves\" \"" + std::string(integrality) +
+           "\") (\"patch-limit\" \"100\") (\"primitive-int-rows\" \"" + std::string(integrality) +
+           "\") (\"private-branch-factor\" \"1\") "
+           "(\"round-integer-bounds\" \"" +
+           std::string(integrality) + "\") (\"split-atom-limit\" \"0\")";
+  };
+  const auto route = [](std::string_view prefix, std::string rendered) {
+    for (std::size_t at = rendered.find("(\""); at != std::string::npos;
+         at = rendered.find("(\"", at + 2)) {
+      rendered.insert(at + 2, prefix);
+    }
+    return rendered;
+  };
   check(strategy.canonical() ==
         "(leaf \"solver-dispatch\" (\"has-declared-real-constants\" \"false\") "
-        "(\"logic\" \"\") (\"mixed-dispatch\" \"wide\"))");
+        "(\"logic\" \"\") (\"mixed-dispatch\" \"wide\") " +
+            route("qf-lia.", lia("hybrid", "uniform", "false", "true")) + " " +
+            route("qf-uflia.", lia("private", "off", "false", "false")) + ")");
   check(strategy ==
         primo::smt::make_session_solver_strategy(frontend, options, statistics, context));
   check(strategy.fingerprint() ==
@@ -1346,9 +1595,14 @@ int main() {
   preprocessing_fixed_point_and_terminal_change_statistics_are_exact();
   solver_adapter_does_not_hide_serious_failures();
   preprocessing_round_transforms_each_alternative_independently();
+  finite_domain_snapshot_is_bound_to_the_executing_goal();
+  symmetry_snapshot_is_bound_to_the_executing_goal();
   public_preprocessing_leaves_are_independently_constructible_and_typed();
   production_preprocessing_profile_and_strategy_are_explicit_and_stable();
   solver_dispatch_uses_formula_tactics();
   production_solver_strategy_has_stable_typed_identity();
+  lia_settings_policy_resolves_route_defaults_and_overrides();
+  lia_overrides_change_the_solver_strategy_identity();
+  lia_route_settings_reach_the_engine();
   session_portfolio_uses_typed_reasons_and_isolated_sequential_arms();
 }

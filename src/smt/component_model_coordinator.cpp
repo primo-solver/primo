@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <limits>
 #include <map>
 #include <optional>
 #include <set>
@@ -9,6 +10,8 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
+
+#include "theory/theory_component.hpp"
 
 namespace primo::smt {
 namespace {
@@ -112,9 +115,17 @@ ModelBasedCombinationResult check_result(theory::TheoryCheckResult checked) {
       }
       result.clause.push_back(checked.entailed_lit);
       break;
+    case theory::TheoryCheckStatus::EntailedEqualities:
+      result.status = ModelBasedCombinationStatus::PropagateEqualities;
+      result.equalities = std::move(checked.equalities);
+      break;
     case theory::TheoryCheckStatus::FreshDecision:
       result.status = ModelBasedCombinationStatus::FreshDecision;
       result.decision = std::move(checked.decision);
+      break;
+    case theory::TheoryCheckStatus::IntegerSplit:
+      result.status = ModelBasedCombinationStatus::IntegerSplit;
+      result.integer_split = std::move(checked.integer_split);
       break;
     case theory::TheoryCheckStatus::LemmasPending:
       // Queued lemmas are drained only at the online driver's growth boundary.
@@ -190,6 +201,31 @@ ModelBasedCombinationResult ComponentModelCoordinator::reconcile(
       auto result = check_result(std::move(checked));
       if (result.status == ModelBasedCombinationStatus::LearnClause) {
         ++statistics_.learned_clauses;
+      }
+      if (result.status == ModelBasedCombinationStatus::PropagateEqualities) {
+        if (plan.descriptors()[index].capabilities.equality_propagation ==
+                theory::EqualityPropagationStrength::None ||
+            result.equalities.empty()) {
+          return unknown("component returned an empty or unadvertised equality batch");
+        }
+        std::set<PairKey> seen;
+        for (const auto& equality : result.equalities) {
+          const auto scope = plan.scope_for(equality.pair);
+          const auto key = pair_key(equality.pair);
+          if (!scope.has_value() || !participates(plan.scopes()[*scope], index) ||
+              equality.pair.lhs == equality.pair.rhs || !seen.insert(key).second) {
+            return unknown("component returned an invalid shared equality pair");
+          }
+          if (const auto known = fixed.find(key);
+              known != fixed.end() && known->second == theory::InterfaceRelationValue::Equal) {
+            return unknown("component equality batch makes no progress on a true pair");
+          }
+          if (std::any_of(equality.reasons.begin(), equality.reasons.end(), [](sat::Lit reason) {
+                return reason.value == 0 || reason.value == std::numeric_limits<int>::min();
+              })) {
+            return unknown("component equality has an invalid antecedent literal");
+          }
+        }
       }
       if (result.status == ModelBasedCombinationStatus::FreshDecision) {
         const auto scope = plan.scope_for(result.decision.pair);

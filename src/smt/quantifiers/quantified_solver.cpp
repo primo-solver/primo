@@ -98,7 +98,7 @@ CheckSatOutcome solve_quantified_uf(
     core::TermManager& terms, const std::vector<core::TermId>& assertions,
     const CheckSatOptions& requested, util::Statistics& statistics,
     const std::function<core::TermId(core::SortId, std::string_view)>& fresh_constant) {
-  statistics.increment(":solver.quantified-uf");
+  statistics.increment(util::StatKey::SolverQuantifiedUf);
   CheckSatOptions options = requested;
   // The pure-theory filter skips theory assignments against an atom's only
   // polarity, which presumes the clause set is final. Instance lemmas keep
@@ -135,7 +135,13 @@ CheckSatOutcome solve_quantified_uf(
   recipe.online = true;
   recipe.model_guided = false;
   recipe.online_order = {0, 1};
-  recipe.timing_prefix = ":time.quantified-uf.";
+  recipe.timing_keys = {util::StatKey::TimeQuantifiedUfComponentRebuildUs,
+                        util::StatKey::TimeQuantifiedUfComponentGrowthUs,
+                        util::StatKey::TimeQuantifiedUfCompleteFallbackUs,
+                        util::StatKey::TimeQuantifiedUfSatUs,
+                        util::StatKey::TimeQuantifiedUfLemmaUs,
+                        util::StatKey::TimeQuantifiedUfAssignmentExtractionUs,
+                        util::StatKey::TimeQuantifiedUfModelReconciliationUs};
   recipe.prepare_boolean = [&](BooleanClausifier& clausifier) {
     register_euf_boolean_arguments(clausifier, statistics);
   };

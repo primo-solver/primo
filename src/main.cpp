@@ -25,8 +25,11 @@
 #include "sat/cadical_backend.hpp"
 #include "smt/check_sat.hpp"
 #include "smt/experimental_tactics.hpp"
+#include "smt/lia_settings.hpp"
+#include "smt/lia_settings_policy.hpp"
 #include "smt/smt_session.hpp"
 #include "smtlib/parser.hpp"
+#include "theory/arithmetic/lia_cube_mode.hpp"
 #include "util/statistics.hpp"
 
 namespace {
@@ -195,6 +198,16 @@ CLI::Option* add_flag_with_default(CLI::App& app, std::string name, bool& value,
   return option;
 }
 
+// Render the route policy at the cold CLI reporting boundary.
+template <typename Render>
+std::string lia_route_default_text(Render render) {
+  const std::string qf_lia = render(primo::smt::default_lia_settings(primo::smt::LiaRoute::QfLia));
+  const std::string qf_uflia =
+      render(primo::smt::default_lia_settings(primo::smt::LiaRoute::QfUflia));
+  if (qf_lia == qf_uflia) return "[default: " + qf_lia + "]";
+  return "[default: " + qf_lia + " for QF_LIA, " + qf_uflia + " for QF_UFLIA]";
+}
+
 // An option selecting an enumerator of `value` by its name in `names`. The
 // parsed value is written straight into `value`, and --help shows the name of
 // the value it holds when the option is added, so the default is written only
@@ -232,6 +245,7 @@ constexpr const char* kGroupUf = "QF_UF / EUF theory options";
 constexpr const char* kGroupPreprocessing = "Preprocessing options";
 constexpr const char* kGroupSat = "SAT and DPLL(T) options";
 constexpr const char* kGroupProcedural = "Procedural options";
+constexpr const char* kGroupCompatibility = "Compatibility aliases";
 constexpr const char* kGroupExperimentalTactics = "Experimental tactic options";
 
 }  // namespace
@@ -259,7 +273,26 @@ int run_main(int argc, char** argv) {
   bool no_lra_propagation = false;
   bool no_solved_constant_substitution = false;
   bool no_gaussian_elimination = false;
+  // LIA engine settings. Each flag records an override only when it is given;
+  // otherwise the solver route's policy (lia_settings_policy.hpp) decides.
+  const primo::smt::LiaSettings lia_defaults;
+  std::size_t lia_branch_limit = lia_defaults.branch_limit;
+  std::string lia_branching = "private";
+  std::size_t lia_private_branch_factor = 1;
+  std::size_t lia_split_atom_limit = 0;
+  std::size_t lia_gomory_cut_limit = lia_defaults.gomory_cut_limit;
+  std::size_t lia_patch_limit = lia_defaults.patch_limit;
+  std::string lia_cube = "off";
+  std::size_t lia_cube_steps = lia_defaults.cube_steps;
   bool no_lia_conflict_generalization = false;
+  bool lia_round_integer_bounds = false;
+  bool no_lia_round_integer_bounds = false;
+  bool lia_primitive_int_rows = false;
+  bool no_lia_primitive_int_rows = false;
+  bool lia_integer_slacks = false;
+  bool no_lia_integer_slacks = false;
+  bool lia_patch_integral_moves = false;
+  bool no_lia_patch_integral_moves = false;
   bool no_qf_uflra_fixed_elimination = false;
   bool qf_uflra_candidate_final_scan = solver_options.qf_uflra_candidate_final_scan;
   bool qf_uflra_model_reconciliation = solver_options.qf_uflra_model_reconciliation;
@@ -274,6 +307,10 @@ int run_main(int argc, char** argv) {
   bool guarded_real_equality_lowering = solver_options.guarded_real_equality_lowering;
   bool lra_model_phase = solver_options.lra_model_phase.value_or(false);
   bool no_lra_model_phase = false;
+  std::string arithmetic_model_phase =
+      !solver_options.lra_model_phase.has_value()
+          ? "auto"
+          : (solver_options.lra_model_phase.value() ? "on" : "off");
   bool monotone_elimination = solver_options.monotone_elimination.value_or(false);
   bool no_monotone_elimination = false;
   bool top_level_or_tseitin = solver_options.top_level_or_tseitin;
@@ -295,6 +332,9 @@ int run_main(int argc, char** argv) {
   bool no_nelson_oppen_model_equality_mutation = false;
   bool euf_dynamic_ackermann_shadow = solver_options.euf_dynamic_ackermann_shadow;
   bool euf_diseq_ackermann = solver_options.euf_diseq_ackermann;
+  bool euf_conflict_ackermann = solver_options.euf_conflict_ackermann;
+  bool euf_conflict_ackermann_diagnostics = solver_options.euf_conflict_ackermann_diagnostics;
+  std::string conflict_ackermann_atoms = "existing";
   std::string euf_prop_budget = format_auto_budget(solver_options.euf_propagation_budget);
   std::string euf_prop_delivery = format_auto_budget(solver_options.euf_propagation_delivery);
   std::size_t nelson_oppen_arrangement_probe_limit = 0;
@@ -397,14 +437,13 @@ int run_main(int argc, char** argv) {
   add_flag_with_default(app, "--lra-equality-propagation", solver_options.lra_equality_propagation,
                         "Enable experimental pure QF_LRA model-unit equality discovery and "
                         "propagation of existing difference comparisons (IPASIR-UP only)");
-  add_flag_with_default(app, "--lra-model-phase", lra_model_phase,
-                        "Enable model-based SAT phase hints (automatic for QF_LRA rebuild "
-                        "queries with auto preprocessing): keep CaDiCaL's "
-                        "variable choice, but refresh arithmetic atom polarity from the current "
-                        "tableau assignment at quiescence points")
-      ->option_text("[default: auto]");
-  add_flag_with_default(app, "--no-lra-model-phase", no_lra_model_phase,
-                        "Disable model-based SAT phase hints");
+  CLI::Option* arithmetic_model_phase_option =
+      app.add_option("--arithmetic-model-phase", arithmetic_model_phase,
+                     "Refresh arithmetic SAT phase preferences from the current tableau: "
+                     "on, off, or auto (QF_LRA rebuild with automatic preprocessing). "
+                     "Keeps SAT variable selection; requires an arithmetic phase-output path")
+          ->check(CLI::IsMember({"on", "off", "auto"}))
+          ->default_str(arithmetic_model_phase);
   add_enum_option(app, "--lra-pivoting-rule", solver_options.lra_pivoting_rule,
                   primo::cli::kLraPivotingRuleNames,
                   "QF_LRA Check/Pivot variable-selection rule: sparse (prices "
@@ -523,6 +562,28 @@ int run_main(int argc, char** argv) {
       "Reuse trail-synchronized EUF and rational-arithmetic state during QF_UFLIA SAT search");
   add_flag_with_default(app, "--no-qf-uflia-online-components", no_qf_uflia_online_components,
                         "Disable trail-synchronized QF_UFLIA components");
+  add_enum_option(app, "--qf-uflia-lia-equality-producer",
+                  solver_options.qf_uflia_lia_equality_producer,
+                  primo::cli::kQfUfliaLiaEqualityProducerNames,
+                  "QF_UFLIA equality discovery: legacy exact-offset rules or model-unit "
+                  "current-model-filtered unit rows; requires --qf-uflia-tableau-equalities");
+  app.add_option_function<std::string>(
+         "--qf-uflia-tableau-equalities",
+         [&solver_options](const std::string& mode) {
+           using Policy = primo::smt::QfUfliaEqualityPolicy;
+           solver_options.qf_uflia_tableau_equalities =
+               mode != "off" && mode != "false" && mode != "0";
+           solver_options.qf_uflia_equality_policy = mode == "scan"    ? Policy::Scan
+                                                     : mode == "names" ? Policy::Names
+                                                     : mode == "fixed" ? Policy::Fixed
+                                                                       : Policy::All;
+         },
+         "Experimental pre-integer equality policy: off, scan only, names/bridges only, "
+         "fixed-value proofs, or all proofs. Bare flag selects all; default off")
+      ->expected(0)
+      ->multi_option_policy(CLI::MultiOptionPolicy::TakeLast)
+      ->option_text("[=MODE; default: off]")
+      ->check(CLI::IsMember({"off", "scan", "names", "fixed", "all", "true", "false", "0", "1"}));
   app.add_option("--qf-uflia-model-decision-budget", qf_uflia_model_decision_budget,
                  "Maximum QF_UFLIA model-choice batches before complete arrangement fallback");
   add_flag_with_default(
@@ -547,22 +608,80 @@ int run_main(int argc, char** argv) {
       app, "--arithmetic-atom-canonicalization", solver_options.arithmetic_atom_canonicalization,
       "Enable experimental primitive-integer canonicalization of proportional Real "
       "comparisons and equalities before clausification");
-  app.add_option("--lia-branch-limit", solver_options.lia_branch_limit,
-                 "QF_LIA branch-and-bound node cap: plain branch-and-bound alone has no "
-                 "completeness argument (an unbounded integer-infeasible polytope can branch "
-                 "forever), so once this many nodes have been explored the search reports "
-                 "Unknown instead of continuing")
+  app.add_option("--lia-branch-limit", lia_branch_limit,
+                 "Private integer branch-and-bound node cap for QF_LIA/QF_UFLIA: private mode "
+                 "reports Unknown at the cap; hybrid mode restores private bounds and hands "
+                 "off to SAT. Plain branching has no completeness guarantee on unbounded inputs")
       ->check(CLI::Range(1, 100000000));
-  app.add_option("--lia-gomory-cut-limit", solver_options.lia_gomory_cut_limit,
+  app.add_option("--lia-branching", lia_branching, "Integer branching policy: private or hybrid")
+      ->check(CLI::IsMember({"private", "hybrid"}))
+      ->option_text(lia_route_default_text([](const primo::smt::LiaSettings& settings) {
+        return settings.hybrid_branching ? "hybrid" : "private";
+      }));
+  app.add_option(
+         "--lia-private-branch-factor", lia_private_branch_factor,
+         "Hybrid private nodes per original Int term (default 1; zero hands off immediately)")
+      ->check(CLI::Range(0, 100000000));
+  app.add_option("--lia-split-atom-limit", lia_split_atom_limit,
+                 "Fresh hybrid integer split atoms per solve (default 0: unlimited)")
+      ->check(CLI::Range(0, 100000000));
+  app.add_option("--lia-gomory-cut-limit", lia_gomory_cut_limit,
                  "QF_LIA Gomory-cut round cap, run before branch-and-bound on every candidate "
                  "model: caps how many cut-and-recheck rounds are attempted before falling "
                  "through to branch-and-bound regardless")
       ->check(CLI::Range(0, 100000000));
-  app.add_option("--lia-patch-limit", solver_options.lia_patch_limit,
+  app.add_option("--lia-patch-limit", lia_patch_limit,
                  "QF_LIA patching budget, run before the integer refutation stages on every "
                  "candidate model: caps how many nonbasic moves are taken to nudge Int variables "
                  "onto integer values. 0 disables patching")
       ->check(CLI::Range(0, 100000000));
+  app.add_option("--lia-cube", lia_cube, "QF_LIA cube model attempt: off, uniform, or difference")
+      ->check(CLI::IsMember({"off", "uniform", "difference"}))
+      ->option_text(lia_route_default_text([](const primo::smt::LiaSettings& settings) {
+        using primo::theory::arithmetic::LiaCubeMode;
+        return settings.cube_mode == LiaCubeMode::Uniform      ? "uniform"
+               : settings.cube_mode == LiaCubeMode::Difference ? "difference"
+                                                               : "off";
+      }));
+  app.add_option("--lia-cube-steps", lia_cube_steps,
+                 "Repair-step budget of the optional QF_LIA cube solve (default 1000)")
+      ->check(CLI::Range(0, 100000000));
+  add_flag_with_default(app, "--lia-round-integer-bounds", lia_round_integer_bounds,
+                        "Round non-strict QF_LIA/QF_UFLIA thresholds on integer-valued tableau "
+                        "variables inward (x <= 5/3 becomes x <= 1); strict thresholds are "
+                        "always rounded")
+      ->option_text(lia_route_default_text([](const primo::smt::LiaSettings& settings) {
+        return settings.round_integer_bounds ? "on" : "off";
+      }));
+  add_flag_with_default(app, "--no-lia-round-integer-bounds", no_lia_round_integer_bounds,
+                        "Disable --lia-round-integer-bounds; wins over it");
+  add_flag_with_default(app, "--lia-primitive-int-rows", lia_primitive_int_rows,
+                        "Store QF_LIA/QF_UFLIA atom rows with coprime integer coefficients "
+                        "(2x + 3y stays 2x + 3y instead of x + 3/2 y), so every Int slack is "
+                        "integer-valued and its thresholds can be rounded")
+      ->option_text(lia_route_default_text([](const primo::smt::LiaSettings& settings) {
+        return settings.primitive_int_rows ? "on" : "off";
+      }));
+  add_flag_with_default(app, "--no-lia-primitive-int-rows", no_lia_primitive_int_rows,
+                        "Disable --lia-primitive-int-rows; wins over it");
+  add_flag_with_default(app, "--lia-integer-slacks", lia_integer_slacks,
+                        "Treat QF_LIA/QF_UFLIA slacks whose rows are integer polynomials over Int "
+                        "variables as integer variables in patching, GCD tests, cuts and "
+                        "branching")
+      ->option_text(lia_route_default_text([](const primo::smt::LiaSettings& settings) {
+        return settings.integer_slacks ? "on" : "off";
+      }));
+  add_flag_with_default(app, "--no-lia-integer-slacks", no_lia_integer_slacks,
+                        "Disable --lia-integer-slacks; wins over it");
+  add_flag_with_default(app, "--lia-patch-integral-moves", lia_patch_integral_moves,
+                        "QF_LIA/QF_UFLIA patching: never leave an integer nonbasic variable "
+                        "fractional, and propose the integer values of a row's nonbasic variable "
+                        "that make its basic variable integral")
+      ->option_text(lia_route_default_text([](const primo::smt::LiaSettings& settings) {
+        return settings.patch_integral_moves ? "on" : "off";
+      }));
+  add_flag_with_default(app, "--no-lia-patch-integral-moves", no_lia_patch_integral_moves,
+                        "Disable --lia-patch-integral-moves; wins over it");
   add_flag_with_default(
       app, "--no-lia-conflict-generalization", no_lia_conflict_generalization,
       "Disable QF_LIA conflict generalization: build each integer-infeasibility lemma "
@@ -583,6 +702,16 @@ int run_main(int argc, char** argv) {
       app, "--preprocess-only", solver_options.preprocess_only,
       "Diagnostic: stop before search; report unsat if preprocessing refutes, otherwise unknown. "
       "Quantified input stops after the frontend");
+  add_flag_with_default(
+      app, "--arithmetic-bound-diagnostics", solver_options.arithmetic_bound_diagnostics,
+      "Diagnostic: count unconditional numeric bound opportunities before preprocessing; "
+      "does not install bounds or change search");
+  add_flag_with_default(app, "--preprocess-bound-tightening",
+                        solver_options.preprocess_bound_tightening,
+                        "Infer and assert unconditional arithmetic bounds after lowering");
+  app.add_option("--preprocess-bound-work-limit", solver_options.preprocess_bound_work_limit,
+                 "Bound-tightening work budget; 0 performs no strengthening")
+      ->capture_default_str();
   app.add_option("--cancel-grace-seconds", cancel_grace_seconds,
                  "Seconds SIGTERM or SIGINT waits for the cooperative cancellation path, "
                  "which reports statistics, before answering unknown and exiting")
@@ -700,6 +829,18 @@ int run_main(int argc, char** argv) {
       "Shadow-evaluate SAT-visible dynamic Ackermann clauses without adding them");
   add_flag_with_default(app, "--euf-diseq-ackermann", euf_diseq_ackermann,
                         "Enable watched QF_UF disequality Ackermann propagation");
+  add_flag_with_default(app, "--euf-conflict-ackermann", euf_conflict_ackermann,
+                        "Emit bounded conflict-selected congruence clauses");
+  add_flag_with_default(app, "--euf-conflict-ackermann-diagnostics",
+                        euf_conflict_ackermann_diagnostics,
+                        "Measure conflict-selected congruence clauses without emitting them");
+  app.add_option("--euf-conflict-ackermann-atoms", conflict_ackermann_atoms,
+                 "Conflict-selected equality atoms: existing or demand")
+      ->check(CLI::IsMember({"existing", "demand"}));
+  app.add_option("--euf-conflict-ackermann-atom-limit",
+                 solver_options.euf_conflict_ackermann_atom_limit,
+                 "Fresh equality atoms per query in demand mode (0: unlimited)")
+      ->check(CLI::Range(0, 1000000000));
   app.add_option("--euf-diseq-ackermann-max-width", solver_options.euf_diseq_ackermann_max_width,
                  "Maximum width of watched disequality Ackermann clauses")
       ->check(CLI::Range(2, 1000));
@@ -713,8 +854,10 @@ int run_main(int argc, char** argv) {
   add_enum_option(app, "--pure-theory-filter", solver_options.pure_theory_filter,
                   primo::cli::kPureTheoryFilterNames, "T-pure theory literal filtering mode");
   CLI::Option* theory_phase_option =
-      add_enum_option(app, "--theory-phase", solver_options.theory_phase,
-                      primo::cli::kTheoryPhaseNames, "Initial SAT phase for theory atoms");
+      add_enum_option(app, "--initial-theory-phase,--theory-phase", solver_options.theory_phase,
+                      primo::cli::kTheoryPhaseNames,
+                      "Initial SAT truth-value preference for theory atoms on routes that "
+                      "install it; --theory-phase is a compatibility alias");
   app.add_option("--euf-prop-budget", euf_prop_budget,
                  "EUF propagation candidate budget: auto, unlimited, or a nonnegative integer");
   app.add_option("--euf-prop-delivery,--prop-delivery-budget", euf_prop_delivery,
@@ -807,9 +950,21 @@ int run_main(int argc, char** argv) {
       ->default_str("");
   app.set_version_flag("--version", version_text());
 
-  // Sort the 60-odd options into sections for --help. Done here, by name,
+  // Keep old scripts working without mixing their flag precedence with the new policy option.
+  CLI::Option* legacy_model_phase_option =
+      add_flag_with_default(app, "--lra-model-phase", lra_model_phase,
+                            "Compatibility flag; use --arithmetic-model-phase=on")
+          ->option_text("[compatibility alias]");
+  CLI::Option* legacy_no_model_phase_option =
+      add_flag_with_default(app, "--no-lra-model-phase", no_lra_model_phase,
+                            "Compatibility flag; use --arithmetic-model-phase=off")
+          ->option_text("[compatibility alias]");
+  arithmetic_model_phase_option->excludes(legacy_model_phase_option);
+  arithmetic_model_phase_option->excludes(legacy_no_model_phase_option);
+
+  // Group options into sections for --help. Done here, by name,
   // rather than by threading a group into every add_flag/add_option call:
-  // one table to read instead of sixty scattered ->group() calls, and a new
+  // one table to read instead of scattered ->group() calls, and a new
   // option lands in the right section by virtue of being named consistently
   // with the ones it belongs beside.
   //
@@ -823,6 +978,9 @@ int run_main(int argc, char** argv) {
     return text.rfind(prefix, 0) == 0;
   };
   const auto group_for = [&starts_with](const std::string& name) -> std::string {
+    if (name == "--lra-model-phase" || name == "--no-lra-model-phase") {
+      return kGroupCompatibility;
+    }
     if (starts_with(name, "--lra-") || starts_with(name, "--no-lra-") ||
         name == "--gaussian-elimination" || name == "--no-gaussian-elimination" ||
         name == "--qf-uflra-candidate-final-scan" || name == "--qf-uflra-lra-equality-producer" ||
@@ -836,11 +994,13 @@ int run_main(int argc, char** argv) {
         starts_with(name, "--qf-uflia-") || starts_with(name, "--no-qf-uflia-")) {
       return kGroupLia;
     }
-    if (name == "--incremental-mode" || name == "--preprocessing-mode" ||
-        name == "--arithmetic-atom-canonicalization" || name == "--auto-preprocess-selector" ||
-        name == "--boolean-flatten-threshold" || name == "--boolean-flatten-post-threshold" ||
-        name == "--boolean-implies-rewrite" || starts_with(name, "--auto-preprocess-") ||
-        starts_with(name, "--preprocessing-") || starts_with(name, "--preprocess-passes") ||
+    if (name == "--preprocess-bound-tightening" || name == "--preprocess-bound-work-limit" ||
+        name == "--arithmetic-bound-diagnostics" || name == "--incremental-mode" ||
+        name == "--preprocessing-mode" || name == "--arithmetic-atom-canonicalization" ||
+        name == "--auto-preprocess-selector" || name == "--boolean-flatten-threshold" ||
+        name == "--boolean-flatten-post-threshold" || name == "--boolean-implies-rewrite" ||
+        starts_with(name, "--auto-preprocess-") || starts_with(name, "--preprocessing-") ||
+        starts_with(name, "--preprocess-passes") ||
         starts_with(name, "--extended-simplification") ||
         starts_with(name, "--no-extended-simplification") ||
         starts_with(name, "--cite-simplification") ||
@@ -853,7 +1013,8 @@ int run_main(int argc, char** argv) {
     // theory-conflict budget, and how top-level disjunctions get clausified.
     if (name == "--cadical-option" || name == "--max-theory-conflicts" ||
         name == "--qf-uflra-online-euf" || name == "--pure-theory-filter" ||
-        name == "--theory-phase" || starts_with(name, "--top-level-or-tseitin") ||
+        name == "--initial-theory-phase" || name == "--theory-phase" ||
+        name == "--arithmetic-model-phase" || starts_with(name, "--top-level-or-tseitin") ||
         starts_with(name, "--no-top-level-or-tseitin") ||
         starts_with(name, "--no-auto-top-level-or-tseitin")) {
       return kGroupSat;
@@ -972,9 +1133,42 @@ int run_main(int argc, char** argv) {
   if (no_gaussian_elimination) {
     solver_options.gaussian_elimination = false;
   }
-  if (no_lia_conflict_generalization) {
-    solver_options.lia_conflict_generalization = false;
+  // An override is recorded only for a flag that was given, so the route
+  // policy keeps every other LIA setting. A --no- form wins over its pair.
+  primo::smt::LiaSettingOverrides& lia = solver_options.lia;
+  if (app.get_option("--lia-branch-limit")->count() != 0) lia.branch_limit = lia_branch_limit;
+  if (app.get_option("--lia-branching")->count() != 0)
+    lia.hybrid_branching = lia_branching == "hybrid";
+  if (app.get_option("--lia-private-branch-factor")->count() != 0)
+    lia.private_branch_factor = lia_private_branch_factor;
+  if (app.get_option("--lia-split-atom-limit")->count() != 0)
+    lia.split_atom_limit = lia_split_atom_limit;
+  if (app.get_option("--lia-gomory-cut-limit")->count() != 0) {
+    lia.gomory_cut_limit = lia_gomory_cut_limit;
   }
+  if (app.get_option("--lia-patch-limit")->count() != 0) lia.patch_limit = lia_patch_limit;
+  if (app.get_option("--lia-cube")->count() != 0) {
+    using primo::theory::arithmetic::LiaCubeMode;
+    lia.cube_mode = lia_cube == "uniform"      ? LiaCubeMode::Uniform
+                    : lia_cube == "difference" ? LiaCubeMode::Difference
+                                               : LiaCubeMode::Off;
+  }
+  if (app.get_option("--lia-cube-steps")->count() != 0) lia.cube_steps = lia_cube_steps;
+  if (no_lia_conflict_generalization) lia.conflict_generalization = false;
+  // A given flag records its parsed value, so an explicit --flag=false is an
+  // override too; the --no- form then forces the setting off.
+  const auto set_switch = [&app](std::optional<bool>& target, const std::string& name, bool value,
+                                 bool off) {
+    if (app.get_option(name)->count() != 0) target = value;
+    if (off) target = false;
+  };
+  set_switch(lia.round_integer_bounds, "--lia-round-integer-bounds", lia_round_integer_bounds,
+             no_lia_round_integer_bounds);
+  set_switch(lia.primitive_int_rows, "--lia-primitive-int-rows", lia_primitive_int_rows,
+             no_lia_primitive_int_rows);
+  set_switch(lia.integer_slacks, "--lia-integer-slacks", lia_integer_slacks, no_lia_integer_slacks);
+  set_switch(lia.patch_integral_moves, "--lia-patch-integral-moves", lia_patch_integral_moves,
+             no_lia_patch_integral_moves);
   if (no_qf_uflra_fixed_elimination) {
     solver_options.qf_uflra_fixed_elimination = false;
   }
@@ -992,11 +1186,15 @@ int run_main(int argc, char** argv) {
       qf_uflia_online_components && !no_qf_uflia_online_components;
   solver_options.qf_uflia_model_decision_budget = qf_uflia_model_decision_budget;
   solver_options.qf_uflra_online_euf = qf_uflra_online_euf;
-  if (app.get_option("--lra-model-phase")->count() != 0) {
-    solver_options.lra_model_phase = lra_model_phase;
-  }
-  if (no_lra_model_phase) {
-    solver_options.lra_model_phase = false;
+  if (arithmetic_model_phase_option->count() != 0) {
+    if (arithmetic_model_phase == "auto") {
+      solver_options.lra_model_phase.reset();
+    } else {
+      solver_options.lra_model_phase = arithmetic_model_phase == "on";
+    }
+  } else {
+    if (legacy_model_phase_option->count() != 0) solver_options.lra_model_phase = lra_model_phase;
+    if (no_lra_model_phase) solver_options.lra_model_phase = false;
   }
   if (app.get_option("--monotone-elimination")->count() != 0) {
     solver_options.monotone_elimination = monotone_elimination;
@@ -1051,6 +1249,9 @@ int run_main(int argc, char** argv) {
   }
   solver_options.euf_dynamic_ackermann_shadow = euf_dynamic_ackermann_shadow;
   solver_options.euf_diseq_ackermann = euf_diseq_ackermann;
+  solver_options.euf_conflict_ackermann = euf_conflict_ackermann;
+  solver_options.euf_conflict_ackermann_demand_atoms = conflict_ackermann_atoms == "demand";
+  solver_options.euf_conflict_ackermann_diagnostics = euf_conflict_ackermann_diagnostics;
   if (theory_phase_option->count() > 0) {
     solver_options.auto_basic_single_predicate_polarity = false;
     solver_options.auto_basic_multi_polarity = false;

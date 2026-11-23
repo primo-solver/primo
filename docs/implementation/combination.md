@@ -179,11 +179,16 @@ prove `x != y`. A conflict derived under the corresponding SAT assumption can
 justify a blocking clause using the failed assumptions.
 
 The component result type makes the distinction explicit:
-{source}`TheoryCheckResult <src/theory/theory_solver.hpp#L101-L127>` separates
-`EntailedLiteral`, `LearnedClause`, and `FreshDecision`. For an entailed literal
+{ufliaeqsource}`TheoryCheckResult <src/theory/theory_solver.hpp>` separates
+`EntailedLiteral`, `EntailedEqualities`, `LearnedClause`, and `FreshDecision`. For an entailed literal
 `e`, the reasons are true antecedents `r₁, …, rₙ`; the
 {source}`coordinator constructs <src/smt/component_model_coordinator.cpp#L97-L114>`
 `not r₁ or … or not rₙ or e`. A learned clause already carries its signs.
+An `EntailedEqualities` batch carries shared pairs and true antecedents; the
+[outer driver materializes the equality atoms](uflia-equality-propagation.md)
+before adding those implication clauses. The QF_UFLIA producer is enabled
+with `--qf-uflia-tableau-equalities` (default off). It never turns the batch
+into model choices.
 
 ## The dedicated Real route
 
@@ -272,7 +277,7 @@ equalities for each class. A class of `k` terms needs `k - 1` such edges:
 transitivity supplies the remaining equalities.
 
 Arithmetic also propagates ordinary bound predicates within its own solver.
-The [LRA propagation section](lra.md#propagate-and-explain-consequences) derives
+The [LRA propagation section](arithmetic/lra/propagation.md#propagate-and-explain-consequences) derives
 their explanation clauses from individual bounds and tableau rows. Here the
 conclusions cross the theory boundary as shared equalities. Both mechanisms
 must explain entailment from active constraints, not from coincident values
@@ -298,7 +303,7 @@ The equations below are tableau row identities, preserved by every pivot.
 The variables `x` and `y` represent shared terms; helper variables need not
 be shared. A basic variable is the variable defined on the left of a row;
 the right side contains nonbasic variables, as described in
-[LRA's row representation](lra.md#sparse-rows-and-reverse-occurrences).
+[LRA's row representation](arithmetic/lra/tableau.md#sparse-rows-and-reverse-occurrences).
 
 1. **`FixedEq`: two variables fixed at the same value.** Bounds
    `5 <= x <= 5` and `5 <= y <= 5` prove `x = y`. The explanation contains
@@ -339,7 +344,7 @@ still requires scanning row entries and performing exact arithmetic. This
 scan differs from the paper's scheduling of the first three rules eagerly
 and the last before a model-based equality choice. The alternative
 `model-unit` producer is explained in
-[LRA](lra.md#propagating-equalities-between-variables)
+[LRA](arithmetic/lra/propagation.md#propagating-equalities-between-variables)
 and remains opt-in.
 
 These rules are sound but incomplete, and their success depends on the
@@ -420,7 +425,7 @@ This narrow online producer complements the final equality scans and model
 checks. It does not replace the [default row rules](#lra-default-equality-rules)
 or their [exact fallback](#lra-exact-equality-fallback), and the default
 `--nelson-oppen-prop=final` does not enable it. The
-[forward and reverse row derivations](lra.md#deriving-a-bound-from-a-row)
+[forward and reverse row derivations](arithmetic/lra/propagation.md#deriving-a-bound-from-a-row)
 explain how arithmetic can first establish bound literals used in such chains.
 
 ### Reconciling candidate models
@@ -468,6 +473,14 @@ LIA component and no shared scopes or equality arrangements; its full-check
 pipeline is described in the {doc}`LIA chapter <lia>`. The following sections
 describe the QF_UFLIA interaction. Quantified UF uses the same driver with a
 lemma-preparation hook for newly generated instances.
+
+With `--qf-uflia-tableau-equalities` (default off), the QF_UFLIA LIA adapter
+scans the repaired rational tableau for explained shared equalities before
+integer completion. `--qf-uflia-lia-equality-producer=legacy|model-unit`
+selects the existing exact-offset rules or CAV 2024 §3.2 unit-row discovery
+independently of delivery policy. Legacy remains the discovery default. The
+[pre-completion integration](uflia-equality-propagation.md) describes batched
+delivery, registration, explanation conventions and qualification status.
 
 ### Planning ownership and shared scopes
 
@@ -519,10 +532,12 @@ at least one bound false, letting arithmetic enforce the disequality. The
 component supplies the meaning of equality; the SMT layer owns clausification
 and SAT calls.
 
-New atoms are registered at a detached preparation boundary. The
-{source}`installation path <src/smt/component_solver.cpp#L215-L271>` updates
-the owning components, rebuilds callback routing, and observes the resulting
-SAT variables before search resumes. The dispatcher routes assignment changes
+New atoms are created and registered outside SAT calls and their callbacks. Before
+modifying terms or the atom registry, the driver destroys the assignment
+connection and callback dispatcher, so no active callback borrows the storage
+being changed. The {source}`installation path <src/smt/component_solver.cpp#L215-L271>`
+registers the atoms with their theory solvers, rebuilds the dispatcher and
+assignment connection, and observes the resulting SAT variables before search resumes. The dispatcher routes assignment changes
 through the shared trail view and preserves explanations across unrelated
 backtracking.
 

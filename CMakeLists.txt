@@ -273,6 +273,7 @@ add_test(
   COMMAND ${CMAKE_COMMAND}
     -DPRIMO_EXECUTABLE=$<TARGET_FILE:primo>
     -DPRIMO_TEST_INPUT=${CMAKE_SOURCE_DIR}/benchmarks/smoke/qf_lra/default_heuristics.smt2
+    -DPRIMO_INITIAL_PHASE_INPUT=${CMAKE_SOURCE_DIR}/benchmarks/smoke/qf_uf/sat_uninterpreted_constants.smt2
     -P ${CMAKE_SOURCE_DIR}/tests/cmake/check_lra_heuristic_cli.cmake
 )
 add_test(
@@ -498,11 +499,40 @@ primo_enable_sanitizers(primo_lra_atom_tests)
 target_link_libraries(primo_lra_atom_tests PRIVATE primo_core)
 add_test(NAME primo_lra_atom_tests COMMAND primo_lra_atom_tests)
 
+add_executable(primo_root_bound_diagnostics_tests tests/unit/root_bound_diagnostics_tests.cpp)
+primo_enable_warnings(primo_root_bound_diagnostics_tests)
+primo_enable_sanitizers(primo_root_bound_diagnostics_tests)
+target_link_libraries(primo_root_bound_diagnostics_tests PRIVATE primo_core)
+add_test(NAME primo_root_bound_diagnostics_tests COMMAND primo_root_bound_diagnostics_tests)
+
+add_executable(primo_preprocess_bound_tightening_tests tests/unit/preprocess_bound_tightening_tests.cpp)
+primo_enable_warnings(primo_preprocess_bound_tightening_tests)
+primo_enable_sanitizers(primo_preprocess_bound_tightening_tests)
+target_link_libraries(primo_preprocess_bound_tightening_tests PRIVATE primo_core)
+add_test(NAME primo_preprocess_bound_tightening_tests COMMAND primo_preprocess_bound_tightening_tests)
+
+add_executable(primo_preprocess_bound_probe tests/tools/preprocess_bound_probe.cpp)
+primo_enable_warnings(primo_preprocess_bound_probe)
+primo_enable_sanitizers(primo_preprocess_bound_probe)
+target_link_libraries(primo_preprocess_bound_probe PRIVATE primo_core)
+
 add_executable(primo_lra_tableau_tests tests/unit/lra_tableau_tests.cpp)
 primo_enable_warnings(primo_lra_tableau_tests)
 primo_enable_sanitizers(primo_lra_tableau_tests)
 target_link_libraries(primo_lra_tableau_tests PRIVATE primo_core)
 add_test(NAME primo_lra_tableau_tests COMMAND primo_lra_tableau_tests)
+
+add_test(NAME primo_lia_cube_cli
+  COMMAND ${CMAKE_COMMAND}
+    -DPRIMO_EXECUTABLE=$<TARGET_FILE:primo>
+    -DPRIMO_TEST_INPUT=${CMAKE_SOURCE_DIR}/benchmarks/smoke/qf_lia/cube_strict_scaled.smt2
+    -P ${CMAKE_SOURCE_DIR}/tests/cmake/check_lia_cube_cli.cmake)
+
+add_executable(primo_lia_cube_tests tests/unit/lia_cube_tests.cpp)
+primo_enable_warnings(primo_lia_cube_tests)
+primo_enable_sanitizers(primo_lia_cube_tests)
+target_link_libraries(primo_lia_cube_tests PRIVATE primo_core)
+add_test(NAME primo_lia_cube_tests COMMAND primo_lia_cube_tests)
 
 add_executable(primo_lia_completion_tests tests/unit/lia_completion_tests.cpp)
 primo_enable_warnings(primo_lia_completion_tests)

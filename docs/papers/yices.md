@@ -6,8 +6,14 @@ architecture and theory combination; the 2016 talk explains representation,
 lazy explanations, and selective retention of theory lemmas. These are
 descriptions of the Yices designs at their respective publication dates.
 
-Primo has an optional, restricted Ackermann propagation mechanism. It does
-not implement the whole conflict-driven selection policy described in 2006.
+Primo has optional, restricted Ackermann propagation and conflict-selected
+clause mechanisms. The original conflict selector was an existing-atom subset,
+described in the [prototype checklist](../leads/conflict-ackermann-prototype.md)
+and [bounded pilot](../evidence/conflict-ackermann.md). The current bounded
+implementation also supports opt-in demand registration of missing equality
+atoms after callbacks unwind. Its [evaluation](../evidence/euf-performance-fixes.md)
+finds repeated demand-mode regressions; defaults remain unchanged. Neither
+subset implements the whole policy described in 2006.
 For lemma caching, the first question is what CaDiCaL already retains: the
 presence of a reason callback alone does not answer that question.
 
@@ -67,10 +73,11 @@ it does not prove a better worst-case pair bound.
 | SAT-visible candidate discovery | **Implemented, restricted.** {source}`build_dynamic_ackermann_candidate_index <src/smt/solver_engines.cpp#L965-L1048>` starts from an existing equality between same-symbol applications and requires SAT atoms for every argument equality. It skips missing atoms. |
 | Dynamic Ackermann shadow mode | **Implemented, diagnostic only.** `--euf-dynamic-ackermann-shadow` measures candidate states without adding the corresponding clauses. See {source}`shadow tests <tests/unit/boolean_solver_tests.cpp#L2202-L2274>`. |
 | Watched argument-disequality propagation | **Implemented subset; off by default.** `--euf-diseq-ackermann` queues existing candidates by affected SAT variables and uses the clause as a propagation reason or conflict. {source}`Watch construction <src/smt/solver_engines.cpp#L2090-L2126>` applies width/per-symbol caps; {source}`candidate evaluation <src/smt/solver_engines.cpp#L2378-L2490>` requires the result equality to be false. |
-| Selecting congruence steps from conflicts, then retaining their clauses for reuse | **Open lead.** The existing candidate index and assignment queue are not the conflict-explanation selector described by the paper. Missing-atom creation and a deletion policy also need designs. |
+| Selecting congruence steps from conflicts, then retaining their clauses for reuse | **Implemented bounded prototype; off by default.** {download}`ConflictAckermannSelector <../../src/smt/conflict_ackermann.hpp>` constructs and queues congruence clauses from copied online conflict witnesses. Its SAT index and queue survive execution rebuilds within one backend. Opt-in demand naming is described in the [current EUF representation](../implementation/euf.md#conflict-selected-ackermann-prototype); its qualification status is separate from the [historical pilot](../evidence/conflict-ackermann.md). A new deletion policy remains open; delivery counters do not establish backend retention/reuse. |
 | Earlier scan-based dynamic clause experiment | **Not adopted; reverted.** `f83828f` introduced `--euf-dynamic-ackermann`; `160ce4e` reverted it. This old option is not the current `--euf-diseq-ackermann` mechanism. |
 
-`DynamicAckermannCandidate` owns atom indices and a copied `sat::Clause`;
+For the assignment-indexed propagation modes, `DynamicAckermannCandidate`
+owns atom indices and a copied `sat::Clause`;
 `OnlineEufPropagator` owns the candidate index, per-variable occurrence lists,
 queue, and reasons. Repeated negative literals are removed when constructing
 a candidate. Backtracking clears queued work and the pending external clause;
@@ -229,14 +236,16 @@ retention cost, and deletion safety.
 
 ## Open investigations and acceptance conditions
 
-**Dynamic Ackermannization:** investigate a selector driven by congruence steps
-in conflict explanations, separately from the existing assignment-indexed
-propagator. Specify how absent equality atoms are created and registered, how
-clauses are deduplicated and budgeted, and whether they can be forgotten while
-the complete EUF checker remains responsible for consistency. Preserve the
-n-ary disjunction and stable term/atom identities across allocation and scope
-changes. Do not restart the rejected repeated-scan design without addressing
-its cost.
+**Dynamic Ackermannization:** bounded demand registration is now implemented
+separately from the assignment-indexed propagator. The callback queues semantic
+requests; query-owned growth creates missing equality atoms and clauses outside
+callbacks, reuses eligible shared-interface naming, and preserves the complete
+EUF check. Further work should investigate unsupported Boolean cases or other
+coverage, admission and scheduling choices while accounting for the measured
+demand regressions. Any extension must preserve the n-ary disjunction and stable
+term/atom identities across allocation and scope changes. Clause forgetting is
+separate work; do not restart the rejected repeated-scan design without
+addressing its cost.
 
 **Lemma retention:** first count explanations built, requested, retained, and
 reused, with clause sizes and memory over long incremental sessions. Audit
@@ -247,7 +256,7 @@ antecedents; consequences depending on scoped assertions must preserve those
 dependencies or guards. A cache must never turn a branch-local fact into an
 unconditional unit.
 
-Before implementing either lead, complete an operation-by-operation design note
+Before implementing further changes in either lead, complete an operation-by-operation design note
 covering data owners, callback phases, lifetime/rollback rules, complexity expectations,
 and proof obligations. Tests must check missing atoms, n-ary reasoning,
 backtracking, repeated checks, scope retirement, and any deletion/rederivation

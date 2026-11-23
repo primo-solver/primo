@@ -1,5 +1,10 @@
 // Executable companion to implementation/sat.md. This uses Primo's internal
 // interfaces to isolate clausification from frontend and preprocessing passes.
+// Assertions execute solver calls, so keep them active in Release examples too.
+#ifdef NDEBUG
+#undef NDEBUG
+#endif
+
 #include <array>
 #include <cassert>
 #include <cstddef>

@@ -1,10 +1,11 @@
 #pragma once
 
+#include <array>
 #include <cstddef>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <span>
-#include <string>
 #include <vector>
 
 #include "core/term_manager.hpp"
@@ -25,8 +26,14 @@ struct CombinationRecipe {
   // Preserve each recipe's SAT clause-retention policy across dispatcher rebuilds.
   bool forgettable_clauses = true;
   bool model_guided = true;
+  // Diagnostic conservative naming: install bridges for fresh proved pairs,
+  // but omit the optional proof clauses. Producers must request only fresh pairs.
+  // Original design: docs/implementation/uflia-equality-ablation.md.
+  bool learn_exported_equalities = true;
   std::size_t decision_budget = 0;
-  std::string timing_prefix;
+  std::size_t integer_split_atom_limit = 0;
+  bool integer_splits = false;
+  std::array<std::optional<util::StatKey>, 7> timing_keys{};
   // Idempotent registry completion before initial ownership planning and at
   // every atom installation, including generated interface/lemma atoms.
   // May append atoms; callers must not borrow the registry across this hook.
@@ -38,6 +45,12 @@ struct CombinationRecipe {
   // many queued lemmas are drained at each growth boundary.
   std::function<std::vector<core::TermId>(std::vector<core::TermId>)> prepare_lemmas;
   std::size_t lemma_batch = 64;
+  // Query-owned optional theory naming. The yield predicate never denotes a
+  // failure. Growth runs detached, before model acceptance or SAT resumption.
+  std::function<bool()> growth_ready;
+  std::function<bool()> growth_pending;
+  std::function<void(BooleanClausifier&, const std::function<void(core::TermId, core::TermId)>&)>
+      grow;
 };
 
 CheckSatOutcome solve_component_recipe(core::TermManager& terms,

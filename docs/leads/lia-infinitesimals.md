@@ -1,19 +1,32 @@
 # Avoiding infinitesimals in integer relaxation
 
-**Status: Open lead. Owner: unassigned.**
+**Remaining question: a discrete-bound alternative for QF_UFLIA's scaled
+auxiliaries. QF_LIA's default primitive rows already address its case.**
+Under `--lia-primitive-int-rows`, integer slacks are integer polynomials, so
+strict compound Int atoms get integral bounds without an infinitesimal. Current
+QF_LIA uses [M124 with uniform cubes and hybrid](../evidence/qf-lia-defaults-20261119.md);
+explicit integer-slack obligations are off. The earlier `5dec036` four-switch
+promotion and its QF_UFLIA regressions remain
+[historical integrality evidence](../papers/mip-presolve-integrality.md).
+Those joint measurements do not isolate the primitive-row option.
+
+QF_UFLIA still leaves primitive rows off. The spacing rule below is a proposed
+alternative for that leading-coefficient representation; its implementation
+and evaluation remain open. Current preparation is described in
+[integer bounds](../implementation/arithmetic/lia/preparation.md#input-lowering-and-integer-bounds).
 
 Preserve the discrete values of an integer polynomial when preparing its
 scaled tableau bounds. This could eliminate the strict-bound infinitesimals
-currently introduced by compound integer atoms. It is a proposed change to
+introduced by compound integer atoms on that scaled preparation path. It is a proposed change to
 bound preparation, not an implemented alternative arithmetic representation.
 
 ## Current behavior and the gap
 
 {source}`PreparedLraTheory::append_atom
-<src/smt/solver_engines.cpp#L3434-L3512>` shares normalized polynomials with
+<src/smt/solver_engines.cpp#L3529-L3656>` shares normalized polynomials with
 leading coefficient one. Its `is_integer` flag covers direct integer terms
 and compound integer atoms whose scale is $1$ or $-1$. Otherwise,
-{source}`bound_assertion <src/smt/solver_engines.cpp#L3169-L3187>` uses
+{source}`bound_assertion <src/smt/solver_engines.cpp#L3198-L3225>` uses
 infinitesimals for strict bounds. The
 {ref}`integer chapter <lia-infinitesimals>` explains how these can reach
 integer variables and how the existing procedures handle them.
@@ -32,6 +45,7 @@ Integer-bound tightening is established. The relevant primary sources are:
 | King, thesis, §4.3, pp. 106–109 {cite:p}`king2014` | Clear rational denominators, replace strict integer inequalities by non-strict ones, divide coefficients by their GCD and round the bound. The assertion procedures also tighten negated inequalities received from SAT. This directly supports preparing exact bounds for both polarities. |
 | Pugh, *The Omega Test*, expanded 1992 version, §2.1 {cite:p}`pugh1992omega` | Earlier coefficient-GCD normalization and rounding of inequality constants, preserving integer solutions while strengthening the real relaxation. |
 | Griggio, thesis, §2.6.1, equations (2.11)–(2.12) {cite:p}`griggio2009` | Applies the same GCD-and-rounding rule in an SMT integer solver after equality elimination, citing Pugh. Primo need not adopt that elimination procedure to use the bound rule. |
+| Achterberg–Bixby–Gu–Rothberg–Weninger, *Presolve Reductions in Mixed Integer Programming*, ZIB Report 16-44 version, §§3.5, 4.2, 7.6 {cite:p}`achterberg2020presolve` | MIP presolve counterparts: §3.5, equation (3.7), divides an all-integer row by the GCD of its coefficients and rounds the right side; §4.2 rounds fractional bounds of integer variables, which Gurobi's MIP algorithms require; §7.6 marks a continuous variable as implied integer when an equation with integer variables forces its integrality. The paper reports a small overall benefit for §3.5 and a larger one for §7.6 in Gurobi; neither measurement transfers to Primo. |
 | Dutertre–de Moura, technical report, §4.1, pp. 20–21 {cite:p}`dutertre2006simplexreport` | Branch-and-bound over delta rationals, including $\lfloor n-\delta\rfloor=n-1$. This supports the existing fallback in Primo's {source}`integer-value helpers <src/theory/arithmetic/lia_integer_values.hpp>` and {source}`branching procedure <src/theory/arithmetic/lia_branch_and_bound.cpp>`. |
 
 The proposed work adapts integer tightening to Primo's leading-coefficient-one

@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "archives": [
+    {
+      "repository": "https://github.com/primo-solver/primo.git",
+      "ref": "refs/tags/source-history/lia-integrality-20261121",
+      "commit": "632dc2e5f946c0905bbba0b61c9e2c74c49ba1d0",
+      "description": "Qualified development history for source and evidence citations after squash integration. Publish this tag in the canonical repository before opening the squash PR."
+    }
+  ]
+}
